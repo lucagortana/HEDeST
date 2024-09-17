@@ -1,6 +1,3 @@
-
-- conda install openslide
-
 ## Installation of the requirements
 To create your conda environment and install the requirements with ``pip``
 ```
