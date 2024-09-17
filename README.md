@@ -1,5 +1,5 @@
-empty env
-torch and torch vision with specific cudas
-pip install everything
-conda install openslide
-pip install mplcursors --> uninstall
+- empty env
+- torch and torch vision with specific cudas
+- pip install everything
+- conda install openslide
+- pip install mplcursors --> uninstall
