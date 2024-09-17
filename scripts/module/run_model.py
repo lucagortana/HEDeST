@@ -5,15 +5,12 @@ from torch import optim
 import os
 
 from module.trainer import ModelTrainer
-from tools.hovernet_tools import map_cells_to_spots
 from tools.basics import set_seed
 
-def run_plugin(adata,
-               adata_name,
-               json_path,
-               image_dict,
+def run_plugin(image_dict,
+               spot_dict,
                proportions,
-               batch_size=1,
+               batch_size=8,
                lr=0.001,
                agg_loss='mean',
                alpha=0.5,
@@ -27,7 +24,6 @@ def run_plugin(adata,
     print("NEW TRAINING")
     print("Parameters :")
     print("------------")
-    print(f"Dataset : {adata_name}")
     print(f"Batch size : {batch_size}")
     print(f"Learning rate : {lr}")
     print(f"Aggregation loss : {agg_loss}")
@@ -45,8 +41,6 @@ def run_plugin(adata,
     
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    
-    spot_dict = map_cells_to_spots(adata, adata_name, json_path)
     
     train_spot_dict, train_proportions, val_spot_dict, val_proportions, test_spot_dict, test_proportions = split_data(
         spot_dict, proportions, train_size=train_size, val_size=val_size, rs=rs)
