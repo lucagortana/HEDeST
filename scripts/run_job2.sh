@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=plugin
-#SBATCH --output=/cluster/CBIO/home/lgortana/plugin_tool/log/classif_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/plugin_tool/log/classif_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/classif_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/classif_%j.err
 #SBATCH --mem 80000
 #SBATCH --gres=gpu:1
 #SBATCH -p cbio-gpu
