@@ -29,4 +29,4 @@ python3 -u run.py \
     --val_size 0.25 \
     --out_dir ../out/model_bs8_lr1e-5_agglossmean_alpha05_epochs50 \
     --rs 42 \
-    --image_dict_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt 
+    --image_dict_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt
