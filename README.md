@@ -11,5 +11,5 @@ $ pip install torch==1.13.1+cu116 torchvision==0.14.1+cu116 --extra-index-url ht
 ```
 To install openslide
 ```
-$ conda install openslide
+$ conda install -c conda-forge openslide=3.4.1
 ```
