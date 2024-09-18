@@ -4,8 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# test
-
 
 class CellClassifier(nn.Module):
     def __init__(self, num_classes, dropout_prob=0.5, device=torch.device("cpu")):
