@@ -15,6 +15,8 @@ from PIL import Image
 from plotly.subplots import make_subplots
 from tools.hovernet_tools import get_adata_infos
 
+# test
+
 
 class SlideVisualizer:
     def __init__(
