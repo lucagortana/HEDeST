@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../../hover_net/')
+sys.path.append('../../../hover_net/')
 
 import json
 import pathlib
