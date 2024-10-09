@@ -43,7 +43,7 @@ class SlideVisualizer:
 
         if self.data is not None:
 
-            # Extract nuclear information
+            # Extract nuclear info
             self.nuc_info = self.data["nuc"]
             self.contour_list_wsi = []
             self.type_list_wsi = []
