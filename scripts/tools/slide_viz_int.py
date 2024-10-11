@@ -78,18 +78,25 @@ class SlideVisualizer:
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return "data:image/png;base64," + img_str
 
-    def plot_slide(self, show_visium=False, title=None):
+    def plot_slide(self, show_visium=False, title=None, display=True):
         """Adds the histological slide to the plot."""
-        plt.figure(figsize=self.figsize)
-        plt.imshow(self.region)
+
+        fig, ax = plt.subplots(figsize=self.figsize)
+        ax.imshow(self.region)
+
         if show_visium:
             self._add_visium_plt()
 
-        plt.axis("off")
-        plt.title([f"Slide - {self.adata_name}", title][title is not None])
-        plt.show()
+        ax.axis("off")
+        ax.set_title([f"Slide - {self.adata_name}", title][title is not None])
 
-    def plot_seg(self, show_visium=False, line_width=2, title=None):
+        if display:
+            plt.show()
+        else:
+            plt.close(fig)
+            return fig
+
+    def plot_seg(self, show_visium=False, line_width=2, title=None, display=True):
         """Adds segmentation contours to the slide using Plotly."""
 
         if self.data is None:
@@ -159,7 +166,10 @@ class SlideVisualizer:
         if show_visium:
             self._add_visium_plotly(fig)
 
-        fig.show()
+        if display:
+            fig.show()
+        else:
+            return fig
 
     def _add_visium_plotly(self, fig):
         """Adds Visium spots to the plot."""
@@ -204,7 +214,9 @@ class SlideVisualizer:
                 plt.gca().add_patch(circle)
 
 
-def plot_specific_spot(image_path, adata, adata_name, spot_id=None, dict_cells=None, dict_types_colors=None):
+def plot_specific_spot(
+    image_path, adata, adata_name, spot_id=None, dict_cells=None, dict_types_colors=None, figsize=(12, 10), display=True
+):
     """Plots a specific spot with Visium circles and segmentation."""
     _, _, centers, diameter = get_adata_infos(adata, adata_name)
     spots_coordinates = pd.DataFrame(centers, columns=["x", "y"])
@@ -212,14 +224,16 @@ def plot_specific_spot(image_path, adata, adata_name, spot_id=None, dict_cells=N
 
     if spot_id is None:
         spot_id = np.random.choice(spots_coordinates["id"])
+        print(f"Randomly selected spot_id: {spot_id}")
 
     spot_x, spot_y = spots_coordinates[spots_coordinates["id"] == spot_id][["x", "y"]].values[0]
     img_diam = int(diameter + 50)
     window = ((spot_x - img_diam / 2, spot_y - img_diam / 2), (img_diam, img_diam))
 
-    plotter = SlideVisualizer(image_path, adata, adata_name, dict_cells, dict_types_colors, window, figsize=(12, 10))
+    plotter = SlideVisualizer(image_path, adata, adata_name, dict_cells, dict_types_colors, window, figsize=figsize)
     if dict_cells is not None:
-        plotter.plot_seg(show_visium=True, line_width=4, title=f"Spot ID: {spot_id}")
+        fig = plotter.plot_seg(show_visium=True, line_width=4, title=f"Spot ID: {spot_id}", display=display)
     else:
-        plotter.plot_slide(show_visium=True, title=f"Spot ID: {spot_id}")
-    print(f"Spot ID: {spot_id}")
+        fig = plotter.plot_slide(show_visium=True, title=f"Spot ID: {spot_id}", display=display)
+
+    return fig

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
@@ -56,9 +57,6 @@ def split_data(spot_dict, proportions, train_size=0.7, val_size=0.15, rs=42):
     return train_spot_dict, train_proportions, val_spot_dict, val_proportions, test_spot_dict, test_proportions
 
 
-# added lastly
-
-
 def collate_fn(batch):
     """
     Custom collate function to handle spots with varying numbers of cells.
@@ -67,3 +65,24 @@ def collate_fn(batch):
     proportions = torch.stack([item[1] for item in batch])  # Stack proportions (same size)
 
     return images, proportions
+
+
+def pp_prop(proportions):
+    """
+    Preprocess proportions by normalizing each row to sum to 1.
+
+    Args:
+        proportions (pd.DataFrame or str): DataFrame where each row corresponds to a spot and columns represent cell
+                                            type proportions. If str, read DataFrame from file.
+
+    Returns:
+        pd.DataFrame: Normalized proportions.
+    """
+
+    if isinstance(proportions, str):
+        proportions = pd.read_csv(proportions, index_col=0)
+
+    row_sums = proportions.sum(axis=1)
+    proportions = proportions.div(row_sums, axis=0)
+
+    return proportions

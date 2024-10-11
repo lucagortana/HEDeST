@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import pickle
 
+import pandas as pd
 import torch
 from module.cell_classifier import CellClassifier
 from module.load_data import collate_fn
@@ -10,9 +12,12 @@ from module.load_data import SpotDataset
 from module.trainer import ModelTrainer
 from tools.basics import set_seed
 from torch import optim
+from tqdm import tqdm
+
+# def run_pri_deconv()
 
 
-def run_plugin(
+def run_sec_deconv(
     image_dict,
     spot_dict,
     proportions,
@@ -70,7 +75,9 @@ def run_plugin(
         test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
     )  # added collate_fn
 
-    model = CellClassifier(num_classes=proportions.shape[1], device=device)
+    num_classes = proportions.shape[1]
+    ct_list = list(proportions.columns)
+    model = CellClassifier(num_classes=num_classes, device=device)
     model = model.to(device)
 
     print(f"{proportions.shape[1]} classes detected !\n")
@@ -90,3 +97,49 @@ def run_plugin(
     )
     trainer.train()
     trainer.save_history()
+
+    # Predict on the whole slide
+    model4pred = CellClassifier(num_classes=num_classes, device=device)
+    model4pred.load_state_dict(torch.load(trainer.best_model_path))
+    pred = predict_slide(model4pred, image_dict, ct_list)
+
+    # Save model infos
+    info_dir = f"{out_dir}/info.pickle"
+    print(f"Saving objects to {info_dir}")
+    with open(info_dir, "wb") as f:
+        pickle.dump({"image_dict": image_dict, "spot_dict": spot_dict, "proportions": proportions, "pred": pred}, f)
+
+
+def predict_slide(model, image_dict, ct_list, batch_size=32):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device used : ", device)
+
+    model.eval()
+    model = model.to(device)
+    predictions = []
+
+    dataloader = torch.utils.data.DataLoader(list(image_dict.items()), batch_size=batch_size, shuffle=False)
+
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch"):
+            cell_ids, images = batch
+            images = images.to(device).float() / 255.0
+
+            outputs = model(images)
+
+            # Convertir les résultats en liste de dictionnaires pour chaque cellule
+            for cell_id, prob_vector in zip(cell_ids, outputs):
+                predictions.append(
+                    {
+                        "cell_id": cell_id,
+                        **{
+                            ct_list[i]: prob for i, prob in enumerate(prob_vector.cpu().tolist())
+                        },  # Utilisation des noms de classes
+                    }
+                )
+
+    # Convertir la liste de dictionnaires en DataFrame
+    predictions_df = pd.DataFrame(predictions)
+    predictions_df.set_index("cell_id", inplace=True)
+
+    return predictions_df
