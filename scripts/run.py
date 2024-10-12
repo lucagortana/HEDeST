@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import click
 import scanpy as sc
 import torch
@@ -20,7 +18,7 @@ path_ST_adata = data_path + "ST/"
 @click.command()
 @click.option("--adata_name", type=str, required=True, help="Name of the sample")
 @click.option("--json_path", type=str, required=True, help="Path to the post-segmentation file")
-@click.option("--image_path", type=str, default=None, help="Path to the high-quality WSI directory")
+@click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict")
 @click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object")
 @click.option("--proportions_file", type=str, required=True, help="Path to the proportions file")
 @click.option("--batch_size", type=int, default=8, help="Batch size for model training")
@@ -30,13 +28,14 @@ path_ST_adata = data_path + "ST/"
 @click.option("--epochs", type=int, default=25, help="Number of training epochs")
 @click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction")
 @click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction")
-@click.option("--out_dir", type=str, default="models", help="Output directory")
+@click.option("--out_dir", type=str, default="results", help="Output directory")
 @click.option("--rs", type=int, default=42, help="Random seed")
-@click.option("--image_dict_path", type=str, default=None, help="Optional path to pre-saved image_dict file")
 @click.option("--level", type=int, default=0, help="Image extraction level")
 @click.option("--size", type=(int, int), default=(64, 64), help="Size of the extracted tiles")
 @click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction")
-@click.option("--save_images", type=str, default=None, help="Directory to save extracted images")
+@click.option(
+    "--save_images", type=str, default=None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both"
+)
 def main(
     adata_name,
     json_path,
@@ -52,23 +51,43 @@ def main(
     val_size,
     out_dir,
     rs,
-    image_dict_path,
     level,
     size,
     dict_types,
     save_images,
 ):
 
-    if image_dict_path is not None and os.path.exists(image_dict_path):
-        print(f"Loading image_dict from {image_dict_path}")
-        image_dict = torch.load(image_dict_path)
-    elif image_path is not None:
-        print("Image_dict not provided or path does not exist, extracting using HoverNet segmentation results.")
-        image_dict = extract_tiles_hovernet(
-            image_path, json_path, level=level, size=size, dict_types=dict_types, save_images=save_images
-        )
+    save_options = {
+        None: (None, None),
+        "jpg": (out_dir + "/extracted_images", None),
+        "dict": (None, out_dir + "/image_dict.pt"),
+        "both": (out_dir + "/extracted_images", out_dir + "/image_dict.pt"),
+    }
+
+    if save_images in save_options:
+        img_dir, dict_dir = save_options[save_images]
     else:
-        raise ValueError("Either --image_dict_path or --image_path must be provided.")
+        raise ValueError("save_images must be one of 'jpg', 'dict', or 'both'")
+
+    if image_path.endswith(".pt"):
+        image_dict = torch.load(image_path)
+    else:
+        try:
+            image_dict = extract_tiles_hovernet(
+                image_path,
+                json_path,
+                level=level,
+                size=size,
+                dict_types=dict_types,
+                save_images=img_dir,
+                save_dict=dict_dir,
+            )
+        except Exception as e:
+            raise ValueError(
+                "If it's an image dictionary, it must be in .pt format.\n"
+                "If it's a Whole-Slide Image, it must be in one of the following formats:\n"
+                ".tif, .tiff, .svs, .dcm, or .ndpi."
+            ) from e
 
     adata = sc.read_visium(path_st_adata)
     proportions = pp_prop(proportions_file)

@@ -100,7 +100,7 @@ def get_x_y(slide: OpenSlide, point_l: Tuple[int, int], level: int, integer: boo
 
 
 def extract_tiles_hovernet(
-    image_path, json_path, level=0, size=(64, 64), dict_types=None, save_images=None
+    image_path, json_path, level=0, size=(64, 64), dict_types=None, save_images=None, save_dict=None
 ):  # must adapt for segmentation without classification
     """
     Extracts tiles from a WSI given a json file with the cell centroids.
@@ -111,6 +111,7 @@ def extract_tiles_hovernet(
         size: Size of the tiles.
         dict_types: Dictionary with the cell types.
         save_images: Path to save the images.
+        save_dict: Path to save the dictionary.
     Returns:
         image_dict: Dictionary with the extracted tiles.
     """
@@ -157,6 +158,9 @@ def extract_tiles_hovernet(
 
         img_tensor = torch.tensor(np.array(img_cell)).permute(2, 0, 1)  # Convert image to tensor (C, H, W)
         image_dict[str(i)] = img_tensor
+
+    if save_dict is not None:
+        torch.save(image_dict, save_dict)
 
     return image_dict
 

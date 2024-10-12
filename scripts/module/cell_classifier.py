@@ -6,9 +6,10 @@ import torch.nn.functional as F
 
 
 class CellClassifier(nn.Module):
-    def __init__(self, num_classes, dropout_prob=0.5, device=torch.device("cpu")):
+    def __init__(self, size_edge, num_classes, dropout_prob=0.5, device=torch.device("cpu")):
         super(CellClassifier, self).__init__()
 
+        self.size_edge = size_edge
         self.num_classes = num_classes
         self.dropout_prob = dropout_prob
         self.device = device
@@ -16,35 +17,38 @@ class CellClassifier(nn.Module):
         # Convolutional layers
         self.convolutions = nn.Sequential(
             nn.Conv2d(3, 8, 3, padding=1),
+            # Size 8@axa
             nn.BatchNorm2d(8),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
-            # Size 8@32x32x2
+            # Size 8@(a/2)x(a/2)
             nn.Conv2d(8, 16, 3, padding=1),
-            # Size 16@32x32x2
+            # Size 16@(a/2)x(a/2)
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
-            # Size 16@16x16x1)
+            # Size 16@(a/4)x(a/4)
             nn.Conv2d(16, 32, 3, padding=1),
-            # Size 32@16x16x1
+            # Size 32@(a/4)x(a/4)
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
-            # Size 32@8x8x1
+            # Size 32@(a/8)x(a/8)
         )
 
         # Fully connected layers
         self.fc1 = nn.Sequential(
             nn.Dropout(p=self.dropout_prob),
-            nn.Linear(2048, 512),  # 32 * 8 * 8 * 1, 32 * 8 * 2
+            nn.Linear(
+                32 * (self.size_edge / 8) ** 2, 8 * (self.size_edge / 8) ** 2
+            ),  # 32 * (a/8) * (a/8), 8 * (a/8) * (a/8)
             nn.ReLU(),
         )
         self.fc2 = nn.Sequential(
-            nn.Linear(512, 64),
+            nn.Linear(8 * (self.size_edge / 8) ** 2, (self.size_edge / 8) ** 2),  # 8 * (a/8) * (a/8), (a/8) * (a/8)
             nn.ReLU(),
         )
-        self.fc3 = nn.Linear(64, self.num_classes)
+        self.fc3 = nn.Linear((self.size_edge / 8) ** 2, self.num_classes)  # (a/8) * (a/8), num_classes
 
     def forward(self, x):
         x = self.convolutions(x)

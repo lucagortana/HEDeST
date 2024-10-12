@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import io
 import random
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from PIL import Image
+from tools import basics
 from tools import slide_viz
 
 
@@ -220,18 +218,6 @@ def plot_mosaic_cells(spots_dict, cell_images, labels_pred=None, spot_id=None, n
         return fig
 
 
-def fig_to_array(fig):
-    """
-    Convert a Matplotlib figure to a NumPy array (image array) that can be displayed using imshow.
-    """
-    buf = io.BytesIO()
-    canvas = FigureCanvas(fig)
-    canvas.print_png(buf)
-    buf.seek(0)
-    img = Image.open(buf)
-    return np.array(img)
-
-
 def plot_predicted_cell_labels_in_spot(
     spots_dict, image_path, adata, adata_name, cell_images, labels_pred=None, spot_id=None, display=True  # dict_cells,
 ):
@@ -259,8 +245,8 @@ def plot_predicted_cell_labels_in_spot(
     fig1 = slide_viz.plot_specific_spot(image_path, adata, adata_name, spot_id=spot_id, display=False)
     fig2 = plot_mosaic_cells(spots_dict, cell_images, labels_pred, spot_id=spot_id, display=False)
 
-    img1 = fig_to_array(fig1)
-    img2 = fig_to_array(fig2)
+    img1 = basics.fig_to_array(fig1)
+    img2 = basics.fig_to_array(fig2)
 
     # Création d'une nouvelle figure pour combiner les deux
     combined_fig, axs = plt.subplots(1, 2, figsize=(15, 10), gridspec_kw={"width_ratios": [1, 2]})

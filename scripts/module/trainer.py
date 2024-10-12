@@ -18,7 +18,7 @@ class ModelTrainer:
         agg_loss="mean",
         alpha=0.5,
         num_epochs=25,
-        out_dir="models",
+        out_dir="results",
         rs=42,
     ):
         """
@@ -33,7 +33,7 @@ class ModelTrainer:
             agg_loss (str): The type of loss aggregation to use ('mean' or 'sum'). Default is 'mean'.
             alpha (float): The weight parameter for the KL divergence loss. Default is 0.5.
             num_epochs (int): The number of epochs to train the model. Default is 25.
-            out_dir (str): The output directory to save the trained model. Default is 'models'.
+            out_dir (str): The output directory to save the trained model. Default is 'results'.
             rs (int): The random seed value to set for reproducibility. Default is 42.
 
         Example:

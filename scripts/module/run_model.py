@@ -28,7 +28,7 @@ def run_sec_deconv(
     epochs=25,
     train_size=0.5,
     val_size=0.25,
-    out_dir="models",
+    out_dir="results",
     rs=42,
 ):
 
@@ -77,7 +77,8 @@ def run_sec_deconv(
 
     num_classes = proportions.shape[1]
     ct_list = list(proportions.columns)
-    model = CellClassifier(num_classes=num_classes, device=device)
+    size_edge = image_dict["0"].shape[1]
+    model = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
     model = model.to(device)
 
     print(f"{proportions.shape[1]} classes detected !\n")
@@ -99,7 +100,7 @@ def run_sec_deconv(
     trainer.save_history()
 
     # Predict on the whole slide
-    model4pred = CellClassifier(num_classes=num_classes, device=device)
+    model4pred = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
     model4pred.load_state_dict(torch.load(trainer.best_model_path))
     pred = predict_slide(model4pred, image_dict, ct_list)
 
@@ -107,7 +108,7 @@ def run_sec_deconv(
     info_dir = f"{out_dir}/info.pickle"
     print(f"Saving objects to {info_dir}")
     with open(info_dir, "wb") as f:
-        pickle.dump({"image_dict": image_dict, "spot_dict": spot_dict, "proportions": proportions, "pred": pred}, f)
+        pickle.dump({"spot_dict": spot_dict, "proportions": proportions, "pred": pred}, f)
 
 
 def predict_slide(model, image_dict, ct_list, batch_size=32):
