@@ -31,7 +31,7 @@ path_ST_adata = data_path + "ST/"
 @click.option("--out_dir", type=str, default="results", help="Output directory")
 @click.option("--rs", type=int, default=42, help="Random seed")
 @click.option("--level", type=int, default=0, help="Image extraction level")
-@click.option("--size", type=(int, int), default=(64, 64), help="Size of the extracted tiles")
+@click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles")
 @click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction")
 @click.option(
     "--save_images", type=str, default=None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both"
@@ -52,11 +52,12 @@ def main(
     out_dir,
     rs,
     level,
-    size,
+    size_edge,
     dict_types,
     save_images,
 ):
 
+    size = (size_edge, size_edge)
     save_options = {
         None: (None, None),
         "jpg": (out_dir + "/extracted_images", None),

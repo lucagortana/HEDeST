@@ -1,12 +1,49 @@
 #!/bin/bash
 
 #SBATCH --job-name=hovernet
-#SBATCH --output=/cluster/CBIO/home/lgortana/hover_net/myrepo/log/segment_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/hover_net/myrepo/log/segment_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.err
 #SBATCH --mem 80000
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:P100:1
 #SBATCH -p cbio-gpu
 #SBATCH --cpus-per-task=4
 
 echo 'Found a place!'
-python run_infer.py --gpu='0,1' --nr_types=6 --type_info_path=type_info.json --model_path=myrepo/pretrained/hovernet_fast_pannuke_type_tf2pytorch.tar wsi --input_dir=myrepo/input/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ --output_dir=myrepo/out/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/new_mask/ --input_mask_dir=myrepo/mask/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_lvl125_1/ --save_mask
+
+source /cluster/CBIO/home/lgortana/anaconda3/etc/profile.d/conda.sh
+conda activate hovernet
+
+export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/hovernet/lib:$LD_LIBRARY_PATH
+
+python ../hover_net/run_infer.py \
+    --gpu='0,1' \
+    --nr_types=0 \
+    --type_info_path=../hover_net/type_info.json \
+    --model_mode=original \
+    --model_path=data/pretrained/seg/hovernet_original_consep_notype_tf2pytorch.tar \
+    wsi \
+    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
+    --output_dir=out/results_hovernet/Ovarian_nolabel_consep/ \
+    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
+
+python ../hover_net/run_infer.py \
+    --gpu='0,1' \
+    --nr_types=0 \
+    --type_info_path=../hover_net/type_info.json \
+    --model_mode=original \
+    --model_path=data/pretrained/seg/hovernet_original_cpm17_notype_tf2pytorch.tar \
+    wsi \
+    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
+    --output_dir=out/results_hovernet/Ovarian_nolabel_cpm17/ \
+    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
+
+python ../hover_net/run_infer.py \
+    --gpu='0,1' \
+    --nr_types=0 \
+    --type_info_path=../hover_net/type_info.json \
+    --model_mode=original \
+    --model_path=data/pretrained/seg/hovernet_original_kumar_notype_tf2pytorch.tar \
+    wsi \
+    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
+    --output_dir=out/results_hovernet/Ovarian_nolabel_kumar/ \
+    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \

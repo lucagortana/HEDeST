@@ -5,15 +5,15 @@ import os
 import pathlib
 import sys
 
+sys.path.append("../../hover_net/")
+sys.path.append("../../../hover_net/")
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from misc.wsi_handler import get_file_handler
 from tools.hovernet_tools import get_adata_infos
-
-sys.path.append("../../hover_net/")
-sys.path.append("../../../hover_net/")
 
 
 class SlideVisualizer:
