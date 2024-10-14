@@ -58,21 +58,24 @@ def main(
 ):
 
     size = (size_edge, size_edge)
-    save_options = {
-        None: (None, None),
-        "jpg": (out_dir + "/extracted_images", None),
-        "dict": (None, out_dir + "/image_dict.pt"),
-        "both": (out_dir + "/extracted_images", out_dir + "/image_dict.pt"),
-    }
-
-    if save_images in save_options:
-        img_dir, dict_dir = save_options[save_images]
-    else:
-        raise ValueError("save_images must be one of 'jpg', 'dict', or 'both'")
 
     if image_path.endswith(".pt"):
+        if save_images is not None:
+            print("Warning: save_images is ignored when loading an image dictionary.")
         image_dict = torch.load(image_path)
+
     else:
+        save_options = {
+            None: (None, None),
+            "jpg": (out_dir + "/extracted_images", None),
+            "dict": (None, out_dir + "/image_dict.pt"),
+            "both": (out_dir + "/extracted_images", out_dir + "/image_dict.pt"),
+        }
+
+        if save_images in save_options:
+            img_dir, dict_dir = save_options[save_images]
+        else:
+            raise ValueError("save_images must be one of None, 'jpg', 'dict', or 'both'")
         try:
             image_dict = extract_tiles_hovernet(
                 image_path,

@@ -18,7 +18,7 @@ export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -36,7 +36,7 @@ python3 -u run.py \
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -54,7 +54,7 @@ python3 -u run.py \
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -72,7 +72,7 @@ python3 -u run.py \
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -90,7 +90,7 @@ python3 -u run.py \
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -108,7 +108,7 @@ python3 -u run.py \
 python3 -u run.py \
     --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
     --json_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict.pt \
+    --image_path ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif \
     --path_st_adata ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
     --proportions_file ../data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
     --batch_size 8 \
@@ -121,4 +121,4 @@ python3 -u run.py \
     --out_dir ../out/model_bs8_lr1e-5_agglossonehot_alpha01_epochs60_se32 \
     --rs 42 \
     --size_edge 32 \
-    --save_images dict \
+    --save_images both \

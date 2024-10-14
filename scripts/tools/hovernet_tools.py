@@ -159,8 +159,12 @@ def extract_tiles_hovernet(
         img_tensor = torch.tensor(np.array(img_cell)).permute(2, 0, 1)  # Convert image to tensor (C, H, W)
         image_dict[str(i)] = img_tensor
 
+    if save_images is not None:
+        print("-> Tile images saved.")
+
     if save_dict is not None:
         torch.save(image_dict, save_dict)
+        print("-> image_dict saved.")
 
     return image_dict
 
