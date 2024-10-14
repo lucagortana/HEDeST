@@ -170,7 +170,7 @@ class ModelTrainer:
         # Load and evaluate the best model
         print("\nLoading best model for final test evaluation...")
         best_model = type(self.model)(
-            num_classes=self.model.num_classes
+            size_edge=self.model.size_edge, num_classes=self.model.num_classes
         )  # Instantiate new model with the same architecture
         best_model.load_state_dict(torch.load(self.best_model_path))
         best_model = best_model.to(self.device)
