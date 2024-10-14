@@ -40,15 +40,17 @@ class CellClassifier(nn.Module):
         self.fc1 = nn.Sequential(
             nn.Dropout(p=self.dropout_prob),
             nn.Linear(
-                32 * (self.size_edge / 8) ** 2, 8 * (self.size_edge / 8) ** 2
+                int(32 * (self.size_edge / 8) ** 2), int(8 * (self.size_edge / 8) ** 2)
             ),  # 32 * (a/8) * (a/8), 8 * (a/8) * (a/8)
             nn.ReLU(),
         )
         self.fc2 = nn.Sequential(
-            nn.Linear(8 * (self.size_edge / 8) ** 2, (self.size_edge / 8) ** 2),  # 8 * (a/8) * (a/8), (a/8) * (a/8)
+            nn.Linear(
+                int(8 * (self.size_edge / 8) ** 2), int((self.size_edge / 8) ** 2)
+            ),  # 8 * (a/8) * (a/8), (a/8) * (a/8)
             nn.ReLU(),
         )
-        self.fc3 = nn.Linear((self.size_edge / 8) ** 2, self.num_classes)  # (a/8) * (a/8), num_classes
+        self.fc3 = nn.Linear(int((self.size_edge / 8) ** 2), self.num_classes)  # (a/8) * (a/8), num_classes
 
     def forward(self, x):
         x = self.convolutions(x)
