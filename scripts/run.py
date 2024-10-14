@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import click
 import scanpy as sc
 import torch
@@ -58,6 +60,9 @@ def main(
 ):
 
     size = (size_edge, size_edge)
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     if image_path.endswith(".pt"):
         if save_images is not None:
