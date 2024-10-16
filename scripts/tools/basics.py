@@ -66,3 +66,10 @@ def fig_to_array(fig):
     buf.seek(0)
     img = Image.open(buf)
     return np.array(img)
+
+
+def check_json_classification(dict):
+    first_key = next(iter(dict["nuc"]))
+    if dict["nuc"][first_key]["type"] is None:
+        return False
+    return True

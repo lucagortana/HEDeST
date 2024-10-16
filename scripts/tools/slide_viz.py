@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from misc.wsi_handler import get_file_handler
 from tools.hovernet_tools import get_adata_infos
+from tools.basics import check_json_classification
 
 
 class SlideVisualizer:
@@ -28,11 +29,6 @@ class SlideVisualizer:
         self.window = window
         self.figsize = figsize
 
-        if (self.dict_types_colors is None and dict_cells is not None) or (
-            self.dict_types_colors is not None and dict_cells is None
-        ):
-            raise ValueError("Both dict_types_colors and dict_cells must be provided or none of them.")
-
         if isinstance(dict_cells, str) and os.path.isfile(dict_cells):
             with open(dict_cells) as json_file:
                 self.data = json.load(json_file)
@@ -40,6 +36,14 @@ class SlideVisualizer:
             self.data = dict_cells
         else:
             raise ValueError("dict_cells must be a path to a JSON file or a dictionary.")
+
+        if self.dict_types_colors is None and self.data is not None:
+            if check_json_classification(self.data):
+                raise ValueError(
+                    "dict_types_colors must be provided if dict_cells is a JSON file with classified cells."
+                )
+            else:
+                self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
 
         if self.data is not None:
 

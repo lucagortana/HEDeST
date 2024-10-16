@@ -98,8 +98,6 @@ class ModelTrainer:
                 outputs = self.model(images)
                 # spot_outputs.append(outputs)
                 # outputs = torch.cat(spot_outputs, dim=0)
-                print("outputs : ", outputs)
-                print("true prop : ", true_proportions[0])
                 loss = self.model.loss_comb(outputs, true_proportions[0], agg=self.agg_loss, alpha=self.alpha)
                 loss.backward()
                 self.optimizer.step()

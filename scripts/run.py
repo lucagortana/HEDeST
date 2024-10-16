@@ -23,7 +23,7 @@ path_ST_adata = data_path + "ST/"
 @click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict")
 @click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object")
 @click.option("--proportions_file", type=str, required=True, help="Path to the proportions file")
-@click.option("--batch_size", type=int, default=8, help="Batch size for model training")
+@click.option("--batch_size", type=int, default=1, help="Batch size for model training")
 @click.option("--lr", type=float, default=0.001, help="Learning rate")
 @click.option("--agg_loss", type=str, default="mean", help="Aggregation loss function type")
 @click.option("--alpha", type=float, default=0.5, help="Alpha parameter for loss function")
@@ -72,9 +72,9 @@ def main(
     else:
         save_options = {
             None: (None, None),
-            "jpg": (out_dir + "/extracted_images", None),
+            "jpg": (out_dir + "/extracted_images/", None),
             "dict": (None, out_dir + "/image_dict.pt"),
-            "both": (out_dir + "/extracted_images", out_dir + "/image_dict.pt"),
+            "both": (out_dir + "/extracted_images/", out_dir + "/image_dict.pt"),
         }
 
         if save_images in save_options:
