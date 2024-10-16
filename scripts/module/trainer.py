@@ -92,16 +92,15 @@ class ModelTrainer:
 
             for images_list, true_proportions in self.train_loader:
                 self.optimizer.zero_grad()
-                spot_outputs = []
+                # spot_outputs = []
                 true_proportions = true_proportions.to(self.device)
-
-                for images in images_list:
-                    images = images.to(self.device)
-                    outputs = self.model(images)
-                    spot_outputs.append(outputs)
-
-                outputs = torch.cat(spot_outputs, dim=0)
-                loss = self.model.loss_comb(outputs, true_proportions, agg=self.agg_loss, alpha=self.alpha)
+                images = images_list[0].to(self.device)
+                outputs = self.model(images)
+                # spot_outputs.append(outputs)
+                # outputs = torch.cat(spot_outputs, dim=0)
+                print("outputs : ", outputs)
+                print("true prop : ", true_proportions[0])
+                loss = self.model.loss_comb(outputs, true_proportions[0], agg=self.agg_loss, alpha=self.alpha)
                 loss.backward()
                 self.optimizer.step()
 
@@ -143,16 +142,13 @@ class ModelTrainer:
         running_loss = 0.0
         with torch.no_grad():
             for images_list, true_proportions in dataloader:
-                spot_outputs = []
+                # spot_outputs = []
                 true_proportions = true_proportions.to(self.device)
-
-                for images in images_list:
-                    images = images.to(self.device)
-                    outputs = self.model(images)
-                    spot_outputs.append(outputs)
-
-                outputs = torch.cat(spot_outputs, dim=0)  # Concatenate spot_outputs
-                loss = self.model.loss_comb(outputs, true_proportions, agg=self.agg_loss, alpha=self.alpha)
+                images = images_list[0].to(self.device)
+                outputs = self.model(images)
+                # spot_outputs.append(outputs)
+                # outputs = torch.cat(spot_outputs, dim=0)  # Concatenate spot_outputs
+                loss = self.model.loss_comb(outputs, true_proportions[0], agg=self.agg_loss, alpha=self.alpha)
                 running_loss += loss.item()
 
         avg_loss = running_loss / len(dataloader)

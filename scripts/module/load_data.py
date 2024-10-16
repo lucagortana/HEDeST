@@ -57,16 +57,6 @@ def split_data(spot_dict, proportions, train_size=0.7, val_size=0.15, rs=42):
     return train_spot_dict, train_proportions, val_spot_dict, val_proportions, test_spot_dict, test_proportions
 
 
-def collate_fn(batch):
-    """
-    Custom collate function to handle spots with varying numbers of cells.
-    """
-    images = [item[0] for item in batch]  # List of image tensors for each spot
-    proportions = torch.stack([item[1] for item in batch])  # Stack proportions (same size)
-
-    return images, proportions
-
-
 def pp_prop(proportions):
     """
     Preprocess proportions by normalizing each row to sum to 1.

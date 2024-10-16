@@ -71,10 +71,13 @@ class CellClassifier(nn.Module):
             one_hot_preds = torch.nn.functional.one_hot(predicted_classes, num_classes=outputs.size(1))
             pred_proportions = one_hot_preds.float().sum(dim=0) / outputs.size(0)
 
-        divergence_loss = F.mse_loss(pred_proportions, true_proportions) * 1e2
+        divergence_loss = F.mse_loss(pred_proportions, true_proportions) * 25
 
         # Combined loss
         loss = alpha * max_prob_loss + (1 - alpha) * divergence_loss
+        print("divergence = ", divergence_loss)
+        print("max_prob = ", max_prob_loss)
+        print("loss = ", loss)
 
         return loss
 
