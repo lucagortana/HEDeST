@@ -48,7 +48,7 @@ class SlideVisualizer:
                     self.adata, self.adata_name
                 )
                 print("Visium data found.")
-            except:
+            except ValueError:
                 raise ValueError(
                     f"Impossible to retrieve information. Either this is Visium data, but"
                     f"‘{self.adata_name}’ was not found, or it's not Visium data."
@@ -71,13 +71,19 @@ class SlideVisualizer:
             raise ValueError("dict_cells must be a path to a JSON file or a dictionary.")
 
         # check dict_types_colors
-        if self.dict_types_colors is None and self.data is not None:
-            if check_json_classification(self.data):
-                raise ValueError(
-                    "dict_types_colors must be provided if dict_cells is a JSON file with classified cells."
-                )
-            else:
-                self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+        if self.data is not None:
+            if self.dict_types_colors is None:
+                if check_json_classification(self.data):
+                    raise ValueError(
+                        "dict_types_colors must be provided if dict_cells is a JSON file with classified cells."
+                    )
+                else:
+                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+
+            elif self.dict_types_colors is not None:
+                if not check_json_classification(self.data):
+                    print("Warning : You gave a dict_types_colors but the JSON file gives no classification.")
+                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
 
         # Extract nuclear info
         if self.data is not None:

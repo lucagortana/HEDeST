@@ -3,32 +3,62 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import sys
-
-sys.path.append("../../hover_net/")
-sys.path.append("../../../hover_net/")
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from misc.wsi_handler import get_file_handler
-from tools.hovernet_tools import get_adata_infos
 from tools.basics import check_json_classification
+from tools.hovernet_tools import get_visium_infos
+from tools.hovernet_tools import get_xenium_infos
+from tools.openslide_handler import get_slide_object
 
 
 class SlideVisualizer:
     def __init__(
-        self, image_path, adata, adata_name, dict_cells=None, dict_types_colors=None, window="full", figsize=(18, 15)
+        self,
+        image_path,
+        vis_data=None,
+        vis_dataname=None,
+        dict_cells=None,
+        dict_types_colors=None,
+        window="full",
+        figsize=(18, 15),
     ):
 
+        # input variables
         self.image_path = image_path
-        self.adata = adata
-        self.adata_name = adata_name
+        self.adata = vis_data
+        self.adata_name = vis_dataname
         self.dict_types_colors = dict_types_colors
         self.window = window
         self.figsize = figsize
 
+        # initialize variables
+        self.spots_center = None
+        self.spots_diameter = None
+
+        # check adata
+        if self.adata is not None and self.adata_name is not None:
+            try:
+                self.mag_info, self.mpp, self.spots_center, self.spots_diameter = get_visium_infos(
+                    self.adata, self.adata_name
+                )
+                print("Visium data found.")
+            except ValueError:
+                raise ValueError(
+                    f"Impossible to retrieve information. Either this is Visium data, but"
+                    f"‘{self.adata_name}’ was not found, or it's not Visium data."
+                    "Please check the format and annotations of the data."
+                )
+        elif self.adata is None:
+            print("No Visium data provided. We guess it's an H&E slide from Xenium data.")
+            self.mag_info, self.mpp = get_xenium_infos()
+
+        elif self.adata is not None and self.adata_name is None:
+            raise ValueError("Please provide the name of the dataset in the adata object.")
+
+        # check dict_cells and open it
         if isinstance(dict_cells, str) and os.path.isfile(dict_cells):
             with open(dict_cells) as json_file:
                 self.data = json.load(json_file)
@@ -37,17 +67,23 @@ class SlideVisualizer:
         else:
             raise ValueError("dict_cells must be a path to a JSON file or a dictionary.")
 
-        if self.dict_types_colors is None and self.data is not None:
-            if check_json_classification(self.data):
-                raise ValueError(
-                    "dict_types_colors must be provided if dict_cells is a JSON file with classified cells."
-                )
-            else:
-                self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
-
+        # check dict_types_colors
         if self.data is not None:
+            if self.dict_types_colors is None:
+                if check_json_classification(self.data):
+                    raise ValueError(
+                        "dict_types_colors must be provided if dict_cells is a JSON file with classified cells."
+                    )
+                else:
+                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
 
-            # Extract nuclear information
+            elif self.dict_types_colors is not None:
+                if not check_json_classification(self.data):
+                    print("Warning : You gave a dict_types_colors but the JSON file gives no classification.")
+                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+
+        # extract nuclear information
+        if self.data is not None:
             self.nuc_info = self.data["nuc"]
             self.contour_list_wsi = []
             self.type_list_wsi = []
@@ -58,13 +94,11 @@ class SlideVisualizer:
                 self.type_list_wsi.append(inst_info["type"])
                 self.centroid_list_wsi.append(inst_info["centroid"])
 
-        self.mag_info, self.mpp, self.spots_center, self.spots_diameter = get_adata_infos(self.adata, self.adata_name)
-
         # Initialize slide handler
-        self.wsi_obj = get_file_handler(self.image_path, pathlib.Path(self.image_path).suffix)
-        self.wsi_obj.prepare_reading(read_mag=self.mag_info)
+        self.wsi_obj = get_slide_object(self.image_path, pathlib.Path(self.image_path).suffix, self.mag_info, self.mpp)
+        self.original_size = self.wsi_obj.file_ptr.level_dimensions[-1]
         if self.window == "full":
-            self.window = (0, 0), self.wsi_obj.file_ptr.level_dimensions[-1]
+            self.window = (0, 0), self.original_size
 
         self.x, self.y = self.window[0]
         self.w, self.h = self.window[1]
@@ -75,6 +109,9 @@ class SlideVisualizer:
 
     def plot_slide(self, show_visium=False, title=None, display=True):
         """Adds the histological slide to the plot."""
+        if show_visium and (self.spots_center is None or self.spots_diameter is None):
+            print("Warning : You cannot plot Visium spots without Visium data.")
+            show_visium = False
 
         fig, ax = plt.subplots(figsize=self.figsize)
         ax.imshow(self.region)
@@ -93,6 +130,9 @@ class SlideVisualizer:
 
     def plot_seg(self, draw_dot=False, show_visium=False, title=None, display=True):
         """Adds segmentation contours to the slide."""
+        if show_visium and (self.spots_center is None or self.spots_diameter is None):
+            print("Warning : You cannot plot Visium spots without Visium data.")
+            show_visium = False
 
         if self.data is None:
             raise ValueError("You must create a SlideVisualizer object with segmentation info to apply add_seg()")
@@ -147,7 +187,7 @@ def plot_specific_spot(
     image_path, adata, adata_name, spot_id=None, dict_cells=None, dict_types_colors=None, figsize=(12, 10), display=True
 ):
     """Plots a specific spot with Visium circles and segmentation."""
-    _, _, centers, diameter = get_adata_infos(adata, adata_name)
+    _, _, centers, diameter = get_visium_infos(adata, adata_name)
     spots_coordinates = pd.DataFrame(centers, columns=["x", "y"])
     spots_coordinates["id"] = adata.obs.index
 

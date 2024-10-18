@@ -182,7 +182,7 @@ def map_cells_to_spots(adata, adata_name, json_path):
         dict_cells_spots = map_cells_to_spots(adata, adata_name, json_path)
     """
     centroid_list = []
-    _, _, spots_coordinates, diameter = get_adata_infos(adata, adata_name)
+    _, _, spots_coordinates, diameter = get_visium_infos(adata, adata_name)
     spots_ids = adata.obs.index
 
     with open(json_path) as json_file:
@@ -224,7 +224,8 @@ def get_visium_infos(adata, adata_name):
 
 
 def get_xenium_infos():
-    mpp = 0.2125  # from https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
+    mpp = 0.2125
+    # from https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
     mag = get_mag(mpp)
     return mag, mpp
 
