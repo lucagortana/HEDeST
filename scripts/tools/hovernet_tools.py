@@ -212,19 +212,28 @@ def map_cells_to_spots(adata, adata_name, json_path):
     return dict_cells_spots
 
 
-def get_adata_infos(adata, adata_name) -> tuple:
-    """Returns the magnification, microns per pixel, centers, and diameter of the spots in the Visium dataset.
-    Args:
-        adata: Anndata object containing the Visium dataset.
-        adata_name: Name of the dataset in the adata object.
-
-    from HEST
-    """
+def get_visium_infos(adata, adata_name):
 
     centers = adata.obsm["spatial"].astype("int64")
     diameter = adata.uns["spatial"][adata_name]["scalefactors"]["spot_diameter_fullres"]
 
     mpp = 55 / diameter
+    mag = get_mag(mpp)
+
+    return mag, mpp, centers, diameter
+
+
+def get_xenium_infos():
+    mpp = 0.2125  # from https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
+    mag = get_mag(mpp)
+    return mag, mpp
+
+
+def get_mag(mpp):
+    """Returns the magnification of the image based on the mpp.
+
+    from HEST
+    """
 
     if mpp <= 0.1:
         mag = 60
@@ -239,4 +248,4 @@ def get_adata_infos(adata, adata_name) -> tuple:
     elif 4 < mpp:
         mag = 5  # not sure about that one
 
-    return mag, mpp, centers, diameter
+    return mag
