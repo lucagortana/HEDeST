@@ -15,6 +15,7 @@ class ModelTrainer:
         train_loader,
         val_loader,
         test_loader,
+        weights=None,
         agg_loss="mean",
         alpha=0.5,
         num_epochs=25,
@@ -45,6 +46,7 @@ class ModelTrainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_loader = test_loader
+        self.weights = weights
         self.agg_loss = agg_loss
         self.alpha = alpha
         self.num_epochs = num_epochs
@@ -98,7 +100,9 @@ class ModelTrainer:
                 outputs = self.model(images)
                 # spot_outputs.append(outputs)
                 # outputs = torch.cat(spot_outputs, dim=0)
-                loss = self.model.loss_comb(outputs, true_proportions[0], agg=self.agg_loss, alpha=self.alpha)
+                loss = self.model.loss_comb(
+                    outputs, true_proportions[0], weights=self.weights, agg=self.agg_loss, alpha=self.alpha
+                )
                 loss.backward()
                 self.optimizer.step()
 
@@ -146,7 +150,9 @@ class ModelTrainer:
                 outputs = self.model(images)
                 # spot_outputs.append(outputs)
                 # outputs = torch.cat(spot_outputs, dim=0)  # Concatenate spot_outputs
-                loss = self.model.loss_comb(outputs, true_proportions[0], agg=self.agg_loss, alpha=self.alpha)
+                loss = self.model.loss_comb(
+                    outputs, true_proportions[0], weights=self.weights, agg=self.agg_loss, alpha=self.alpha
+                )
                 running_loss += loss.item()
 
         avg_loss = running_loss / len(dataloader)

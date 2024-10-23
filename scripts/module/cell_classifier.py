@@ -61,7 +61,12 @@ class CellClassifier(nn.Module):
 
         return F.softmax(x, dim=1)
 
-    def loss_comb(self, outputs, true_proportions, agg="mean", alpha=0.5):
+    def loss_comb(self, outputs, true_proportions, weights=None, agg="mean", norm_factor=500, alpha=0.5):
+
+        num_classes = outputs.size(1)
+
+        if weights is None:
+            weights = torch.ones_like(true_proportions)
 
         max_prob_loss = -torch.mean(torch.log(outputs.max(dim=1)[0]))
         if agg == "mean":
@@ -71,9 +76,7 @@ class CellClassifier(nn.Module):
             one_hot_preds = torch.nn.functional.one_hot(predicted_classes, num_classes=outputs.size(1))
             pred_proportions = one_hot_preds.float().sum(dim=0) / outputs.size(0)
 
-        divergence_loss = F.mse_loss(pred_proportions, true_proportions) * 25
-
-        # Combined loss
+        divergence_loss = (1 / num_classes) * (weights * (pred_proportions - true_proportions) ** 2).sum() * norm_factor
         loss = alpha * max_prob_loss + (1 - alpha) * divergence_loss
 
         return loss

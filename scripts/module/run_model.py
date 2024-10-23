@@ -70,6 +70,14 @@ def run_sec_deconv(
 
     num_classes = proportions.shape[1]
     ct_list = list(proportions.columns)
+
+    # weights construction
+    global_proportions = proportions.mean(axis=0).values
+    weights = 1.0 / global_proportions
+    weights /= weights.sum()
+    weights = torch.tensor(weights)
+    print("Weights : ", weights, "\n")
+
     size_edge = image_dict["0"].shape[1]
     model = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
     model = model.to(device)
@@ -83,6 +91,7 @@ def run_sec_deconv(
         train_loader,
         val_loader,
         test_loader,
+        weights=weights,
         agg_loss=agg_loss,
         alpha=alpha,
         num_epochs=epochs,
