@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import logging
 import os
+import time
 
 import click
 import scanpy as sc
 import torch
 from module.load_data import pp_prop
 from module.run_model import run_sec_deconv
+from tools.basics import format_time
 from tools.hovernet_tools import extract_tiles_hovernet
 from tools.hovernet_tools import map_cells_to_spots
 
-adata_name = "CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma"
-data_path = f"../data/{adata_name}/"
-json_path = data_path + "seg_json/pannuke_fast_mask_lvl3.json"
-image_path = data_path + "CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_tissue_image.tif"
-path_ST_adata = data_path + "ST/"
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -58,23 +59,27 @@ def main(
     dict_types,
     save_images,
 ):
+    MAIN_START = time.time()
 
     size = (size_edge, size_edge)
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
+        logger.info(f"-> Created output directory: {out_dir}")
 
     if image_path.endswith(".pt"):
         if save_images is not None:
-            print("Warning: save_images is ignored when loading an image dictionary.")
+            logger.warning("save_images is ignored when loading an image dictionary.")
+        logger.info(f"-> Loading image dictionary from {image_path}")
         image_dict = torch.load(image_path)
 
     else:
+        logger.info(f"-> Extracting images from whole-slide image at {image_path}")
         save_options = {
             None: (None, None),
             "jpg": (out_dir + "/extracted_images/", None),
-            "dict": (None, out_dir + "/image_dict.pt"),
-            "both": (out_dir + "/extracted_images/", out_dir + "/image_dict.pt"),
+            "dict": (None, out_dir + "/images_dict.pt"),
+            "both": (out_dir + "/extracted_images/", out_dir + "/images_dict.pt"),
         }
 
         if save_images in save_options:
@@ -91,16 +96,37 @@ def main(
                 save_images=img_dir,
                 save_dict=dict_dir,
             )
+            logger.info("-> Image extraction completed successfully.")
+
         except Exception as e:
+            logger.exception("Failed to extract images. Please check the image format and file paths.")
             raise ValueError(
                 "If it's an image dictionary, it must be in .pt format.\n"
                 "If it's a Whole-Slide Image, it must be in one of the following formats:\n"
                 ".tif, .tiff, .svs, .dcm, or .ndpi."
             ) from e
 
+    logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
     adata = sc.read_visium(path_st_adata)
+    logger.info(f"Loading proportions from {proportions_file}...")
     proportions = pp_prop(proportions_file)
+    logger.info("Mapping cells to spots...")
     spot_dict = map_cells_to_spots(adata, adata_name, json_path)
+
+    logger.info("=" * 50)
+    logger.info("RUNNING SECONDARY DECONVOLUTION")
+    logger.info("Parameters:")
+    logger.info(f"Image size: {size_edge}x{size_edge}")
+    logger.info(f"Batch size (#spots): {batch_size}")
+    logger.info(f"Learning rate: {lr}")
+    logger.info(f"Aggregation loss: {agg_loss}")
+    logger.info(f"Alpha: {alpha}")
+    logger.info(f"Number of epochs: {epochs}")
+    logger.info(f"Train size: {train_size}")
+    logger.info(f"Validation size: {val_size}")
+    logger.info(f"Output directory: {out_dir}")
+    logger.info(f"Random state: {rs}")
+    logger.info("=" * 50)
 
     run_sec_deconv(
         image_dict,
@@ -116,6 +142,8 @@ def main(
         out_dir=out_dir,
         rs=rs,
     )
+    TOTAL_TIME = format_time(time.time() - MAIN_START)
+    logger.info(f"Total time: {TOTAL_TIME}")
 
 
 if __name__ == "__main__":

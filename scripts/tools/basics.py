@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import random
+from datetime import timedelta
 
 import numpy as np
 import torch
@@ -73,3 +74,11 @@ def check_json_classification(dict):
     if dict["nuc"][first_key]["type"] is None:
         return False
     return True
+
+
+def format_time(seconds):
+    """Formats time in HH:MM:SS or MM:SS depending on the duration."""
+    formatted_time = str(timedelta(seconds=int(seconds)))
+    if seconds < 3600:
+        formatted_time = formatted_time[2:]
+    return formatted_time

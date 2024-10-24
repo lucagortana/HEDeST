@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
 import os
 
 import torch
 from tools.analysis import plot_history
 from tools.basics import set_seed
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class ModelTrainer:
@@ -70,7 +75,7 @@ class ModelTrainer:
         Sets up the device for training.
         """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print("Device used : ", self.device)
+        logging.info(f"Device used: {self.device}")
 
     def prepare_training(self):
         """
@@ -79,7 +84,6 @@ class ModelTrainer:
         set_seed(self.rs)
         self._setup_device()
         self.init_model()
-        print("Beginning training...")
 
     def train(self):
         """
@@ -95,12 +99,9 @@ class ModelTrainer:
 
             for images_list, true_proportions in self.train_loader:
                 self.optimizer.zero_grad()
-                # spot_outputs = []
                 true_proportions = true_proportions.to(self.device)
                 images = images_list[0].to(self.device)
                 outputs = self.model(images)
-                # spot_outputs.append(outputs)
-                # outputs = torch.cat(spot_outputs, dim=0)
                 loss = self.model.loss_comb(
                     outputs, true_proportions[0], weights=self.weights, agg=self.agg_loss, alpha=self.alpha
                 )
@@ -109,10 +110,16 @@ class ModelTrainer:
 
                 running_loss += loss.item()
 
+                torch.cuda.empty_cache()
+
             train_loss = running_loss / len(self.train_loader)
             val_loss = self.evaluate(self.val_loader)
 
-            print(f"Epoch {epoch + 1}/{self.num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}")
+            logging.info(
+                f"Epoch {epoch + 1}/{self.num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}"
+            )
+
+            torch.cuda.empty_cache()
 
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
@@ -122,18 +129,19 @@ class ModelTrainer:
                 self.best_val_loss = val_loss
                 self.best_model_state = self.model.state_dict()
                 torch.save(self.best_model_state, self.best_model_path)
-                print(f"Validation loss improved. Saving best model at {self.best_model_path} (epoch {epoch + 1}).")
+                logging.info(
+                    f"-> Validation loss improved. Saving best model at {self.best_model_path} (epoch {epoch + 1})."
+                )
 
         # If the best model is different from the final model
         if self.best_val_loss != val_loss:
             # Save the final model at the end of training
             torch.save(self.model.state_dict(), self.final_model_path)
-            print("Best model and final model are different. Both models have been saved.")
-            print(f"Final model saved at {self.final_model_path}.")
+            logging.info(f"Best model and final model are different. Final model saved at {self.final_model_path}.")
         else:
-            print("Best model and final model are the same.")
+            logging.info("Best model and final model are the same.")
 
-        print("Training complete. Evaluating on test set...")
+        logging.info("Training complete. Evaluating on test set...")
         self.test()
 
     def evaluate(self, dataloader):
@@ -166,10 +174,10 @@ class ModelTrainer:
 
         # Evaluate the final model
         final_test_loss = self.evaluate(self.test_loader)
-        print(f"Test Loss on final model: {final_test_loss:.4f}")
+        logging.info(f"Test Loss on final model: {final_test_loss:.4f}")
 
         # Load and evaluate the best model
-        print("\nLoading best model for final test evaluation...")
+        logging.info("Loading best model for final test evaluation...")
         best_model = type(self.model)(
             size_edge=self.model.size_edge, num_classes=self.model.num_classes
         )  # Instantiate new model with the same architecture
@@ -178,7 +186,7 @@ class ModelTrainer:
         self.model = best_model
 
         test_loss_best = self.evaluate(self.test_loader)
-        print(f"Test Loss on best model: {test_loss_best:.4f}")
+        logging.info(f"Test Loss on best model: {test_loss_best:.4f}")
 
     def save_history(self):
 
@@ -188,4 +196,4 @@ class ModelTrainer:
             history_val=self.history_val,
             savefig=history_filedir,
         )
-        print(f"History saved at {history_filedir}")
+        logging.info(f"History saved at {history_filedir}")

@@ -5,8 +5,41 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 from tools import basics
 from tools import slide_viz
+from tqdm import tqdm
+
+
+def predict_slide(model, image_dict, ct_list, batch_size=32):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device used : ", device)
+
+    model.eval()
+    model = model.to(device)
+    predictions = []
+
+    dataloader = torch.utils.data.DataLoader(list(image_dict.items()), batch_size=batch_size, shuffle=False)
+
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch"):
+            cell_ids, images = batch
+            images = images.to(device).float() / 255.0
+
+            outputs = model(images)
+
+            for cell_id, prob_vector in zip(cell_ids, outputs):
+                predictions.append(
+                    {
+                        "cell_id": cell_id,
+                        **{ct_list[i]: prob for i, prob in enumerate(prob_vector.cpu().tolist())},
+                    }
+                )
+
+    predictions_df = pd.DataFrame(predictions)
+    predictions_df.set_index("cell_id", inplace=True)
+
+    return predictions_df
 
 
 def get_labels_slide(predictions_df):
@@ -23,7 +56,7 @@ def get_labels_slide(predictions_df):
     return predicted_labels
 
 
-def extract_stats(predictions_df, metric="predicted"):
+def extract_stats(predictions_df, predicted_labels=None, metric="predicted"):
     """
     Extrait des statistiques sur les prédictions à partir d'un DataFrame de probabilités.
 
@@ -38,7 +71,9 @@ def extract_stats(predictions_df, metric="predicted"):
     """
     stats = {}
     ct_list = list(predictions_df.columns)
-    predicted_labels = get_labels_slide(predictions_df)
+
+    if predicted_labels is None:
+        predicted_labels = get_labels_slide(predictions_df)
 
     if metric == "predicted":
         for cell_id, pred in predicted_labels.items():
@@ -161,6 +196,34 @@ def plot_history(history_train, history_val, show=False, savefig=None) -> None:
         plt.show()
     else:
         plt.close()
+
+
+def plot_cell(image_dict, ax=None, cell_id=None):
+    if cell_id is None:
+        cell_id = np.random.choice(list(image_dict.keys()))
+    else:
+        if not isinstance(cell_id, str):
+            if isinstance(cell_id, int):
+                cell_id = str(cell_id)
+            else:
+                raise ValueError("cell_id must be either a string or an integer")
+
+    image = image_dict[cell_id].permute(1, 2, 0)
+
+    if ax is None:
+        plt.imshow(image)
+        plt.axis("off")
+        plt.show()
+    else:
+        ax.imshow(image)
+        ax.axis("off")
+
+
+def find_cell_max_cell_type(cell_type, pred):
+    if cell_type not in pred.columns:
+        raise ValueError(f"Cell type '{cell_type}' not found in the prediction DataFrame.")
+    max_cell_id = pred[cell_type].idxmax()
+    return max_cell_id
 
 
 def plot_mosaic_cells(spots_dict, cell_images, labels_pred=None, spot_id=None, num_cols=8, display=True):
