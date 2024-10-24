@@ -102,15 +102,21 @@ def run_sec_deconv(
     trainer.save_history()
 
     # Predict on the whole slide
-    model4pred = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
-    model4pred.load_state_dict(torch.load(trainer.best_model_path))
-    pred = predict_slide(model4pred, image_dict, ct_list)
+    model4pred_best = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+    model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
+    pred_best = predict_slide(model4pred_best, image_dict, ct_list)
+
+    model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+    model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
+    pred_final = predict_slide(model4pred_final, image_dict, ct_list)
 
     # Save model infos
     info_dir = f"{out_dir}/info.pickle"
     print(f"Saving objects to {info_dir}")
     with open(info_dir, "wb") as f:
-        pickle.dump({"spot_dict": spot_dict, "proportions": proportions, "pred": pred}, f)
+        pickle.dump(
+            {"spot_dict": spot_dict, "proportions": proportions, "pred_best": pred_best, "pred_final": pred_final}, f
+        )
 
 
 def predict_slide(model, image_dict, ct_list, batch_size=32):

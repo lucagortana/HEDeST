@@ -87,6 +87,7 @@ class ModelTrainer:
         """
 
         self.prepare_training()
+        self.weights = self.weights.to(self.device)
 
         for epoch in range(self.num_epochs):
             self.model.train()

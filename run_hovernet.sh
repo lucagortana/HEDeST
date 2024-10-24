@@ -19,31 +19,9 @@ python ../hover_net/run_infer.py \
     --gpu='0,1' \
     --nr_types=0 \
     --type_info_path=../hover_net/type_info.json \
-    --model_mode=original \
-    --model_path=data/pretrained/seg/hovernet_original_consep_notype_tf2pytorch.tar \
+    --model_mode=fast \
+    --model_path=/cluster/CBIO/data1/lgortana/pretrained/seg_classif/hovernet_fast_pannuke_type_tf2pytorch.tar \
     wsi \
-    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
-    --output_dir=out/results_hovernet/Ovarian_nolabel_consep/ \
-    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
-
-python ../hover_net/run_infer.py \
-    --gpu='0,1' \
-    --nr_types=0 \
-    --type_info_path=../hover_net/type_info.json \
-    --model_mode=original \
-    --model_path=data/pretrained/seg/hovernet_original_cpm17_notype_tf2pytorch.tar \
-    wsi \
-    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
-    --output_dir=out/results_hovernet/Ovarian_nolabel_cpm17/ \
-    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
-
-python ../hover_net/run_infer.py \
-    --gpu='0,1' \
-    --nr_types=0 \
-    --type_info_path=../hover_net/type_info.json \
-    --model_mode=original \
-    --model_path=data/pretrained/seg/hovernet_original_kumar_notype_tf2pytorch.tar \
-    wsi \
-    --input_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/tif/ \
-    --output_dir=out/results_hovernet/Ovarian_nolabel_kumar/ \
+    --input_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/tif/ \
+    --output_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/seg_json/ \
     --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
