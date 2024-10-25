@@ -212,6 +212,21 @@ def map_cells_to_spots(adata, adata_name, json_path):
     return dict_cells_spots
 
 
+def count_cell_types(hovernet_dict, ct_list):
+    cell_type_counts = {}
+    nuc = hovernet_dict["nuc"]
+    for cell_id in nuc.keys():
+        label = nuc[cell_id]["type"]
+        cell_type = ct_list[int(label)]
+        if cell_type not in cell_type_counts.keys():
+            cell_type_counts[cell_type] = 1
+        else:
+            cell_type_counts[cell_type] += 1
+    df = pd.DataFrame([cell_type_counts])
+
+    return df
+
+
 def get_visium_infos(adata, adata_name):
 
     centers = adata.obsm["spatial"].astype("int64")

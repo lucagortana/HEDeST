@@ -26,19 +26,20 @@ logger = logging.getLogger(__name__)
 @click.option("--proportions_file", type=str, required=True, help="Path to the proportions file")
 @click.option("--batch_size", type=int, default=1, help="Batch size for model training")
 @click.option("--lr", type=float, default=0.001, help="Learning rate")
+@click.option("--weights", is_flag=True, default=False, help="If True, the model uses a weighted loss.")
 @click.option("--agg_loss", type=str, default="mean", help="Aggregation loss function type")
 @click.option("--alpha", type=float, default=0.5, help="Alpha parameter for loss function")
 @click.option("--epochs", type=int, default=25, help="Number of training epochs")
 @click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction")
 @click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction")
 @click.option("--out_dir", type=str, default="results", help="Output directory")
-@click.option("--rs", type=int, default=42, help="Random seed")
 @click.option("--level", type=int, default=0, help="Image extraction level")
 @click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles")
 @click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction")
 @click.option(
     "--save_images", type=str, default=None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both"
 )
+@click.option("--rs", type=int, default=42, help="Random seed")
 def main(
     adata_name,
     json_path,
@@ -47,17 +48,18 @@ def main(
     proportions_file,
     batch_size,
     lr,
+    weights,
     agg_loss,
     alpha,
     epochs,
     train_size,
     val_size,
     out_dir,
-    rs,
     level,
     size_edge,
     dict_types,
     save_images,
+    rs,
 ):
     MAIN_START = time.time()
 
@@ -106,6 +108,8 @@ def main(
                 ".tif, .tiff, .svs, .dcm, or .ndpi."
             ) from e
 
+    size = (image_dict["0"].shape[1], image_dict["0"].shape[1])
+
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
     adata = sc.read_visium(path_st_adata)
     logger.info(f"Loading proportions from {proportions_file}...")
@@ -116,9 +120,10 @@ def main(
     logger.info("=" * 50)
     logger.info("RUNNING SECONDARY DECONVOLUTION")
     logger.info("Parameters:")
-    logger.info(f"Image size: {size_edge}x{size_edge}")
+    logger.info(f"Image size: {size}")
     logger.info(f"Batch size (#spots): {batch_size}")
     logger.info(f"Learning rate: {lr}")
+    logger.info(f"Weighted loss: {weights}")
     logger.info(f"Aggregation loss: {agg_loss}")
     logger.info(f"Alpha: {alpha}")
     logger.info(f"Number of epochs: {epochs}")
@@ -134,6 +139,7 @@ def main(
         proportions,
         batch_size=batch_size,
         lr=lr,
+        weights=weights,
         agg_loss=agg_loss,
         alpha=alpha,
         epochs=epochs,

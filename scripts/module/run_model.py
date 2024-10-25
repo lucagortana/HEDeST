@@ -31,6 +31,7 @@ def run_sec_deconv(
     proportions,
     batch_size=1,
     lr=0.001,
+    weights=False,
     agg_loss="mean",
     alpha=0.5,
     epochs=25,
@@ -67,10 +68,13 @@ def run_sec_deconv(
     ct_list = list(proportions.columns)
 
     # weights construction
-    global_proportions = proportions.mean(axis=0).values
-    weights = 1.0 / global_proportions
-    weights /= weights.sum()
-    weights = torch.tensor(weights)
+    if weights:
+        global_proportions = proportions.mean(axis=0).values
+        weights = 1.0 / global_proportions
+        weights /= weights.sum()
+        weights = torch.tensor(weights)
+    else:
+        weights = None
 
     size_edge = image_dict["0"].shape[1]
     model = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
@@ -106,32 +110,39 @@ def run_sec_deconv(
     model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
     pred_best = predict_slide(model4pred_best, image_dict, ct_list)
 
-    model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
-    model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
-    pred_final = predict_slide(model4pred_final, image_dict, ct_list)
+    is_final = True
+    try:
+        model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+        model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
+        pred_final = predict_slide(model4pred_final, image_dict, ct_list)
+    except Exception:
+        is_final = False
 
     # Save model infos
+    info = {"spot_dict": spot_dict, "proportions": proportions, "pred_best": pred_best}
+    if is_final:
+        info["pred_final"] = pred_final
     info_dir = f"{out_dir}/info.pickle"
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
-        pickle.dump(
-            {"spot_dict": spot_dict, "proportions": proportions, "pred_best": pred_best, "pred_final": pred_final}, f
-        )
+        pickle.dump(info, f)
 
     logger.info("Extracting and saving statistics...")
     pred_best_labels = get_labels_slide(pred_best)
-    pred_final_labels = get_labels_slide(pred_final)
-
     stats_best_predicted = extract_stats(pred_best, predicted_labels=pred_best_labels, metric="predicted")
     stats_best_all = extract_stats(pred_best, predicted_labels=pred_best_labels, metric="all")
-    stats_final_predicted = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="predicted")
-    stats_final_all = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="all")
+
+    if is_final:
+        pred_final_labels = get_labels_slide(pred_final)
+        stats_final_predicted = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="predicted")
+        stats_final_all = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="all")
 
     with pd.ExcelWriter(f"{out_dir}/stats.xlsx") as writer:
         stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
         stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
-        stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
-        stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
+        if is_final:
+            stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
+            stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
 
     logger.info("Secondary deconvolution process completed successfully.")
     logger.info(f"Training time: {TRAIN_TIME}")

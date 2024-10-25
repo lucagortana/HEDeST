@@ -61,12 +61,14 @@ class CellClassifier(nn.Module):
 
         return F.softmax(x, dim=1)
 
-    def loss_comb(self, outputs, true_proportions, weights=None, agg="mean", norm_factor=500, alpha=0.5):
+    def loss_comb(self, outputs, true_proportions, weights=None, agg="mean", alpha=0.5):
 
         num_classes = outputs.size(1)
+        norm_factor = 500
 
         if weights is None:
-            weights = torch.ones_like(true_proportions)
+            weights = torch.ones_like(true_proportions).to(self.device)
+            norm_factor = 20
 
         max_prob_loss = -torch.mean(torch.log(outputs.max(dim=1)[0]))
         if agg == "mean":
