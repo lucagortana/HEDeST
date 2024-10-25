@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -331,3 +332,106 @@ def plot_predicted_cell_labels_in_spot(
     else:
         plt.close(combined_fig)
         return combined_fig
+
+
+def plot_spots_proportions(
+    image_path, adata, adata_name, proportions, spot_dict, pred, dict_cells=None, dict_types_colors=None, spot_id=None
+):
+    if spot_id is None:
+        spot_id = random.choice(list(spot_dict.keys()))
+        print(f"Randomly selected spot_id: {spot_id}")
+
+    elif spot_id not in spot_dict:
+        raise ValueError(f"Spot ID {spot_id} not found in spots_dict.")
+
+    # Gridspec layout
+    fig = plt.figure(figsize=(16, 8))
+    gs = gridspec.GridSpec(2, 3, width_ratios=[2, 1, 1])
+
+    # Spot image
+    ax0 = fig.add_subplot(gs[:, 0])
+    fig1 = slide_viz.plot_specific_spot(
+        image_path,
+        adata,
+        adata_name,
+        spot_id=spot_id,
+        dict_cells=dict_cells,
+        dict_types_colors=dict_types_colors,
+        display=False,
+    )
+    img1 = basics.fig_to_array(fig1)
+    ax0.imshow(img1)
+    ax0.axis("off")
+
+    list_cells = spot_dict[spot_id]
+    if dict_types_colors is not None:
+        dict_pie_colors = {item[0]: np.array(item[1]) / 255.0 for _, item in dict_types_colors.items()}
+    else:
+        cmap = plt.get_cmap("tab20")
+        dict_pie_colors = {proportions.columns[i]: cmap(i % 20) for i in range(len(proportions.columns))}
+
+    # mean predicted probabilities
+    ax1 = fig.add_subplot(gs[0, 1])
+    mean_prob_ct = pred[pred.index.isin(list_cells)].mean(axis=0)
+    plot_pie_chart(ax1, mean_prob_ct, dict_colors=dict_pie_colors)
+    ax1.set_title("Mean Predicted Probabilities")
+
+    # predicted cell type proportions
+    ax2 = fig.add_subplot(gs[0, 2])
+    prop_ct = pred[pred.index.isin(list_cells)].idxmax(axis=1).value_counts() / len(list_cells)
+    plot_pie_chart(ax2, prop_ct, dict_colors=dict_pie_colors)
+    ax2.set_title("Predicted Cell Type Proportions")
+
+    # true cell type proportions
+    ax3 = fig.add_subplot(gs[1, 1])
+    true_prop = proportions.loc[spot_id]
+    plot_pie_chart(ax3, true_prop, dict_colors=dict_pie_colors)
+    ax3.set_title("True Cell Type Proportions")
+
+    # legend
+    ax4 = fig.add_subplot(gs[1, 2])
+    ax4.axis("off")
+    plot_legend(ax4, dict_pie_colors)
+    ax4.set_title("Legend")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_pie_chart(ax, data, dict_colors, plot_labels=False, add_legend=False):
+    """
+    Plots a pie chart for the given data on the provided axis.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): The axis to plot the pie chart on.
+        data (pd.Series): A Series object containing the proportions for each cell type.
+        dict_types_colors (dict, optional): A dictionary mapping cell type to a color code.
+    """
+    labels = data.index
+    proportions = data.values
+
+    colors = [dict_colors[cell_type] for cell_type in labels if cell_type in dict_colors.keys()]
+
+    if plot_labels:
+        wedges, _, _ = ax.pie(proportions, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90)
+    else:
+        wedges, _, _ = ax.pie(proportions, colors=colors, autopct="%1.1f%%", startangle=90)
+    ax.axis("equal")
+
+    if add_legend:
+        legend_labels = [label for label in labels]
+        wedges, legend_labels, _ = zip(
+            *sorted(zip(wedges, legend_labels, proportions), key=lambda x: x[2], reverse=True)
+        )
+        ax.legend(wedges, legend_labels, loc="center left", bbox_to_anchor=(1, 0.5), fontsize=8)
+
+
+def plot_legend(ax, dict_colors):
+    legend_labels = [label for label in dict_colors.keys()]
+    legend_colors = [dict_colors[label] for label in legend_labels]
+    patches = [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=18) for color in legend_colors
+    ]
+
+    # Add the legend to the new subplot
+    ax.legend(patches, legend_labels, loc="center", fontsize=14)
