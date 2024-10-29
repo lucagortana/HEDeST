@@ -15,190 +15,31 @@ conda activate plugin-env
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib:$LD_LIBRARY_PATH
 
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss mean \
-    --alpha 0.5 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_alpha05_epochs60_se32 \
-    --rs 42 \
+divergence_options=("rot" "kl" "l2" "l1")
+reduction_options=("sum" "mean")
+alpha_values=(0 0.25 0.5)
 
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss mean \
-    --alpha 0.25 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_alpha025_epochs60_se32 \
-    --rs 42 \
+for divergence in "${divergence_options[@]}"; do
+  for reduction in "${reduction_options[@]}"; do
+    for alpha in "${alpha_values[@]}"; do
 
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss mean \
-    --alpha 0 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_alpha0_epochs60_se32 \
-    --rs 42 \
+      out_dir="../out/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
 
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss onehot \
-    --alpha 0.5 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_alpha05_epochs60_se32 \
-    --rs 42 \
+      python3 -u run.py \
+        --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
+        --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
+        --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_64.pt \
+        --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
+        --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
+        --lr 1e-5 \
+        --weights \
+        --agg "proba" \
+        --divergence "$divergence" \
+        --reduction "$reduction" \
+        --alpha "$alpha" \
+        --epochs 80 \
+        --out_dir "$out_dir" \
 
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss onehot \
-    --alpha 0.25 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_alpha025_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --agg_loss onehot \
-    --alpha 0 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_alpha0_epochs60_se32 \
-    --rs 42 \
-
-#
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss mean \
-    --alpha 0.5 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_weight_alpha05_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss mean \
-    --alpha 0.25 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_weight_alpha025_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss mean \
-    --alpha 0 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossmean_weight_alpha0_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss onehot \
-    --alpha 0.5 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_weight_alpha05_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss onehot \
-    --alpha 0.25 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_weight_alpha025_epochs60_se32 \
-    --rs 42 \
-
-python3 -u run.py \
-    --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-    --json_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-    --image_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/images_dict_32.pt \
-    --path_st_adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-    --proportions_file /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
-    --lr 1e-5 \
-    --weights \
-    --agg_loss onehot \
-    --alpha 0 \
-    --epochs 60 \
-    --train_size 0.5 \
-    --val_size 0.25 \
-    --out_dir ../out/new/model_lr1e-5_agglossonehot_weight_alpha0_epochs60_se32 \
-    --rs 42 \
+    done
+  done
+done

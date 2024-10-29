@@ -101,12 +101,12 @@ class CellClassifier(nn.Module):
 
         if divergence == "l1":
             divergence_loss = weighted_l1_loss(pred_proportions, true_proportions, weights, reduction=reduction)
-        elif divergence == "mse":
+        elif divergence == "l2":
             divergence_loss = weighted_l2_loss(pred_proportions, true_proportions, weights, reduction=reduction)
         elif divergence == "kl":
             divergence_loss = weighted_kl_divergence(pred_proportions, true_proportions, weights, reduction=reduction)
         else:
-            raise ValueError(f"Invalid divergence type: {divergence}. Use 'l1', 'mse', 'kl', or 'rot'.")
+            raise ValueError(f"Invalid divergence type: {divergence}. Use 'l1', 'l2', 'kl', or 'rot'.")
 
         return alpha * max_prob_loss + (1 - alpha) * divergence_loss
 
