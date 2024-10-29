@@ -3,6 +3,10 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from module.loss import ROT
+from module.loss import weighted_kl_divergence
+from module.loss import weighted_l1_loss
+from module.loss import weighted_l2_loss
 
 
 class CellClassifier(nn.Module):
@@ -61,27 +65,50 @@ class CellClassifier(nn.Module):
 
         return F.softmax(x, dim=1)
 
-    def loss_comb(self, outputs, true_proportions, weights=None, agg="mean", alpha=0.5):
+    def loss_comb(
+        self, outputs, true_proportions, weights=None, agg="proba", divergence="l1", reduction="mean", alpha=0
+    ):
+        """
+        Computes the loss of the model.
 
-        num_classes = outputs.size(1)
-        norm_factor = 500
+        Args:
+            outputs: The output of the model
+            true_proportions: The true proportions of the classes
+            weights: The weights of the classes. If None, the weights are set to 1.
+            agg: The aggregation method of the output. Can be "proba" or "onehot".
+            divergence: The divergence to use. Can be "l1", "l2", "kl" or "rot".
+            reduction: The reduction method of the loss. Can be "mean" or "sum".
+            alpha: The weight of the max probability loss. If not 0, we recommend a very low
+                   value (~... for l1 and l2, ~... for kl). It also depends on 'weights'.
+        """
 
         if weights is None:
             weights = torch.ones_like(true_proportions).to(self.device)
-            norm_factor = 20
+
+        if divergence == "rot":
+            return ROT(outputs, true_proportions, alpha=alpha, weights=weights, reduction=reduction)
 
         max_prob_loss = -torch.mean(torch.log(outputs.max(dim=1)[0]))
-        if agg == "mean":
+
+        if agg == "proba":
             pred_proportions = outputs.mean(dim=0)
         elif agg == "onehot":
             predicted_classes = torch.argmax(outputs, dim=1)
             one_hot_preds = torch.nn.functional.one_hot(predicted_classes, num_classes=outputs.size(1))
             pred_proportions = one_hot_preds.float().sum(dim=0) / outputs.size(0)
+        else:
+            raise ValueError(f"Invalid aggregation method: {agg}. Use 'proba' or 'onehot'.")
 
-        divergence_loss = (1 / num_classes) * (weights * (pred_proportions - true_proportions) ** 2).sum() * norm_factor
-        loss = alpha * max_prob_loss + (1 - alpha) * divergence_loss
+        if divergence == "l1":
+            divergence_loss = weighted_l1_loss(pred_proportions, true_proportions, weights, reduction=reduction)
+        elif divergence == "mse":
+            divergence_loss = weighted_l2_loss(pred_proportions, true_proportions, weights, reduction=reduction)
+        elif divergence == "kl":
+            divergence_loss = weighted_kl_divergence(pred_proportions, true_proportions, weights, reduction=reduction)
+        else:
+            raise ValueError(f"Invalid divergence type: {divergence}. Use 'l1', 'mse', 'kl', or 'rot'.")
 
-        return loss
+        return alpha * max_prob_loss + (1 - alpha) * divergence_loss
 
     def predict(self, x):
         self.eval()

@@ -19,25 +19,45 @@ logger = logging.getLogger(__name__)
 
 
 @click.command()
-@click.option("--adata_name", type=str, required=True, help="Name of the sample")
-@click.option("--json_path", type=str, required=True, help="Path to the post-segmentation file")
-@click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict")
-@click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object")
-@click.option("--proportions_file", type=str, required=True, help="Path to the proportions file")
-@click.option("--batch_size", type=int, default=1, help="Batch size for model training")
-@click.option("--lr", type=float, default=0.001, help="Learning rate")
+@click.option("--adata_name", type=str, required=True, help="Name of the sample.")
+@click.option("--json_path", type=str, required=True, help="Path to the post-segmentation file.")
+@click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict.")
+@click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object.")
+@click.option("--proportions_file", type=str, required=True, help="Path to the proportions file.")
+@click.option("--batch_size", type=int, default=1, help="Batch size for model training.")
+@click.option("--lr", type=float, default=0.001, help="Learning rate.")
 @click.option("--weights", is_flag=True, default=False, help="If True, the model uses a weighted loss.")
-@click.option("--agg_loss", type=str, default="mean", help="Aggregation loss function type")
-@click.option("--alpha", type=float, default=0.5, help="Alpha parameter for loss function")
-@click.option("--epochs", type=int, default=25, help="Number of training epochs")
-@click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction")
-@click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction")
-@click.option("--out_dir", type=str, default="results", help="Output directory")
-@click.option("--level", type=int, default=0, help="Image extraction level")
-@click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles")
-@click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction")
 @click.option(
-    "--save_images", type=str, default=None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both"
+    "--agg",
+    type=click.Choice(["proba", "onehot"], case_sensitive=False),
+    default="proba",
+    help="Aggregation of the probability vectors. Can be 'proba' or 'onehot'.",
+)
+@click.option(
+    "--divergence",
+    type=click.Choice(["l1", "l2", "kl", "rot"], case_sensitive=False),
+    default="l1",
+    help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl' or 'rot'.",
+)
+@click.option(
+    "--reduction",
+    type=click.Choice(["mean", "sum"], case_sensitive=False),
+    default="mean",
+    help="Aggregation parameter for loss computation. Can be 'mean' or 'sum'.",
+)
+@click.option("--alpha", type=float, default=0.5, help="Alpha parameter for loss function.")
+@click.option("--epochs", type=int, default=25, help="Number of training epochs.")
+@click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction.")
+@click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction.")
+@click.option("--out_dir", type=str, default="results", help="Output directory.")
+@click.option("--level", type=int, default=0, help="Image extraction level.")
+@click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles.")
+@click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction.")
+@click.option(
+    "--save_images",
+    type=click.Choice([None, "jpg", "dict", "both"], case_sensitive=False),
+    default=None,
+    help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both.",
 )
 @click.option("--rs", type=int, default=42, help="Random seed")
 def main(
@@ -49,7 +69,9 @@ def main(
     batch_size,
     lr,
     weights,
-    agg_loss,
+    agg,
+    divergence,
+    reduction,
     alpha,
     epochs,
     train_size,
@@ -115,7 +137,7 @@ def main(
     logger.info(f"Loading proportions from {proportions_file}...")
     proportions = pp_prop(proportions_file)
     logger.info("Mapping cells to spots...")
-    spot_dict = map_cells_to_spots(adata, adata_name, json_path)
+    spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
 
     logger.info("=" * 50)
     logger.info("RUNNING SECONDARY DECONVOLUTION")
@@ -124,7 +146,9 @@ def main(
     logger.info(f"Batch size (#spots): {batch_size}")
     logger.info(f"Learning rate: {lr}")
     logger.info(f"Weighted loss: {weights}")
-    logger.info(f"Aggregation loss: {agg_loss}")
+    logger.info(f"Aggregation: {agg}")
+    logger.info(f"Divergence: {divergence}")
+    logger.info(f"Reduction: {reduction}")
     logger.info(f"Alpha: {alpha}")
     logger.info(f"Number of epochs: {epochs}")
     logger.info(f"Train size: {train_size}")
@@ -140,7 +164,9 @@ def main(
         batch_size=batch_size,
         lr=lr,
         weights=weights,
-        agg_loss=agg_loss,
+        agg=agg,
+        divergence=divergence,
+        reduction=reduction,
         alpha=alpha,
         epochs=epochs,
         train_size=train_size,

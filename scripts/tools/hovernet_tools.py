@@ -169,17 +169,19 @@ def extract_tiles_hovernet(
     return image_dict
 
 
-def map_cells_to_spots(adata, adata_name, json_path):
+def map_cells_to_spots(adata, adata_name, json_path, only_in=True):
     """
     Maps cells to spots based on the centroids of the cells and spots.
     Args:
         adata: Anndata object containing the Visium dataset.
         adata_name: Name of the dataset in the adata object.
         json_path: Path to the json file with the cell centroids.
+        only_in: If True, map cells only to spots within the spot's diameter.
+                 If False, map each cell to its nearest spot regardless of distance.
     Returns:
         dict_cells_spots: Dictionary with the mapping of cells to spots.
     Examples:
-        dict_cells_spots = map_cells_to_spots(adata, adata_name, json_path)
+        dict_cells_spots = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
     """
     centroid_list = []
     _, _, spots_coordinates, diameter = get_visium_infos(adata, adata_name)
@@ -203,10 +205,16 @@ def map_cells_to_spots(adata, adata_name, json_path):
     # Create a dictionary to hold the mapping
     dict_cells_spots = defaultdict(list)
 
-    # Query the KDTree to find the nearest spot for each cell within the diameter
+    # Query the KDTree based on only_in parameter
     for i, cell in enumerate(tqdm(centroid_array, desc="Mapping cells to spots")):
-        indices = tree.query_ball_point(cell, r=diameter / 2)
-        for idx in indices:
+        if only_in:
+            # "only in" method: find spots within the diameter
+            indices = tree.query_ball_point(cell, r=diameter / 2)
+            for idx in indices:
+                dict_cells_spots[spots_ids[idx]].append(str(i))
+        else:
+            # "not only in" method: find the closest spot regardless of distance
+            idx = tree.query(cell)[1]
             dict_cells_spots[spots_ids[idx]].append(str(i))
 
     return dict_cells_spots

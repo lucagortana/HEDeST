@@ -21,7 +21,9 @@ class ModelTrainer:
         val_loader,
         test_loader,
         weights=None,
-        agg_loss="mean",
+        agg="proba",
+        divergence="l1",
+        reduction="mean",
         alpha=0.5,
         num_epochs=25,
         out_dir="results",
@@ -52,7 +54,9 @@ class ModelTrainer:
         self.val_loader = val_loader
         self.test_loader = test_loader
         self.weights = weights
-        self.agg_loss = agg_loss
+        self.agg = agg
+        self.divergence = divergence
+        self.reduction = reduction
         self.alpha = alpha
         self.num_epochs = num_epochs
         self.out_dir = out_dir
@@ -104,7 +108,13 @@ class ModelTrainer:
                 images = images_list[0].to(self.device)
                 outputs = self.model(images)
                 loss = self.model.loss_comb(
-                    outputs, true_proportions[0], weights=self.weights, agg=self.agg_loss, alpha=self.alpha
+                    outputs,
+                    true_proportions[0],
+                    weights=self.weights,
+                    agg=self.agg,
+                    divergence=self.divergence,
+                    reduction=self.reduction,
+                    alpha=self.alpha,
                 )
                 loss.backward()
                 self.optimizer.step()
@@ -161,7 +171,13 @@ class ModelTrainer:
                 # spot_outputs.append(outputs)
                 # outputs = torch.cat(spot_outputs, dim=0)  # Concatenate spot_outputs
                 loss = self.model.loss_comb(
-                    outputs, true_proportions[0], weights=self.weights, agg=self.agg_loss, alpha=self.alpha
+                    outputs,
+                    true_proportions[0],
+                    weights=self.weights,
+                    agg=self.agg,
+                    divergence=self.divergence,
+                    reduction=self.reduction,
+                    alpha=self.alpha,
                 )
                 running_loss += loss.item()
 
@@ -180,8 +196,8 @@ class ModelTrainer:
         # Load and evaluate the best model
         logging.info("Loading best model for final test evaluation...")
         best_model = type(self.model)(
-            size_edge=self.model.size_edge, num_classes=self.model.num_classes
-        )  # Instantiate new model with the same architecture
+            size_edge=self.model.size_edge, num_classes=self.model.num_classes, device=self.device
+        )
         best_model.load_state_dict(torch.load(self.best_model_path))
         best_model = best_model.to(self.device)
         self.model = best_model
