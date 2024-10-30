@@ -7,6 +7,7 @@ import time
 
 import pandas as pd
 import torch
+from module.bayes_adjust import BayesianAdjustment
 from module.cell_classifier import CellClassifier
 from module.load_data import split_data
 from module.load_data import SpotDataset
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 def run_sec_deconv(
     image_dict,
     spot_dict,
+    spot_dict_global,
     proportions,
     batch_size=1,
     lr=0.001,
@@ -122,10 +124,25 @@ def run_sec_deconv(
     except Exception:
         is_final = False
 
+    # Bayesian adjustment
+    logger.info("Starting Bayesian adjustment...")
+    p_c = proportions.loc[list(train_spot_dict.keys())].mean(axis=0)
+    pred_best_adjusted = BayesianAdjustment(pred_best, spot_dict_global, proportions, p_c, device=device).forward()
+    if is_final:
+        pred_final_adjusted = BayesianAdjustment(
+            pred_final, spot_dict_global, proportions, p_c, device=device
+        ).forward()
+
     # Save model infos
-    info = {"spot_dict": spot_dict, "proportions": proportions, "pred_best": pred_best}
+    info = {
+        "spot_dict": spot_dict,
+        "proportions": proportions,
+        "pred_best": pred_best,
+        "pred_best_adjusted": pred_best_adjusted,
+    }
     if is_final:
         info["pred_final"] = pred_final
+        info["pred_final_adjusted"] = pred_final_adjusted
     info_dir = f"{out_dir}/info.pickle"
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
@@ -136,17 +153,33 @@ def run_sec_deconv(
     stats_best_predicted = extract_stats(pred_best, predicted_labels=pred_best_labels, metric="predicted")
     stats_best_all = extract_stats(pred_best, predicted_labels=pred_best_labels, metric="all")
 
+    pred_best_adj_labels = get_labels_slide(pred_best_adjusted)
+    stats_best_adj_predicted = extract_stats(
+        pred_best_adjusted, predicted_labels=pred_best_adj_labels, metric="predicted"
+    )
+    stats_best_adj_all = extract_stats(pred_best_adjusted, predicted_labels=pred_best_adj_labels, metric="all")
+
     if is_final:
         pred_final_labels = get_labels_slide(pred_final)
         stats_final_predicted = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="predicted")
         stats_final_all = extract_stats(pred_final, predicted_labels=pred_final_labels, metric="all")
 
+        pred_final_adj_labels = get_labels_slide(pred_final_adjusted)
+        stats_final_adj_predicted = extract_stats(
+            pred_final_adjusted, predicted_labels=pred_final_adj_labels, metric="predicted"
+        )
+        stats_final_adj_all = extract_stats(pred_final_adjusted, predicted_labels=pred_final_adj_labels, metric="all")
+
     with pd.ExcelWriter(f"{out_dir}/stats.xlsx") as writer:
         stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
         stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
+        stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
+        stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
         if is_final:
             stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
             stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
+            stats_final_adj_predicted.to_excel(writer, sheet_name="final_adj_predicted", index=False)
+            stats_final_adj_all.to_excel(writer, sheet_name="final_adj_all", index=False)
 
     logger.info("Secondary deconvolution process completed successfully.")
     logger.info(f"Training time: {TRAIN_TIME}")

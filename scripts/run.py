@@ -136,8 +136,11 @@ def main(
     adata = sc.read_visium(path_st_adata)
     logger.info(f"Loading proportions from {proportions_file}...")
     proportions = pp_prop(proportions_file)
-    logger.info("Mapping cells to spots...")
+    logger.info("Cell Mapping...")
+    logger.info("-> Mapping cells to the spot in which they are located...")
     spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
+    logger.info("-> Mapping cells to the closest spot...")
+    spot_dict_global = map_cells_to_spots(adata, adata_name, json_path, only_in=False)
 
     logger.info("=" * 50)
     logger.info("RUNNING SECONDARY DECONVOLUTION")
@@ -160,6 +163,7 @@ def main(
     run_sec_deconv(
         image_dict,
         spot_dict,
+        spot_dict_global,
         proportions,
         batch_size=batch_size,
         lr=lr,

@@ -82,3 +82,7 @@ def format_time(seconds):
     if seconds < 3600:
         formatted_time = formatted_time[2:]
     return formatted_time
+
+
+def revert_dict(dict):
+    return {val: key for key, values in dict.items() for val in values}
