@@ -25,7 +25,7 @@ def weighted_l2_loss(input, target, weights, reduction="mean"):
         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
 
 
-def weighted_kl_divergence(p, q, weights, reduction="sum"):
+def weighted_kl_divergence(p, q, weights, reduction="mean"):
     p = p.clamp(min=1e-10)
     q = q.clamp(min=1e-10)
 
@@ -44,7 +44,7 @@ def shannon_entropy(U):
     return -(U * torch.log(U + 1e-12)).sum()
 
 
-def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None, reduction="sum"):
+def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None):
     """
     Compute a differentiable approximation to f_relax-ent using Algorithm 1.
 
@@ -70,9 +70,9 @@ def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None, reduction="sum"):
     # Steps 2-3: Perform Sinkhorn iterations
     for _ in range(n_iter):
         # Update a
-        a = ((n * z / (K @ b)).pow(tau)).float()
+        a = (n * z / (K @ b)).pow(tau)
         # Update b
-        b = (torch.ones(n, device=F.device) / (K.t() @ a)).float()
+        b = torch.ones(n, device=F.device) / (K.t() @ a)
 
     # Step 6: Compute U
     U = torch.diag(a) @ K @ torch.diag(b)
@@ -80,7 +80,7 @@ def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None, reduction="sum"):
     # Step 7: Compute the final approximation to f_relax-ent
     trace_logF_U = torch.trace(torch.log(F) @ U)
     entropy_U = shannon_entropy(U)
-    kld = weighted_kl_divergence(U @ torch.ones(n, device=F.device) / n, z, weights=weights, reduction=reduction)
+    kld = weighted_kl_divergence(U @ torch.ones(n, device=F.device) / n, z, weights=weights, reduction="sum")
 
     # Compute the final differentiable approximation
     return (alpha / n) * (-trace_logF_U - epsilon * entropy_U) + (1 - alpha) * kld

@@ -86,7 +86,7 @@ class CellClassifier(nn.Module):
             weights = torch.ones_like(true_proportions).to(self.device)
 
         if divergence == "rot":
-            return ROT(outputs, true_proportions, alpha=alpha, weights=weights, reduction=reduction)
+            return ROT(outputs, true_proportions, alpha=alpha, weights=weights)
 
         max_prob_loss = -torch.mean(torch.log(outputs.max(dim=1)[0]))
 
