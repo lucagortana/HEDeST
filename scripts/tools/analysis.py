@@ -511,24 +511,26 @@ def evaluate_spot_predictions(true_proportions, predicted_proportions):
     avg_pearson_corr = np.nanmean(pearson_corrs)
 
     # balanced accuracy
-    balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)
+    balanced_acc = balanced_accuracy_score(
+        true_labels, predicted_labels
+    )  # sometimes warnings : classes in y_pred not in y_true
 
     # F1 score
-    f1 = f1_score(true_labels, predicted_labels, average="weighted")
+    f1 = f1_score(true_labels, predicted_labels, average="weighted", zero_division=0)
 
     # Precision
-    precision = precision_score(true_labels, predicted_labels, average="weighted")
+    precision = precision_score(true_labels, predicted_labels, average="weighted", zero_division=0)
 
     # Recall
-    recall = recall_score(true_labels, predicted_labels, average="weighted")
+    recall = recall_score(true_labels, predicted_labels, average="weighted", zero_division=0)
 
     metrics = {
         "Spearman Correlation": avg_spearman_corr,
         "Pearson Correlation": avg_pearson_corr,
         "Weighted MSE": weighted_mse,
-        "Unweighted MSE": mse,
+        "MSE": mse,
         "Weighted MAE": weighted_mae,
-        "Unweighted MAE": mae,
+        "MAE": mae,
         "R^2 Score": r2,
         "Balanced Accuracy": balanced_acc,
         "Weighted F1 Score": f1,
