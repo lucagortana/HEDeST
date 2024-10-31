@@ -8,7 +8,6 @@ import pickle
 import subprocess
 
 import pandas as pd
-from run import main
 from tools.analysis import evaluate_spot_predictions
 from tools.analysis import get_predicted_proportions
 
