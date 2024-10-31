@@ -7,6 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
+from scipy.stats import pearsonr
+from scipy.stats import spearmanr
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import r2_score
+from sklearn.metrics import recall_score
 from tools import basics
 from tools import slide_viz
 from tqdm import tqdm
@@ -435,3 +442,98 @@ def plot_legend(ax, dict_colors):
 
     # Add the legend to the new subplot
     ax.legend(patches, legend_labels, loc="center", fontsize=14)
+
+
+def get_predicted_proportions(pred, spot_dict):
+    """
+    Get the predicted proportions of cell types for each spot in the dataset.
+    """
+
+    cell_to_spot = {cell: spot for spot, cells in spot_dict.items() for cell in cells}
+    spot_series = pd.Series(cell_to_spot, name="spot")
+
+    pred_with_spot = pred.join(spot_series, how="inner")
+
+    proportion_df = pred_with_spot.groupby("spot").mean()
+
+    return proportion_df
+
+
+def evaluate_spot_predictions(true_proportions, predicted_proportions):
+    """
+    Compare the true and predicted proportions using multiple metrics.
+
+    Parameters:
+    - true_proportions (pd.DataFrame): DataFrame with true proportions per spot.
+    - predicted_proportions (pd.DataFrame): DataFrame with predicted proportions per spot.
+
+    Returns:
+    - dict: A dictionary with the calculated metrics.
+    """
+    # Align dataframes and extracting labels
+    true_proportions, predicted_proportions = true_proportions.align(predicted_proportions, join="inner", axis=0)
+    true_labels = true_proportions.idxmax(axis=1)
+    predicted_labels = predicted_proportions.idxmax(axis=1)
+
+    # Computing weights
+    class_frequencies = true_proportions.mean(axis=0)
+    class_weights = 1 / class_frequencies
+    class_weights /= class_weights.sum()
+    weights = np.array([class_weights[col] for col in true_proportions.columns])
+
+    # mse
+    squared_errors = (true_proportions - predicted_proportions) ** 2
+    weighted_mse = (squared_errors * weights).mean().mean()
+    mse = squared_errors.mean().mean()
+
+    # mae
+    absolute_errors = (true_proportions - predicted_proportions).abs()
+    weighted_mae = (absolute_errors * weights).mean().mean()
+    mae = absolute_errors.mean().mean()
+
+    # R^2 score
+    r2 = r2_score(true_proportions, predicted_proportions)
+
+    # Pearson and Spearman correlation
+    spearman_corrs = []
+    pearson_corrs = []
+    for spot in true_proportions.index:
+        true_values = true_proportions.loc[spot]
+        pred_values = predicted_proportions.loc[spot]
+
+        spearman_corr, _ = spearmanr(true_values, pred_values)
+        spearman_corrs.append(spearman_corr)
+
+        pearson_corr, _ = pearsonr(true_values, pred_values)
+        pearson_corrs.append(pearson_corr)
+
+    avg_spearman_corr = np.nanmean(spearman_corrs)
+    avg_pearson_corr = np.nanmean(pearson_corrs)
+
+    # balanced accuracy
+    balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)
+
+    # F1 score
+    f1 = f1_score(true_labels, predicted_labels, average="weighted")
+
+    # Precision
+    precision = precision_score(true_labels, predicted_labels, average="weighted")
+
+    # Recall
+    recall = recall_score(true_labels, predicted_labels, average="weighted")
+
+    metrics = {
+        "Spearman Correlation": avg_spearman_corr,
+        "Pearson Correlation": avg_pearson_corr,
+        "Weighted MSE": weighted_mse,
+        "Unweighted MSE": mse,
+        "Weighted MAE": weighted_mae,
+        "Unweighted MAE": mae,
+        "R^2 Score": r2,
+        "Balanced Accuracy": balanced_acc,
+        "Weighted F1 Score": f1,
+        "Weighted Precision": precision,
+        "Weighted Recall": recall,
+    }
+
+    return metrics
