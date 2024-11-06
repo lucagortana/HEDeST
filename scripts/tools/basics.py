@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from module.cell_classifier import CellClassifier
+from module.cell_classifier_bis import CellClassifierBis  # change
 from PIL import Image
 
 
@@ -48,6 +49,21 @@ def load_model(model_path: str, size_edge: int, num_classes: int) -> CellClassif
     print("Device found to load the model : ", device)
 
     model = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+
+    model.load_state_dict(torch.load(model_path, map_location=device))
+
+    if device == torch.device("cuda"):
+        model = model.to(device)
+
+    return model
+
+
+def load_model_bis(model_path: str, size_edge: int, num_classes: int, type: str) -> CellClassifierBis:  # change
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device found to load the model : ", device)
+
+    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, type=type, device=device)
 
     model.load_state_dict(torch.load(model_path, map_location=device))
 

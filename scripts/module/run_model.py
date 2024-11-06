@@ -8,7 +8,7 @@ import time
 import pandas as pd
 import torch
 from module.bayes_adjust import BayesianAdjustment
-from module.cell_classifier import CellClassifier
+from module.cell_classifier_bis import CellClassifierBis
 from module.load_data import split_data
 from module.load_data import SpotDataset
 from module.trainer import ModelTrainer
@@ -18,6 +18,8 @@ from tools.analysis import predict_slide
 from tools.basics import format_time
 from tools.basics import set_seed
 from torch import optim
+
+# from module.cell_classifier import CellClassifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -81,7 +83,7 @@ def run_sec_deconv(
         weights = None
 
     size_edge = image_dict["0"].shape[1]
-    model = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, type="res", device=device)  # change
     model = model.to(device)
     logger.info(f"-> {num_classes} classes detected.")
 
@@ -112,13 +114,17 @@ def run_sec_deconv(
 
     # Predict on the whole slide
     logger.info("Starting prediction on the whole slide...")
-    model4pred_best = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+    model4pred_best = CellClassifierBis(
+        size_edge=size_edge, num_classes=num_classes, type="res", device=device
+    )  # change
     model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
     pred_best = predict_slide(model4pred_best, image_dict, ct_list)
 
     is_final = True
     try:
-        model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, device=device)
+        model4pred_final = CellClassifierBis(
+            size_edge=size_edge, num_classes=num_classes, type="res", device=device
+        )  # change
         model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
         pred_final = predict_slide(model4pred_final, image_dict, ct_list)
     except Exception:
