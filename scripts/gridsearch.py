@@ -154,20 +154,32 @@ def main_test(divergence):
         mean_metrics_final = aggregate_metrics(metrics_final_list)
         mean_metrics_final_adj = aggregate_metrics(metrics_final_adj_list)
 
-        result_best = {"alpha": alpha, "lr": lr, "weights": weights, "divergence": divergence, **mean_metrics_best}
+        result_best = {
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
+            **mean_metrics_best,
+        }
         result_best_adj = {
-            "alpha": alpha,
-            "lr": lr,
-            "weights": weights,
-            "divergence": divergence,
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
             **mean_metrics_best_adj,
         }
-        result_final = {"alpha": alpha, "lr": lr, "weights": weights, "divergence": divergence, **mean_metrics_final}
+        result_final = {
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
+            **mean_metrics_final,
+        }
         result_final_adj = {
-            "alpha": alpha,
-            "lr": lr,
-            "weights": weights,
-            "divergence": divergence,
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
             **mean_metrics_final_adj,
         }
 
