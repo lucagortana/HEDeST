@@ -16,10 +16,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Hyperparameters to test
-alphas = [0, 0.2, 0.3, 0.5]
-learning_rates = [1e-5, 1e-4]
+alphas = [0, 0.0001, 0.001]
+learning_rates = [1e-4]
 weights_options = [True, False]
-seeds = [42, 43, 44, 45, 46]
+seeds = [42, 43, 44]
 
 output_dir = "../out/new"
 
