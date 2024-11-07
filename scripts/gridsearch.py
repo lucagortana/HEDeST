@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 # Hyperparameters to test
 alphas = [0, 0.0001, 0.001]
-learning_rates = [1e-4]
+learning_rates = [1e-4, 1e-3]
 weights_options = [True, False]
-seeds = [42, 43, 44]
+seeds = [42, 43]
 
 output_dir = "../out/new"
 
