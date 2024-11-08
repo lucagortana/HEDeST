@@ -42,7 +42,7 @@ def split_data(spot_dict, proportions, train_size=0.7, val_size=0.15, rs=42):
 
     # Split into train, validation, and test sets
     train_ids, temp_ids = train_test_split(spot_ids, train_size=train_size, random_state=rs)
-    val_ids, test_ids = train_test_split(temp_ids, test_size=val_size / (1 - train_size), random_state=rs)
+    val_ids, test_ids = train_test_split(temp_ids, train_size=val_size / (1 - train_size), random_state=rs)
 
     # Create dictionaries for each set
     train_spot_dict = {spot: spot_dict[spot] for spot in train_ids}

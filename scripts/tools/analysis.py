@@ -541,37 +541,36 @@ def evaluate_spot_predictions(true_proportions, predicted_proportions):
     return metrics
 
 
-def performance_table(
-    table: pd.DataFrame, feature_a: str, feature_b: str, metric: str, na_fill=None, **fixed_features
+def evaluate_performance(
+    table: pd.DataFrame, feature_a, feature_b, metric: str, na_fill=None, **fixed_features
 ) -> pd.DataFrame:
+    # Convert feature_a and feature_b to lists if they are not already
+    if not isinstance(feature_a, list):
+        feature_a = [feature_a]
+    if not isinstance(feature_b, list):
+        feature_b = [feature_b]
 
     # Check if metric exists in table
     if metric not in table.columns:
         raise ValueError(f"Metric '{metric}' not found in the table columns.")
 
-    # Verify feature types and filter DataFrame based on fixed feature values
-    for feature, value in {feature_a: None, feature_b: None, **fixed_features}.items():
+    # Filter the DataFrame based on fixed feature values
+    for feature, value in fixed_features.items():
         if feature not in table.columns:
             raise ValueError(f"Feature '{feature}' not found in the table columns.")
-        # Check if all values in the column are strings
-        if not pd.api.types.is_object_dtype(table[feature]):
-            raise TypeError(f"Values in '{feature}' should be of type str.")
-        # Filter based on fixed feature values
-        if value is not None:
-            table = table[table[feature] == value]
+        table = table[table[feature] == value]
 
     # Check if filtering resulted in an empty DataFrame
     if table.empty:
         raise ValueError("No data left after filtering; please check fixed feature values.")
 
-    # Ensure metric values are floats and handle NaN values
-    if not pd.api.types.is_float_dtype(table[metric]):
-        raise TypeError(f"Values in metric '{metric}' should be of type float.")
-
     if na_fill is not None:
         table[metric] = table[metric].fillna(na_fill)
 
     # Group by feature_a and feature_b, then calculate the mean of the specified metric
-    performance_df = table.groupby([feature_a, feature_b])[metric].mean().unstack(level=feature_b)
+    grouped = table.groupby(feature_a + feature_b)[metric].mean()
+
+    # Unstack the feature_b parameters to create a multi-level column index
+    performance_df = grouped.unstack(level=feature_b)
 
     return performance_df
