@@ -83,7 +83,7 @@ def run_sec_deconv(
         weights = None
 
     size_edge = image_dict["0"].shape[1]
-    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, type="res", device=device)  # change
+    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
     model = model.to(device)
     logger.info(f"-> {num_classes} classes detected.")
 
@@ -114,17 +114,13 @@ def run_sec_deconv(
 
     # Predict on the whole slide
     logger.info("Starting prediction on the whole slide...")
-    model4pred_best = CellClassifierBis(
-        size_edge=size_edge, num_classes=num_classes, type="res", device=device
-    )  # change
+    model4pred_best = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
     model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
     pred_best = predict_slide(model4pred_best, image_dict, ct_list)
 
     is_final = True
     try:
-        model4pred_final = CellClassifierBis(
-            size_edge=size_edge, num_classes=num_classes, type="res", device=device
-        )  # change
+        model4pred_final = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
         model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
         pred_final = predict_slide(model4pred_final, image_dict, ct_list)
     except Exception:

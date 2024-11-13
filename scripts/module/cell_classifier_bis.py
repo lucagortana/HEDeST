@@ -9,121 +9,85 @@ from module.loss import weighted_l1_loss
 from module.loss import weighted_l2_loss
 
 
-class ResBlock(nn.Module):
-    """
-    Implementation of a residual block for a neural network.
+class ResidualBlock(nn.Module):
+    """from https://github.com/samcw/ResNet18-Pytorch/tree/master"""
 
-    Attributes:
-        in_channels (int): Number of input channels.
-        out_channels (int): Number of output channels.
-
-    Code adapted from https://github.com/clementchadebec/benchmark_VAE
-    """
-
-    def __init__(self, in_channels, out_channels):
-        nn.Module.__init__(self)
-
-        self.conv_block = nn.Sequential(
-            nn.ReLU(),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(out_channels, in_channels, kernel_size=1, stride=1, padding=0),
+    def __init__(self, inchannel, outchannel, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.left = nn.Sequential(
+            nn.Conv2d(inchannel, outchannel, kernel_size=3, stride=stride, padding=1, bias=False),
+            nn.BatchNorm2d(outchannel),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(outchannel, outchannel, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(outchannel),
         )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Performs forward pass through the ResBlock.
-
-        Parameters:
-            x (torch.Tensor): Input tensor.
-
-        Returns:
-            torch.Tensor: Output tensor.
-        """
-
-        return x + self.conv_block(x)
-
-
-class ConvNetwork(nn.Module):
-    def __init__(self):
-        super(ConvNetwork, self).__init__()
-        self.layers = nn.Sequential(
-            nn.Conv2d(3, 8, 3, padding=1),
-            nn.BatchNorm2d(8),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(8, 16, 3, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(16, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-        )
+        self.shortcut = nn.Sequential()
+        if stride != 1 or inchannel != outchannel:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(inchannel, outchannel, kernel_size=1, stride=stride, bias=False), nn.BatchNorm2d(outchannel)
+            )
 
     def forward(self, x):
-        return self.layers(x)
+        out = self.left(x)
+        out = out + self.shortcut(x)
+        out = F.relu(out)
+
+        return out
 
 
-class ResidualNetwork(nn.Module):
-    def __init__(self):
-        super(ResidualNetwork, self).__init__()
+class ResNet(nn.Module):
+    """from https://github.com/samcw/ResNet18-Pytorch/tree/master"""
 
-        self.conv1 = nn.Sequential(nn.Conv2d(3, 8, 3, padding=1), nn.BatchNorm2d(8), nn.ReLU(), nn.MaxPool2d(2, 2))
-        self.res1 = ResBlock(8, 16)  # First residual block with increased channels
+    def __init__(self, ResidualBlock):
+        super(ResNet, self).__init__()
+        self.inchannel = 64
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False), nn.BatchNorm2d(64), nn.ReLU()
+        )
+        self.layer1 = self.make_layer(ResidualBlock, 64, 2, stride=1)
+        self.layer2 = self.make_layer(ResidualBlock, 128, 2, stride=2)
+        self.layer3 = self.make_layer(ResidualBlock, 256, 2, stride=2)
+        self.layer4 = self.make_layer(ResidualBlock, 512, 2, stride=2)
 
-        self.conv2 = nn.Sequential(nn.Conv2d(8, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2, 2))
-        self.res2 = ResBlock(16, 32)  # Second residual block with increased channels
-
-        self.conv3 = nn.Sequential(nn.Conv2d(16, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2, 2))
-        self.res3 = ResBlock(32, 64)
+    def make_layer(self, block, channels, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)
+        layers = []
+        for stride in strides:
+            layers.append(block(self.inchannel, channels, stride))
+            self.inchannel = channels
+        return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.res1(x)
-
-        x = self.conv2(x)
-        x = self.res2(x)
-
-        x = self.conv3(x)
-        return self.res3(x)
+        out = self.conv1(x)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = F.avg_pool2d(out, 4)
+        return out
 
 
 class CellClassifierBis(nn.Module):
-    def __init__(self, size_edge, num_classes, dropout_prob=0.5, type="conv", device=torch.device("cpu")):
+    def __init__(self, size_edge, num_classes, device=torch.device("cpu")):
         super(CellClassifierBis, self).__init__()
 
         self.size_edge = size_edge
         self.num_classes = num_classes
-        self.dropout_prob = dropout_prob
-        self.type = type
         self.device = device
 
-        if type == "conv":
-            self.feature_extractor = ConvNetwork()
-        elif type == "res":
-            self.feature_extractor = ResidualNetwork()
-        else:
-            raise ValueError("Invalid type. Choose 'conv' or 'res'.")
-
-        self.fc1 = nn.Sequential(
-            nn.Dropout(p=self.dropout_prob),
-            nn.Linear(int(32 * (self.size_edge / 8) ** 2), int(8 * (self.size_edge / 8) ** 2)),
+        self.feature_extractor = ResNet(ResidualBlock)
+        self.fc = nn.Sequential(
+            nn.Linear(
+                int(32 * (self.size_edge / 8) ** 2), int(8 * (self.size_edge / 8) ** 2)
+            ),  # 32 * (a/8) * (a/8), 8 * (a/8) * (a/8)
             nn.ReLU(),
+            nn.Linear(int(8 * (self.size_edge / 8) ** 2), self.num_classes),
         )
-        self.fc2 = nn.Sequential(
-            nn.Linear(int(8 * (self.size_edge / 8) ** 2), int((self.size_edge / 8) ** 2)),
-            nn.ReLU(),
-        )
-        self.fc3 = nn.Linear(int((self.size_edge / 8) ** 2), self.num_classes)
 
     def forward(self, x):
         x = self.feature_extractor(x)
         x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = self.fc3(x)
+        x = self.fc(x)
         return F.softmax(x, dim=1)
 
     def loss_comb(

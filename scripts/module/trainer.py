@@ -6,6 +6,7 @@ import os
 import torch
 from tools.analysis import plot_history
 from tools.basics import set_seed
+from torch.utils.tensorboard import SummaryWriter
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -27,6 +28,7 @@ class ModelTrainer:
         alpha=0.5,
         num_epochs=25,
         out_dir="results",
+        tb_dir="runs",
         rs=42,
     ):
         """
@@ -60,6 +62,7 @@ class ModelTrainer:
         self.alpha = alpha
         self.num_epochs = num_epochs
         self.out_dir = out_dir
+        self.tb_dir = tb_dir
         self.rs = rs
 
         self.best_val_loss = float("inf")
@@ -98,6 +101,9 @@ class ModelTrainer:
         if self.weights is not None:
             self.weights = self.weights.to(self.device)
 
+        tb_file = os.path.join(self.tb_dir, self.out_dir)
+        writer = SummaryWriter(tb_file)
+
         for epoch in range(self.num_epochs):
             self.model.train()
             running_loss = 0.0
@@ -107,7 +113,7 @@ class ModelTrainer:
                 true_proportions = true_proportions.to(self.device)
                 images = images_list[0].to(self.device)
                 outputs = self.model(images)
-                loss = self.model.loss_comb(
+                loss = self.model.loss_comb(  # change loss so it returns max prob and divergence
                     outputs,
                     true_proportions[0],
                     weights=self.weights,
@@ -132,6 +138,10 @@ class ModelTrainer:
 
             torch.cuda.empty_cache()
 
+            # add tensorboard max prob and divergence
+            # add tensorboard max prob and divergence
+            writer.add_scalar("Loss/Train", train_loss, epoch + 1)
+            writer.add_scalar("Loss/Val", val_loss, epoch + 1)
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
 
@@ -143,6 +153,8 @@ class ModelTrainer:
                 logging.info(
                     f"-> Validation loss improved. Saving best model at {self.best_model_path} (epoch {epoch + 1})."
                 )
+
+        writer.close()
 
         # If the best model is different from the final model
         if self.best_val_loss != val_loss:
@@ -198,7 +210,6 @@ class ModelTrainer:
         best_model = type(self.model)(
             size_edge=self.model.size_edge,
             num_classes=self.model.num_classes,
-            type=self.model.type,
             device=self.device,  # change
         )
         best_model.load_state_dict(torch.load(self.best_model_path))

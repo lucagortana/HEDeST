@@ -58,12 +58,12 @@ def load_model(model_path: str, size_edge: int, num_classes: int) -> CellClassif
     return model
 
 
-def load_model_bis(model_path: str, size_edge: int, num_classes: int, type: str) -> CellClassifierBis:  # change
+def load_model_bis(model_path: str, size_edge: int, num_classes: int) -> CellClassifierBis:  # change
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device found to load the model : ", device)
 
-    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, type=type, device=device)
+    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)
 
     model.load_state_dict(torch.load(model_path, map_location=device))
 
