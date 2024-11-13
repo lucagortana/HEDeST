@@ -101,7 +101,7 @@ class ModelTrainer:
         if self.weights is not None:
             self.weights = self.weights.to(self.device)
 
-        tb_file = os.path.join(self.tb_dir, self.out_dir)
+        tb_file = os.path.join(self.tb_dir, os.path.basename(self.out_dir))
         writer = SummaryWriter(tb_file)
 
         for epoch in range(self.num_epochs):

@@ -44,6 +44,7 @@ def run_sec_deconv(
     train_size=0.5,
     val_size=0.25,
     out_dir="results",
+    tb_dir="runs",
     rs=42,
 ):
 
@@ -102,6 +103,7 @@ def run_sec_deconv(
         alpha=alpha,
         num_epochs=epochs,
         out_dir=out_dir,
+        tb_dir=tb_dir,
         rs=rs,
     )
 

@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 @click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction.")
 @click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction.")
 @click.option("--out_dir", type=str, default="results", help="Output directory.")
+@click.option("--tb_dir", type=str, default="runs", help="Tensorboard directory.")
 @click.option("--level", type=int, default=0, help="Image extraction level.")
 @click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles.")
 @click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction.")
@@ -77,6 +78,7 @@ def main(
     train_size,
     val_size,
     out_dir,
+    tb_dir,
     level,
     size_edge,
     dict_types,
@@ -176,6 +178,7 @@ def main(
         train_size=train_size,
         val_size=val_size,
         out_dir=out_dir,
+        tb_dir=tb_dir,
         rs=rs,
     )
     TOTAL_TIME = format_time(time.time() - MAIN_START)
