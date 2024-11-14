@@ -83,4 +83,6 @@ def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None):
     kld = weighted_kl_divergence(U @ torch.ones(n, device=F.device) / n, z, weights=weights, reduction="sum")
 
     # Compute the final differentiable approximation
-    return (alpha / n) * (-trace_logF_U - epsilon * entropy_U) + (1 - alpha) * kld
+    entropy_loss = -trace_logF_U - epsilon * entropy_U
+    loss = (alpha / n) * entropy_loss + (1 - alpha) * kld
+    return loss, entropy_loss, kld

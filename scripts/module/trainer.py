@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 
 import torch
+from tools.analysis import plot_grid_celltype
 from tools.analysis import plot_history
+from tools.analysis import predict_slide
 from tools.basics import set_seed
 from torch.utils.tensorboard import SummaryWriter
 
@@ -17,6 +20,7 @@ class ModelTrainer:
     def __init__(
         self,
         model,
+        ct_list,
         optimizer,
         train_loader,
         val_loader,
@@ -51,6 +55,7 @@ class ModelTrainer:
             >>> trainer.train()
         """
         self.model = model
+        self.ct_list = ct_list
         self.optimizer = optimizer
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -106,14 +111,16 @@ class ModelTrainer:
 
         for epoch in range(self.num_epochs):
             self.model.train()
-            running_loss = 0.0
+            train_loss = 0.0
+            train_loss_half1 = 0.0
+            train_loss_half2 = 0.0
 
             for images_list, true_proportions in self.train_loader:
                 self.optimizer.zero_grad()
                 true_proportions = true_proportions.to(self.device)
                 images = images_list[0].to(self.device)
                 outputs = self.model(images)
-                loss = self.model.loss_comb(  # change loss so it returns max prob and divergence
+                loss, loss_half1, loss_half2 = self.model.loss_comb(
                     outputs,
                     true_proportions[0],
                     weights=self.weights,
@@ -125,12 +132,13 @@ class ModelTrainer:
                 loss.backward()
                 self.optimizer.step()
 
-                running_loss += loss.item()
+                train_loss += loss.item()
+                train_loss_half1 += loss_half1.item()
+                train_loss_half2 += loss_half2.item()
 
                 torch.cuda.empty_cache()
 
-            train_loss = running_loss / len(self.train_loader)
-            val_loss = self.evaluate(self.val_loader)
+            val_loss, val_loss_half1, val_loss_half2 = self.evaluate(self.val_loader)
 
             logging.info(
                 f"Epoch {epoch + 1}/{self.num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}"
@@ -138,12 +146,36 @@ class ModelTrainer:
 
             torch.cuda.empty_cache()
 
-            # add tensorboard max prob and divergence
-            # add tensorboard max prob and divergence
             writer.add_scalar("Loss/Train", train_loss, epoch + 1)
             writer.add_scalar("Loss/Val", val_loss, epoch + 1)
+            writer.add_scalar("Loss/Train_Half1", train_loss_half1, epoch + 1)
+            writer.add_scalar("Loss/Train_Half2", train_loss_half2, epoch + 1)
+            writer.add_scalar("Loss/Val_Half1", val_loss_half1, epoch + 1)
+            writer.add_scalar("Loss/Val_Half2", val_loss_half2, epoch + 1)
+
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
+
+            img_plot_train = self._extract_images_for_tb(self.train_loader, 0.75 * len(self.train_loader))
+            img_plot_val = self._extract_images_for_tb(self.val_loader, len(self.val_loader))
+            pred_on_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
+            pred_on_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
+
+            for ct in self.ct_list:
+                writer.add_figure(
+                    f"Train - {ct}",
+                    plot_grid_celltype(
+                        img_plot_train, pred_on_train, ct, n=20, selection="max", show_probs=True, display=False
+                    ),
+                    global_step=epoch + 1,
+                )
+                writer.add_figure(
+                    f"Val - {ct}",
+                    plot_grid_celltype(
+                        img_plot_val, pred_on_val, ct, n=20, selection="max", show_probs=True, display=False
+                    ),
+                    global_step=epoch + 1,
+                )
 
             # Save best model based on validation loss
             if val_loss < self.best_val_loss:
@@ -174,15 +206,15 @@ class ModelTrainer:
 
         self.model.eval()  # Set model to evaluation mode
         running_loss = 0.0
+        running_loss_half1 = 0.0
+        running_loss_half2 = 0.0
+
         with torch.no_grad():
             for images_list, true_proportions in dataloader:
-                # spot_outputs = []
                 true_proportions = true_proportions.to(self.device)
                 images = images_list[0].to(self.device)
                 outputs = self.model(images)
-                # spot_outputs.append(outputs)
-                # outputs = torch.cat(spot_outputs, dim=0)  # Concatenate spot_outputs
-                loss = self.model.loss_comb(
+                loss, loss_half1, loss_half2 = self.model.loss_comb(
                     outputs,
                     true_proportions[0],
                     weights=self.weights,
@@ -192,9 +224,10 @@ class ModelTrainer:
                     alpha=self.alpha,
                 )
                 running_loss += loss.item()
+                running_loss_half1 += loss_half1.item()
+                running_loss_half2 += loss_half2.item()
 
-        avg_loss = running_loss / len(dataloader)
-        return avg_loss
+        return running_loss, running_loss_half1, running_loss_half2
 
     def test(self):
         """
@@ -202,7 +235,7 @@ class ModelTrainer:
         """
 
         # Evaluate the final model
-        final_test_loss = self.evaluate(self.test_loader)
+        final_test_loss, _, _ = self.evaluate(self.test_loader)
         logging.info(f"Test Loss on final model: {final_test_loss:.4f}")
 
         # Load and evaluate the best model
@@ -210,13 +243,14 @@ class ModelTrainer:
         best_model = type(self.model)(
             size_edge=self.model.size_edge,
             num_classes=self.model.num_classes,
-            device=self.device,  # change
+            mtype=self.model.mtype,
+            device=self.device,
         )
         best_model.load_state_dict(torch.load(self.best_model_path))
         best_model = best_model.to(self.device)
         self.model = best_model
 
-        test_loss_best = self.evaluate(self.test_loader)
+        test_loss_best, _, _ = self.evaluate(self.test_loader)
         logging.info(f"Test Loss on best model: {test_loss_best:.4f}")
 
     def save_history(self):
@@ -228,3 +262,20 @@ class ModelTrainer:
             savefig=history_filedir,
         )
         logging.info(f"History saved at {history_filedir}")
+
+    def _extract_images_for_tb(self, dataloader, n):
+        global_dict = {}
+        for spot in dataloader.dataset:
+            for image in spot[0]:
+                global_dict[str(len(global_dict))] = image
+
+        if n > len(global_dict):
+            raise ValueError(f"Only {len(global_dict)} images are available, but you asked for {n}.")
+
+        random_indices = random.sample(range(len(global_dict)), n)
+
+        images_dict = {}
+        for idx in random_indices:
+            images_dict[str(len(images_dict))] = global_dict[str(idx)]
+
+        return images_dict

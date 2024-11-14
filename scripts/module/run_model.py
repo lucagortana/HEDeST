@@ -8,7 +8,7 @@ import time
 import pandas as pd
 import torch
 from module.bayes_adjust import BayesianAdjustment
-from module.cell_classifier_bis import CellClassifierBis
+from module.cell_classifier import CellClassifier
 from module.load_data import split_data
 from module.load_data import SpotDataset
 from module.trainer import ModelTrainer
@@ -33,6 +33,7 @@ def run_sec_deconv(
     spot_dict,
     spot_dict_global,
     proportions,
+    mtype="convnet",
     batch_size=1,
     lr=0.001,
     weights=False,
@@ -84,7 +85,7 @@ def run_sec_deconv(
         weights = None
 
     size_edge = image_dict["0"].shape[1]
-    model = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
+    model = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
     model = model.to(device)
     logger.info(f"-> {num_classes} classes detected.")
 
@@ -92,6 +93,7 @@ def run_sec_deconv(
 
     trainer = ModelTrainer(
         model,
+        ct_list,
         optimizer,
         train_loader,
         val_loader,
@@ -116,13 +118,13 @@ def run_sec_deconv(
 
     # Predict on the whole slide
     logger.info("Starting prediction on the whole slide...")
-    model4pred_best = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
+    model4pred_best = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
     model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
     pred_best = predict_slide(model4pred_best, image_dict, ct_list)
 
     is_final = True
     try:
-        model4pred_final = CellClassifierBis(size_edge=size_edge, num_classes=num_classes, device=device)  # change
+        model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
         model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
         pred_final = predict_slide(model4pred_final, image_dict, ct_list)
     except Exception:
@@ -139,6 +141,7 @@ def run_sec_deconv(
 
     # Save model infos
     info = {
+        "mtype": mtype,
         "spot_dict": spot_dict,
         "proportions": proportions,
         "pred_best": pred_best,

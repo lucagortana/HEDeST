@@ -19,7 +19,7 @@ from tools import slide_viz
 from tqdm import tqdm
 
 
-def predict_slide(model, image_dict, ct_list, batch_size=32):
+def predict_slide(model, image_dict, ct_list, batch_size=32, verbose=True):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device used : ", device)
 
@@ -30,7 +30,7 @@ def predict_slide(model, image_dict, ct_list, batch_size=32):
     dataloader = torch.utils.data.DataLoader(list(image_dict.items()), batch_size=batch_size, shuffle=False)
 
     with torch.no_grad():
-        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch"):
+        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch", disable=(not verbose)):
             cell_ids, images = batch
             images = images.to(device).float() / 255.0
 
@@ -574,3 +574,66 @@ def evaluate_performance(
     performance_df = grouped.unstack(level=feature_b)
 
     return performance_df
+
+
+def plot_grid_celltype(
+    cell_images, predicted_labels_df, cell_type, n=20, selection="random", show_probs=True, display=False
+):
+    """
+    Plots a grid with `n` images of cells predicted as a specific cell type, with optional probability labels.
+
+    Args:
+        cell_images (dict): A dictionary where each key is a cell ID and each value is a tensor of a cell image.
+        predicted_labels_df (DataFrame): A DataFrame of predicted probabilities for each cell type.
+        cell_type (str): The cell type to filter images by (e.g., "fibroblast").
+        n (int): The number of images to display in the grid.
+        selection (str): The selection mode - "max" for top probabilities or "random" for random sampling.
+        show_probs (bool): Whether to show the probability on top of each image.
+        display (bool): Whether to display the plot directly.
+
+    Returns:
+        fig: A matplotlib figure containing the grid.
+    """
+    # Find cells where `cell_type` has the maximum predicted probability
+    max_prob_cell_types = predicted_labels_df.idxmax(axis=1)
+    max_prob_indices = max_prob_cell_types[max_prob_cell_types == cell_type].index
+    max_probs = predicted_labels_df.loc[max_prob_indices, cell_type]
+
+    if selection == "max":
+        # Sort by highest probability and take the top `n`
+        selected_indices = max_probs.nlargest(n).index
+    elif selection == "random":
+        # Randomly sample `n` indices
+        selected_indices = max_prob_indices.to_series().sample(n=min(n, len(max_prob_indices)))
+    else:
+        raise ValueError("Invalid selection mode. Choose 'max' or 'random'.")
+
+    # Retrieve images from the dictionary based on selected indices
+    selected_images = [cell_images[cell_id] for cell_id in selected_indices if cell_id in cell_images]
+    selected_probs = max_probs[selected_indices]
+
+    # Determine grid dimensions (e.g., 4x5 for 20 images)
+    num_rows = (n + 9) // 10
+    fig, axes = plt.subplots(num_rows, 10, figsize=(15, 2 * num_rows))
+
+    # Plot the selected images
+    for i, ax in enumerate(axes.flat):
+        if i < len(selected_images):
+            img = selected_images[i].cpu().numpy().transpose((1, 2, 0))  # Adjust shape if necessary
+            ax.imshow(img, cmap="gray")
+            ax.axis("off")
+
+            if show_probs:
+                prob_text = f"{selected_probs.iloc[i]:.2f}"
+                ax.set_title(prob_text, fontsize=8, color="blue")
+        else:
+            ax.axis("off")  # Hide any remaining empty subplots
+
+    plt.suptitle(cell_type)
+    plt.tight_layout()
+
+    if display:
+        plt.show()
+    else:
+        plt.close(fig)
+        return fig

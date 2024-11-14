@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict.")
 @click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object.")
 @click.option("--proportions_file", type=str, required=True, help="Path to the proportions file.")
+@click.option("--mtype", type=str, default="convnet", help="Type of model. Can be 'convnet' or 'resnet18'.")
 @click.option("--batch_size", type=int, default=1, help="Batch size for model training.")
 @click.option("--lr", type=float, default=0.001, help="Learning rate.")
 @click.option("--weights", is_flag=True, default=False, help="If True, the model uses a weighted loss.")
@@ -67,6 +68,7 @@ def main(
     image_path,
     path_st_adata,
     proportions_file,
+    mtype,
     batch_size,
     lr,
     weights,
@@ -148,6 +150,7 @@ def main(
     logger.info("RUNNING SECONDARY DECONVOLUTION")
     logger.info("Parameters:")
     logger.info(f"Image size: {size}")
+    logger.info(f"Model type: {mtype}")
     logger.info(f"Batch size (#spots): {batch_size}")
     logger.info(f"Learning rate: {lr}")
     logger.info(f"Weighted loss: {weights}")
@@ -167,6 +170,7 @@ def main(
         spot_dict,
         spot_dict_global,
         proportions,
+        mtype=mtype,
         batch_size=batch_size,
         lr=lr,
         weights=weights,
