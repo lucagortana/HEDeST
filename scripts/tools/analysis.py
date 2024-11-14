@@ -21,7 +21,8 @@ from tqdm import tqdm
 
 def predict_slide(model, image_dict, ct_list, batch_size=32, verbose=True):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Device used : ", device)
+    if verbose:
+        print("Device used : ", device)
 
     model.eval()
     model = model.to(device)
