@@ -156,7 +156,7 @@ class ModelTrainer:
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
 
-            img_plot_train = self._extract_images_for_tb(self.train_loader, 0.75 * len(self.train_loader))
+            img_plot_train = self._extract_images_for_tb(self.train_loader, int(0.75 * len(self.train_loader)))
             img_plot_val = self._extract_images_for_tb(self.val_loader, len(self.val_loader))
             pred_on_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
             pred_on_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
