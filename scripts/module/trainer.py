@@ -156,26 +156,31 @@ class ModelTrainer:
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
 
-            img_plot_train = self._extract_images_for_tb(self.train_loader, int(0.75 * len(self.train_loader)))
-            img_plot_val = self._extract_images_for_tb(self.val_loader, len(self.val_loader))
-            pred_on_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
-            pred_on_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
+            if epoch % 10 == 0:
 
-            for ct in self.ct_list:
-                writer.add_figure(
-                    f"Train - {ct}",
-                    plot_grid_celltype(
-                        img_plot_train, pred_on_train, ct, n=20, selection="max", show_probs=True, display=False
-                    ),
-                    global_step=epoch + 1,
-                )
-                writer.add_figure(
-                    f"Val - {ct}",
-                    plot_grid_celltype(
-                        img_plot_val, pred_on_val, ct, n=20, selection="max", show_probs=True, display=False
-                    ),
-                    global_step=epoch + 1,
-                )
+                n_img_train = sum(element[0].size(0) for element in self.train_loader.dataset)
+                n_img_val = sum(element[0].size(0) for element in self.val_loader.dataset)
+
+                img_plot_train = self._extract_images_for_tb(self.train_loader, n_img_train)
+                img_plot_val = self._extract_images_for_tb(self.val_loader, n_img_val)
+                pred_on_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
+                pred_on_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
+
+                for ct in self.ct_list:
+                    writer.add_figure(
+                        f"Train - {ct}",
+                        plot_grid_celltype(
+                            img_plot_train, pred_on_train, ct, n=20, selection="max", show_probs=True, display=False
+                        ),
+                        global_step=epoch + 1,
+                    )
+                    writer.add_figure(
+                        f"Val - {ct}",
+                        plot_grid_celltype(
+                            img_plot_val, pred_on_val, ct, n=20, selection="max", show_probs=True, display=False
+                        ),
+                        global_step=epoch + 1,
+                    )
 
             # Save best model based on validation loss
             if val_loss < self.best_val_loss:
@@ -276,6 +281,6 @@ class ModelTrainer:
 
         images_dict = {}
         for idx in random_indices:
-            images_dict[str(len(images_dict))] = global_dict[str(idx)]
+            images_dict[str(len(images_dict))] = (global_dict[str(idx)] * 255).to(torch.uint8)
 
         return images_dict
