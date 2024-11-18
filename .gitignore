@@ -1,7 +1,7 @@
 cache
 debug.log
 log
-out
+models
 scripts/__pycache__
 scripts/module/__pycache__
 scripts/tools/__pycache__
