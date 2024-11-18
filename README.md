@@ -1,6 +1,6 @@
 # Plugin tool
 
-![figure](references/fig3.png)
+![figure](references/method.png)
 
 ## Installation of the requirements
 To create your conda environment and install the requirements with ``pip``
