@@ -1,11 +1,8 @@
 cache
-debug.log
-log
+deconvplugin/__pycache__
+deconvplugin/modeling/__pycache__
+deconvplugin/run_job2.sh
+deconvplugin/run_job3.sh
+deconvplugin/run_job4.sh
+deconvplugin/run_job5.sh
 models
-scripts/__pycache__
-scripts/module/__pycache__
-scripts/tools/__pycache__
-scripts/run_job2.sh
-scripts/run_job3.sh
-scripts/run_job4.sh
-scripts/run_job5.sh
