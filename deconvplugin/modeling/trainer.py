@@ -261,7 +261,7 @@ class ModelTrainer:
 
     def save_history(self):
 
-        history_filedir = self.out_dir + "/history.png"
+        history_filedir = os.path.join(self.out_dir, "/history.png")
         plot_history(
             history_train=self.history_train,
             history_val=self.history_val,

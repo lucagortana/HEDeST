@@ -4,6 +4,8 @@ import random
 
 import matplotlib.pyplot as plt
 import numpy as np
+from basics import fig_to_array
+from postseg import StdVisualizer
 
 
 def plot_pie_chart(ax, data, dict_colors, plot_labels=False, add_legend=False):
@@ -34,15 +36,40 @@ def plot_pie_chart(ax, data, dict_colors, plot_labels=False, add_legend=False):
         ax.legend(wedges, legend_labels, loc="center left", bbox_to_anchor=(1, 0.5), fontsize=8)
 
 
-def plot_legend(ax, dict_colors):
-    legend_labels = [label for label in dict_colors.keys()]
-    legend_colors = [dict_colors[label] for label in legend_labels]
+def plot_legend(dict_colors, ax=None):
+    """
+    Plot a legend with an optional axis. If `ax` is None, a new figure is created for the legend.
+
+    Parameters:
+        dict_colors (dict): Dictionary where keys are identifiers, and values are [label, RGB color].
+        ax (matplotlib.axes._axes.Axes, optional): Axis to add the legend to. If None, a new figure is created.
+    """
+
+    if isinstance(next(iter(dict_colors.values())), tuple):
+        # Format 1: {'fibroblast': (r, g, b, a)}
+        legend_labels = list(dict_colors.keys())
+        legend_colors = list(dict_colors.values())
+    else:
+        # Format 2: {'0': ['fibroblast', [r, g, b, a]]}
+        legend_labels = [v[0] for v in dict_colors.values()]  # Extract labels
+        legend_colors = [tuple(c / 255 for c in v[1]) for v in dict_colors.values()]  # Normalize RGB to [0, 1]
+
+    # Create patches for the legend
     patches = [
         plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=18) for color in legend_colors
     ]
 
-    # Add the legend to the new subplot
+    # If no axis is provided, create a new figure with an axis
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(4, 4))  # Adjust `figsize` as needed
+        ax.axis("off")  # Disable the axis for a clean legend-only display
+
+    # Add the legend to the axis
     ax.legend(patches, legend_labels, loc="center", fontsize=14)
+
+    # If no axis was provided, show the new figure
+    if ax is None:
+        plt.show()
 
 
 def plot_mosaic_cells(spot_dict, image_dict, spot_id=None, predicted_labels=None, num_cols=8, display=True):
@@ -213,3 +240,44 @@ def plot_grid_celltype(predictions, image_dict, cell_type, n=20, selection="rand
     else:
         plt.close(fig)
         return fig
+
+
+def plot_predicted_cell_labels_in_spot(
+    spot_dict, adata, adata_name, image_path, image_dict, predicted_labels=None, spot_id=None, display=True
+):  # dict_cells,
+    """
+    Plot a spot's visualization along with all cell images arranged in a grid, showing predicted labels.
+    Combines the spot and the mosaic of cells into a single figure.
+    """
+
+    if spot_id is None:
+        spot_id = random.choice(list(spot_dict.keys()))
+        print(f"Randomly selected spot_id: {spot_id}")
+
+    elif spot_id not in spot_dict:
+        raise ValueError(f"Spot ID {spot_id} not found in spot_dict.")
+
+    plotter = StdVisualizer(image_path, adata, adata_name)
+    fig1 = plotter.plot_specific_spot(spot_id=spot_id, display=False)
+    fig2 = plot_mosaic_cells(
+        spot_dict=spot_dict, image_dict=image_dict, spot_id=spot_id, predicted_labels=predicted_labels, display=False
+    )
+
+    img1 = fig_to_array(fig1)
+    img2 = fig_to_array(fig2)
+
+    combined_fig, axs = plt.subplots(1, 2, figsize=(15, 10), gridspec_kw={"width_ratios": [1, 2]})
+
+    axs[0].imshow(img1)
+    axs[0].axis("off")
+
+    axs[1].imshow(img2)
+    axs[1].axis("off")
+
+    plt.tight_layout()
+
+    if display:
+        plt.show()
+    else:
+        plt.close(combined_fig)
+        return combined_fig

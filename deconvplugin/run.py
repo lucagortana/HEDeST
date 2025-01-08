@@ -106,9 +106,9 @@ def main(
         logger.info(f"-> Extracting images from whole-slide image at {image_path}")
         save_options = {
             None: (None, None),
-            "jpg": (out_dir + "/extracted_images/", None),
-            "dict": (None, out_dir + "/image_dict.pt"),
-            "both": (out_dir + "/extracted_images/", out_dir + "/image_dict.pt"),
+            "jpg": (os.path.join(out_dir, "extracted_images"), None),
+            "dict": (None, os.path.join(out_dir, "image_dict.pt")),
+            "both": (os.path.join(out_dir, "extracted_images"), os.path.join(out_dir, "image_dict.pt")),
         }
 
         if save_images in save_options:

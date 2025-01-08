@@ -150,7 +150,7 @@ def run_sec_deconv(
     if is_final:
         info["preds"]["pred_final"] = pred_final
         info["preds"]["pred_final_adjusted"] = pred_final_adjusted
-    info_dir = f"{out_dir}/info.pickle"
+    info_dir = os.path.join(out_dir, "info.pickle")
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
         pickle.dump(info, f)
@@ -174,7 +174,7 @@ def run_sec_deconv(
             metric="all"
         )
 
-    with pd.ExcelWriter(f"{out_dir}/stats.xlsx") as writer:
+    with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
         stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
         stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
         stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)

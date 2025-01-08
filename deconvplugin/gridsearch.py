@@ -34,6 +34,9 @@ def run_experiment(alpha, lr, weights, divergence, seed):
     )
     os.makedirs(config_out_dir, exist_ok=True)
 
+    proportions_file1 = "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma"
+    proportions_file2 = "/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv"
+
     args = [
         "python3",
         "run.py",
@@ -46,7 +49,7 @@ def run_experiment(alpha, lr, weights, divergence, seed):
         "--path_st_adata",
         "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/",
         "--proportions_file",
-        "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv",
+        proportions_file1 + proportions_file2,
         "--batch_size",
         "1",
         "--lr",
@@ -146,35 +149,25 @@ def main_test(divergence):
                 "info.pickle",
             )
             with open(info_path, "rb") as f:
-                info = pickle.load(f)
+                model_info = pickle.load(f)
 
-            spot_dict = info["spot_dict"]
-            true_proportions = info["proportions"]
-            pred_best = info["pred_best"]
-            pred_best_adj = info["pred_best_adjusted"]
+            analyzer_best = PredAnalyzer(model_info=model_info, model_state="best", adjusted=False)
+            analyzer_best_adj = PredAnalyzer(model_info=model_info, model_state="best", adjusted=True)
 
             is_final = True
             try:
-                pred_final = info["pred_final"]
-                pred_final_adj = info["pred_final_adjusted"]
+                analyzer_final = PredAnalyzer(model_info=model_info, model_state="final", adjusted=False)
+                analyzer_final_adj = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True)
             except Exception:
                 is_final = False
 
-            # Load true and predicted proportions
-            predicted_best_proportions = get_predicted_proportions(pred_best, spot_dict)
-            predicted_best_proportions_adj = get_predicted_proportions(pred_best_adj, spot_dict)
-
-            if is_final:
-                predicted_final_proportions = get_predicted_proportions(pred_final, spot_dict)
-                predicted_final_proportions_adj = get_predicted_proportions(pred_final_adj, spot_dict)
-
             # Evaluate the metrics
-            metrics_best = evaluate_spot_predictions(true_proportions, predicted_best_proportions)
-            metrics_best_adj = evaluate_spot_predictions(true_proportions, predicted_best_proportions_adj)
+            metrics_best = analyzer_best.evaluate_spot_predictions()
+            metrics_best_adj = analyzer_best_adj.evaluate_spot_predictions()
 
             if is_final:
-                metrics_final = evaluate_spot_predictions(true_proportions, predicted_final_proportions)
-                metrics_final_adj = evaluate_spot_predictions(true_proportions, predicted_final_proportions_adj)
+                metrics_final = analyzer_final.evaluate_spot_predictions()
+                metrics_final_adj = analyzer_final_adj.evaluate_spot_predictions()
 
             metrics_best_list.append(metrics_best)
             metrics_best_adj_list.append(metrics_best_adj)

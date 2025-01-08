@@ -24,6 +24,7 @@ from tqdm import tqdm
 
 from deconvplugin.basics import check_json_classification
 from deconvplugin.basics import remove_empty_keys
+from deconvplugin.basics import seg_colors_compatible
 
 
 class SlideVisualizer(ABC):
@@ -92,6 +93,9 @@ class SlideVisualizer(ABC):
                 if not check_json_classification(self.data):
                     print("Warning : You gave a dict_types_colors but the JSON file gives no classification.")
                     self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+
+                elif not seg_colors_compatible(self.data, self.dict_types_colors):
+                    raise ValueError("Some labels found in your data have not been found in the color dictionnary.")
 
         # Extract nuclear info
         if self.data is not None:
@@ -399,9 +403,9 @@ class IntVisualizer(SlideVisualizer):
 # Tool functions
 
 
-def count_cell_types(hovernet_dict, ct_list):
+def count_cell_types(seg_dict, ct_list):
     cell_type_counts = {}
-    nuc = hovernet_dict["nuc"]
+    nuc = seg_dict["nuc"]
     for cell_id in nuc.keys():
         label = nuc[cell_id]["type"]
         cell_type = ct_list[int(label)]
@@ -462,14 +466,14 @@ def extract_tiles_hovernet(
         if save_images is not None:
             if dict_types is not None:
                 cell_class = dict_types[cell_line["class"].values[0]]
-                save_dir = save_images + cell_class + "/"
+                save_dir = os.path.join(save_images, cell_class)
             else:
                 save_dir = save_images
 
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
 
-            img_cell.save(save_dir + f"cell{i}.jpg")
+            img_cell.save(os.path.join(save_dir, f"cell{i}.jpg"))
 
         img_tensor = torch.tensor(np.array(img_cell)).permute(2, 0, 1)  # Convert image to tensor (C, H, W)
         image_dict[str(i)] = img_tensor

@@ -23,6 +23,7 @@ from deconvplugin.plots import plot_history
 from deconvplugin.plots import plot_legend
 from deconvplugin.plots import plot_mosaic_cells
 from deconvplugin.plots import plot_pie_chart
+from deconvplugin.plots import plot_predicted_cell_labels_in_spot
 from deconvplugin.postseg import StdVisualizer
 
 
@@ -263,47 +264,22 @@ class PredAnalyzer:
         )
 
     @require_attributes("spot_dict", "image_dict", "image_path", "adata", "adata_name")
-    def plot_predicted_cell_labels_in_spot(self, spot_id=None, display=True):  # dict_cells,
+    def plot_predicted_cell_labels_in_spot(self, spot_id=None, show_labels=True, display=True):  # dict_cells,
         """
         Plot a spot's visualization along with all cell images arranged in a grid, showing predicted labels.
         Combines the spot and the mosaic of cells into a single figure.
         """
 
-        if spot_id is None:
-            spot_id = random.choice(list(self.spot_dict.keys()))
-            print(f"Randomly selected spot_id: {spot_id}")
-
-        elif spot_id not in self.spot_dict:
-            raise ValueError(f"Spot ID {spot_id} not found in spot_dict.")
-
-        # Générer les deux figures (le spot et la mosaïque)
-        plotter = StdVisualizer(self.image_path, self.adata, self.adata_name)
-        fig1 = plotter.plot_specific_spot(spot_id=spot_id, display=False)
-        fig2 = self.plot_mosaic_cells(spot_id=spot_id, display=False)
-
-        img1 = fig_to_array(fig1)
-        img2 = fig_to_array(fig2)
-
-        # Création d'une nouvelle figure pour combiner les deux
-        combined_fig, axs = plt.subplots(1, 2, figsize=(15, 10), gridspec_kw={"width_ratios": [1, 2]})
-
-        # Dessiner la première figure (le spot) dans le premier axe
-        axs[0].imshow(img1)  # Utilise l'image de `fig1`
-        axs[0].axis("off")
-
-        # Dessiner la deuxième figure (mosaïque des cellules) dans le second axe
-        axs[1].imshow(img2)  # Utilise l'image de `fig2`
-        axs[1].axis("off")
-
-        # Ajuster l'agencement de la figure
-        plt.tight_layout()
-
-        # Afficher ou retourner la figure
-        if display:
-            plt.show()
-        else:
-            plt.close(combined_fig)
-            return combined_fig
+        return plot_predicted_cell_labels_in_spot(
+            spot_dict=self.spot_dict,
+            adata=self.adata,
+            adata_name=self.adata_name,
+            image_path=self.image_path,
+            image_dict=self.image_dict,
+            predicted_labels=[None, self.predicted_labels][show_labels],
+            spot_id=spot_id,
+            display=display,
+        )
 
     @require_attributes("spot_dict", "proportions", "image_path", "adata", "adata_name")
     def plot_spot_proportions(self, spot_id=None, draw_seg=False):
@@ -364,7 +340,7 @@ class PredAnalyzer:
         # legend
         ax4 = fig.add_subplot(gs[1, 2])
         ax4.axis("off")
-        plot_legend(ax4, dict_pie_colors)
+        plot_legend(dict_pie_colors, ax4)
         ax4.set_title("Legend")
 
         plt.tight_layout()

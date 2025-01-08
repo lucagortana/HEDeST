@@ -78,6 +78,13 @@ def check_json_classification(dict):
     return True
 
 
+def seg_colors_compatible(seg_dict, color_dict):
+    seg_labels = set(str(cell["type"]) for cell_data in seg_dict["nuc"].values() for cell in [cell_data])
+    color_labels = set(color_dict.keys())
+
+    return (seg_labels - color_labels) == set()
+
+
 def format_time(seconds):
     """Formats time in HH:MM:SS or MM:SS depending on the duration."""
     formatted_time = str(timedelta(seconds=int(seconds)))
