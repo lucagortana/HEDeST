@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import logging
 import os
 import time
+from typing import Optional
 
-import click
 import scanpy as sc
 import torch
+import typer
+from loguru import logger
 
 from deconvplugin.basics import format_time
 from deconvplugin.dataset import pp_prop
@@ -14,82 +15,58 @@ from deconvplugin.modeling.run_model import run_sec_deconv
 from deconvplugin.postseg import extract_tiles_hovernet
 from deconvplugin.postseg import map_cells_to_spots
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+app = typer.Typer()
 
 
-@click.command()
-@click.option("--adata_name", type=str, required=True, help="Name of the sample.")
-@click.option("--json_path", type=str, required=True, help="Path to the post-segmentation file.")
-@click.option("--image_path", type=str, required=True, help="Path to the high-quality WSI directory or image dict.")
-@click.option("--path_st_adata", type=str, required=True, help="Path to the ST anndata object.")
-@click.option("--proportions_file", type=str, required=True, help="Path to the proportions file.")
-@click.option("--mtype", type=str, default="convnet", help="Type of model. Can be 'convnet' or 'resnet18'.")
-@click.option("--batch_size", type=int, default=1, help="Batch size for model training.")
-@click.option("--lr", type=float, default=0.001, help="Learning rate.")
-@click.option("--weights", is_flag=True, default=False, help="If True, the model uses a weighted loss.")
-@click.option(
-    "--agg",
-    type=click.Choice(["proba", "onehot"], case_sensitive=False),
-    default="proba",
-    help="Aggregation of the probability vectors. Can be 'proba' or 'onehot'.",
-)
-@click.option(
-    "--divergence",
-    type=click.Choice(["l1", "l2", "kl", "rot"], case_sensitive=False),
-    default="l1",
-    help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl' or 'rot'.",
-)
-@click.option(
-    "--reduction",
-    type=click.Choice(["mean", "sum"], case_sensitive=False),
-    default="mean",
-    help="Aggregation parameter for loss computation. Can be 'mean' or 'sum'.",
-)
-@click.option("--alpha", type=float, default=0.5, help="Alpha parameter for loss function.")
-@click.option("--epochs", type=int, default=25, help="Number of training epochs.")
-@click.option("--train_size", type=float, default=0.5, help="Training set size as a fraction.")
-@click.option("--val_size", type=float, default=0.25, help="Validation set size as a fraction.")
-@click.option("--out_dir", type=str, default="results", help="Output directory.")
-@click.option("--tb_dir", type=str, default="runs", help="Tensorboard directory.")
-@click.option("--level", type=int, default=0, help="Image extraction level.")
-@click.option("--size_edge", type=int, default=64, help="Edge size of the extracted tiles.")
-@click.option("--dict_types", type=str, default=None, help="Dictionary of cell types to use for extraction.")
-@click.option(
-    "--save_images",
-    type=click.Choice([None, "jpg", "dict", "both"], case_sensitive=False),
-    default=None,
-    help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both.",
-)
-@click.option("--rs", type=int, default=42, help="Random seed")
+@app.command()
 def main(
-    adata_name,
-    json_path,
-    image_path,
-    path_st_adata,
-    proportions_file,
-    mtype,
-    batch_size,
-    lr,
-    weights,
-    agg,
-    divergence,
-    reduction,
-    alpha,
-    epochs,
-    train_size,
-    val_size,
-    out_dir,
-    tb_dir,
-    level,
-    size_edge,
-    dict_types,
-    save_images,
-    rs,
+    adata_name: str = typer.Argument(..., help="Name of the sample."),
+    json_path: str = typer.Argument(..., help="Path to the post-segmentation file."),
+    image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
+    path_st_adata: str = typer.Argument(..., help="Path to the ST anndata object."),
+    proportions_file: str = typer.Argument(..., help="Path to the proportions file."),
+    mtype: str = typer.Option("convnet", help="Type of model. Can be 'convnet' or 'resnet18'."),
+    batch_size: int = typer.Option(1, help="Batch size for model training."),
+    lr: float = typer.Option(0.001, help="Learning rate."),
+    weights: bool = typer.Option(False, help="If True, the model uses a weighted loss."),
+    agg: str = typer.Option("proba", help="Aggregation of the probability vectors. Can be 'proba' or 'onehot'."),
+    divergence: str = typer.Option(
+        "l1", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
+    ),
+    reduction: str = typer.Option("mean", help="Aggregation parameter for loss computation. Can be 'mean' or 'sum'."),
+    alpha: float = typer.Option(0.5, help="Alpha parameter for loss function."),
+    epochs: int = typer.Option(25, help="Number of training epochs."),
+    train_size: float = typer.Option(0.5, help="Training set size as a fraction."),
+    val_size: float = typer.Option(0.25, help="Validation set size as a fraction."),
+    out_dir: str = typer.Option("results", help="Output directory."),
+    tb_dir: str = typer.Option("runs", help="Tensorboard directory."),
+    level: int = typer.Option(0, help="Image extraction level."),
+    size_edge: int = typer.Option(64, help="Edge size of the extracted tiles."),
+    dict_types: Optional[str] = typer.Option(None, help="Dictionary of cell types to use for extraction."),
+    save_images: Optional[str] = typer.Option(
+        None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both."
+    ),
+    rs: int = typer.Option(42, help="Random seed"),
 ):
+
+    # Validate inputs
+    valid_agg = {"proba", "onehot"}
+    valid_divergence = {"l1", "l2", "kl", "rot"}
+    valid_mtype = {"convnet", "resnet18"}
+    valid_reduction = {"mean", "sum"}
+
+    if agg not in valid_agg:
+        raise ValueError(f"Invalid value for 'agg': {agg}. Must be one of {valid_agg}.")
+    if divergence not in valid_divergence:
+        raise ValueError(f"Invalid value for 'divergence': {divergence}. Must be one of {valid_divergence}.")
+    if mtype not in valid_mtype:
+        raise ValueError(f"Invalid value for 'mtype': {mtype}. Must be one of {valid_mtype}.")
+    if reduction not in valid_reduction:
+        raise ValueError(f"Invalid value for 'reduction': {reduction}. Must be one of {valid_reduction}.")
+
     MAIN_START = time.time()
 
+    # Extract and load data
     size = (size_edge, size_edge)
 
     if not os.path.exists(out_dir):
@@ -128,8 +105,8 @@ def main(
             logger.info("-> Image extraction completed successfully.")
 
         except Exception as e:
-            logger.exception("Failed to extract images. Please check the image format and file paths.")
             raise ValueError(
+                "Failed to extract images. Please check the image format and file paths.\n"
                 "If it's an image dictionary, it must be in .pt format.\n"
                 "If it's a Whole-Slide Image, it must be in one of the following formats:\n"
                 ".tif, .tiff, .svs, .dcm, or .ndpi."
@@ -147,6 +124,7 @@ def main(
     logger.info("-> Mapping cells to the closest spot...")
     spot_dict_global = map_cells_to_spots(adata, adata_name, json_path, only_in=False)
 
+    # Recap variables
     logger.info("=" * 50)
     logger.info("RUNNING SECONDARY DECONVOLUTION")
     logger.info("Parameters:")
@@ -166,6 +144,7 @@ def main(
     logger.info(f"Random state: {rs}")
     logger.info("=" * 50)
 
+    # Run secondary deconvolution
     run_sec_deconv(
         image_dict,
         spot_dict,
@@ -191,4 +170,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    app()

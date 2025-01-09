@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 import os
 import pickle
 import time
 
 import pandas as pd
 import torch
+from loguru import logger
 from torch import optim
 
 from deconvplugin.analysis import PredAnalyzer
@@ -18,12 +18,6 @@ from deconvplugin.modeling.bayes_adjust import BayesianAdjustment
 from deconvplugin.modeling.cell_classifier import CellClassifier
 from deconvplugin.modeling.predict import predict_slide
 from deconvplugin.modeling.trainer import ModelTrainer
-
-# from module.cell_classifier import CellClassifier
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 # def run_pri_deconv()
 

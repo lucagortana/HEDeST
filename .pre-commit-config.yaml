@@ -27,4 +27,4 @@ repos:
     -   id: mypy
         additional_dependencies: [types-pyyaml]
         exclude: ^testing/resources/
-exclude: 'hovernet/.*'
+exclude: 'hovernet/.*|deconvplugin/__init__.py'

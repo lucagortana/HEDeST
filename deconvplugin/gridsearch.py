@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import argparse
 import itertools
-import logging
 import os
 import pickle
 import subprocess
 
 import pandas as pd
+from loguru import logger
 
 from deconvplugin.analysis import PredAnalyzer
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 # Hyperparameters to test
 alphas = [0, 0.0001, 0.001]

@@ -6,3 +6,4 @@ deconvplugin/run_job3.sh
 deconvplugin/run_job4.sh
 deconvplugin/run_job5.sh
 models
+out

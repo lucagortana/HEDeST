@@ -16,7 +16,6 @@ import openslide
 import pandas as pd
 import plotly.graph_objects as go
 import torch
-from misc.wsi_handler import get_file_handler
 from PIL import Image
 from plotly.subplots import make_subplots
 from scipy.spatial import KDTree
@@ -25,6 +24,7 @@ from tqdm import tqdm
 from deconvplugin.basics import check_json_classification
 from deconvplugin.basics import remove_empty_keys
 from deconvplugin.basics import seg_colors_compatible
+from hovernet.misc.wsi_handler import get_file_handler
 
 
 class SlideVisualizer(ABC):

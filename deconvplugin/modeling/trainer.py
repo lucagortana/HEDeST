@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import logging
 import os
 import random
 
 import torch
+from loguru import logger
 from torch.utils.tensorboard import SummaryWriter
 
 from deconvplugin.basics import set_seed
 from deconvplugin.modeling.predict import predict_slide
 from deconvplugin.plots import plot_grid_celltype
 from deconvplugin.plots import plot_history
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 
 class ModelTrainer:
@@ -88,7 +84,7 @@ class ModelTrainer:
         Sets up the device for training.
         """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logging.info(f"Device used: {self.device}")
+        logger.info(f"Device used: {self.device}")
 
     def prepare_training(self):
         """
@@ -141,7 +137,7 @@ class ModelTrainer:
 
             val_loss, val_loss_half1, val_loss_half2 = self.evaluate(self.val_loader)
 
-            logging.info(
+            logger.info(
                 f"Epoch {epoch + 1}/{self.num_epochs}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}"
             )
 
@@ -188,7 +184,7 @@ class ModelTrainer:
                 self.best_val_loss = val_loss
                 self.best_model_state = self.model.state_dict()
                 torch.save(self.best_model_state, self.best_model_path)
-                logging.info(
+                logger.info(
                     f"-> Validation loss improved. Saving best model at {self.best_model_path} (epoch {epoch + 1})."
                 )
 
@@ -198,11 +194,11 @@ class ModelTrainer:
         if self.best_val_loss != val_loss:
             # Save the final model at the end of training
             torch.save(self.model.state_dict(), self.final_model_path)
-            logging.info(f"Best model and final model are different. Final model saved at {self.final_model_path}.")
+            logger.info(f"Best model and final model are different. Final model saved at {self.final_model_path}.")
         else:
-            logging.info("Best model and final model are the same.")
+            logger.info("Best model and final model are the same.")
 
-        logging.info("Training complete. Evaluating on test set...")
+        logger.info("Training complete. Evaluating on test set...")
         self.test()
 
     def evaluate(self, dataloader):
@@ -242,10 +238,10 @@ class ModelTrainer:
 
         # Evaluate the final model
         final_test_loss, _, _ = self.evaluate(self.test_loader)
-        logging.info(f"Test Loss on final model: {final_test_loss:.4f}")
+        logger.info(f"Test Loss on final model: {final_test_loss:.4f}")
 
         # Load and evaluate the best model
-        logging.info("Loading best model for final test evaluation...")
+        logger.info("Loading best model for final test evaluation...")
         best_model = type(self.model)(
             size_edge=self.model.size_edge,
             num_classes=self.model.num_classes,
@@ -257,7 +253,7 @@ class ModelTrainer:
         self.model = best_model
 
         test_loss_best, _, _ = self.evaluate(self.test_loader)
-        logging.info(f"Test Loss on best model: {test_loss_best:.4f}")
+        logger.info(f"Test Loss on best model: {test_loss_best:.4f}")
 
     def save_history(self):
 
@@ -267,7 +263,7 @@ class ModelTrainer:
             history_val=self.history_val,
             savefig=history_filedir,
         )
-        logging.info(f"History saved at {history_filedir}")
+        logger.info(f"History saved at {history_filedir}")
 
     def _extract_images_for_tb(self, dataloader, n):
         global_dict = {}
