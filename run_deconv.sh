@@ -23,7 +23,7 @@ for divergence in "${divergence_options[@]}"; do
   for reduction in "${reduction_options[@]}"; do
     for alpha in "${alpha_values[@]}"; do
 
-      out_dir="../out/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
+      out_dir="../models/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
 
       python3 -u deconvplugin/run.py \
         --adata_name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
