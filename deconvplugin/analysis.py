@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import pickle
 import random
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Set
+from typing import Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -28,6 +33,10 @@ from deconvplugin.postseg import StdVisualizer
 
 
 class PredAnalyzer:
+    """
+    A class to analyze predictions made by a cell classifier.
+    """
+
     EXPECTED_VARIABLES = {
         "mtype",
         "spot_dict",
@@ -41,40 +50,42 @@ class PredAnalyzer:
         "seg_dict",
     }
 
-    def __init__(self, model_state="best", adjusted=False, model_info=None, **kwargs):
+    def __init__(
+        self, model_state: str = "best", adjusted: bool = False, model_info: Optional[Union[dict, str]] = None, **kwargs
+    ):
         """
-        Initialize PredAnalyzer with variables from:
-        - A dictionary.
-        - A pickle file path.
-        - A binary pickle object.
-        - Direct keyword arguments.
+        Initialize PredAnalyzer with variables from a dictionary or a pickle file containing model informations
+        and predictions. All variables can be None, except for 'preds' which must be provided. You can add more
+        attributes dynamically using the `add_attributes` method.
 
         Args:
-            info (dict, str, or None): Either:
+            model_state (str): Model state to use, either "best" or "final".
+            adjusted (bool): Whether to use adjusted predictions.
+            model_info (Optional[Union[dict, str]]): Model information provided as:
                 - A dictionary with variable data.
                 - A path to a pickle file.
-                - A binary pickle object.
-            **kwargs: Directly specified variables (override info values if provided).
+            **kwargs: Additional variables to add dynamically.
         """
+
         self.seg_dict_w_class = None
         self.model_state = model_state
         self.adjusted = adjusted
-        self.info = {}
+        self.model_info = {}
 
         # Load data from pickle if provided
         if model_info:
             if isinstance(model_info, dict):
-                self.info = model_info
+                self.model_info = model_info
             elif isinstance(model_info, str):
                 with open(model_info, "rb") as file:
-                    self.info = pickle.load(file)
+                    self.model_info = pickle.load(file)
             else:
-                self.info = pickle.load(model_info)
+                raise ValueError("Invalid model_info type. Must be a dictionary or a path to a pickle file.")
 
         # Update with kwargs
-        self.info.update(kwargs)
+        self.model_info.update(kwargs)
 
-        unexpected_variables = set(self.info.keys()) - self.EXPECTED_VARIABLES
+        unexpected_variables = set(self.model_info.keys()) - self.EXPECTED_VARIABLES
         if unexpected_variables:
             raise ValueError(
                 f"Unexpected keys: {unexpected_variables}. " f"Expected keys are: {self.EXPECTED_VARIABLES}"
@@ -82,7 +93,7 @@ class PredAnalyzer:
 
         # Attribuer dynamiquement les valeurs
         for key in self.EXPECTED_VARIABLES:
-            setattr(self, key, self.info.get(key, None))
+            setattr(self, key, self.model_info.get(key, None))
 
         assert self.preds is not None, "The 'preds' attribute must be provided and cannot be None."
 
@@ -126,26 +137,39 @@ class PredAnalyzer:
             print("Warning : No segmentation provided. You won't be able to plot the segmentation.")
             print("Use `add_attributes(seg_dict=your_seg_dict)` to add one.")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the PredAnalyzer instance.
+
+        Returns:
+            str: A string containing all expected attributes and their values.
+        """
+
         attrs = ", ".join(f"{k}={getattr(self, k, None)}" for k in self.EXPECTED_VARIABLES)
         return f"PredAnalyzer({attrs})"
 
     @classmethod
-    def expected_variables(cls):
-        """Retourne les clés attendues."""
+    def expected_variables(cls) -> Set[str]:
+        """
+        Get the set of expected variable keys.
+
+        Returns:
+            Set[str]: Expected variable keys.
+        """
+
         return cls.EXPECTED_VARIABLES
 
-    def add_attributes(self, **kwargs):
+    def add_attributes(self, **kwargs) -> None:
         """
-        Ajoute dynamiquement des attributs à l'instance uniquement si
-        ces attributs sont dans expected_variables.
+        Dynamically add attributes to the instance if they are in EXPECTED_VARIABLES.
 
         Args:
-            **kwargs: Noms et valeurs des attributs à ajouter.
+            **kwargs: Attribute names and values to add.
 
-        Raise:
-            ValueError: Si une clé ne figure pas dans expected_variables.
+        Raises:
+            ValueError: If any key is not in EXPECTED_VARIABLES.
         """
+
         for key, value in kwargs.items():
             if key not in self.EXPECTED_VARIABLES:
                 raise ValueError(
@@ -161,22 +185,30 @@ class PredAnalyzer:
 
             setattr(self, key, value)
 
-    def list_attributes(self):
+    def list_attributes(self) -> Dict[str, Any]:
         """
-        Retourne tous les attributs actuels de l'instance.
-        """
-        return {key: getattr(self, key, None) for key in self.EXPECTED_VARIABLES}
-
-    def extract_stats(self, metric="predicted"):
-        """
-        Extrait des statistiques sur les prédictions à partir d'un DataFrame de probabilités.
-
-        Args:
-            Tout refaire
+        Return all current attributes of the instance.
 
         Returns:
-            pd.DataFrame: DataFrame avec les statistiques pour chaque classe.
+            Dict[str, Any]: Dictionary of current attributes.
         """
+
+        return {key: getattr(self, key, None) for key in self.EXPECTED_VARIABLES}
+
+    def extract_stats(self, metric: str = "predicted") -> pd.DataFrame:
+        """
+        Extract statistics from predictions.
+
+        Args:
+            metric (str): Metric to use, either "predicted" or "all".
+
+        Returns:
+            pd.DataFrame: DataFrame containing class-wise statistics.
+
+        Raises:
+            ValueError: If an invalid metric is specified.
+        """
+
         stats = {}
         ct_list = list(self.predictions.columns)
 
@@ -238,20 +270,47 @@ class PredAnalyzer:
 
         return df_stats
 
-    def plot_history(self, show=False, savefig=None):
+    def plot_history(self, show: bool = False, savefig: Optional[str] = None) -> None:
+        """
+        Plot training and validation history.
+
+        Args:
+            show (bool): Whether to display the plot.
+            savefig (Optional[str]): File path to save the plot.
+        """
+
         return plot_history(self.history_train, self.history_val, show=show, savefig=savefig)
 
-    def find_cell_max_cell_type(self, cell_type):
+    def find_cell_max_cell_type(self, cell_type: str) -> str:
+        """
+        Find the cell ID with the highest probability for a given cell type.
+
+        Args:
+            cell_type (str): Target cell type.
+
+        Returns:
+            str: Cell ID with the highest probability.
+
+        Raises:
+            ValueError: If the cell type is not found in the predictions.
+        """
+
         if cell_type not in self.ct_list:
             raise ValueError(f"Cell type '{cell_type}' not found in the prediction DataFrame.")
         max_cell_id = self.predictions[cell_type].idxmax()
         return max_cell_id
 
     @require_attributes("spot_dict", "image_dict")
-    def plot_mosaic_cells(self, spot_id=None, num_cols=8, display=True):
+    def plot_mosaic_cells(
+        self, spot_id: Optional[str] = None, num_cols: int = 8, display: bool = True
+    ) -> Optional[plt.Figure]:
         """
-        Plots a grid of individual cell images for a given spot_id along with their predicted labels if provided.
-        If labels_pred is None, no title is added to the cell images.
+        Plot a grid of individual cell images for a given spot ID.
+
+        Args:
+            spot_id (Optional[str]): Spot ID to plot. If None, spot ID will be random.
+            num_cols (int): Number of columns in the grid.
+            display (bool): Whether to display the plot.
         """
 
         return plot_mosaic_cells(
@@ -264,10 +323,16 @@ class PredAnalyzer:
         )
 
     @require_attributes("spot_dict", "image_dict", "image_path", "adata", "adata_name")
-    def plot_predicted_cell_labels_in_spot(self, spot_id=None, show_labels=True, display=True):  # dict_cells,
+    def plot_predicted_cell_labels_in_spot(
+        self, spot_id: Optional[str] = None, show_labels: bool = True, display: bool = True
+    ) -> Optional[plt.Figure]:
         """
-        Plot a spot's visualization along with all cell images arranged in a grid, showing predicted labels.
-        Combines the spot and the mosaic of cells into a single figure.
+        Plot a spot's visualization with all cell images arranged in a grid.
+
+        Args:
+            spot_id (Optional[str]): Spot ID to plot. If None, spot ID will be random.
+            show_labels (bool): Whether to show predicted labels.
+            display (bool): Whether to display the plot.
         """
 
         return plot_predicted_cell_labels_in_spot(
@@ -282,7 +347,15 @@ class PredAnalyzer:
         )
 
     @require_attributes("spot_dict", "proportions", "image_path", "adata", "adata_name")
-    def plot_spot_proportions(self, spot_id=None, draw_seg=False):
+    def plot_spot_proportions(self, spot_id: Optional[str] = None, draw_seg: bool = False) -> None:
+        """
+        Plot true and predicted cell type proportions for a given spot.
+
+        Args:
+            spot_id (Optional[str]): Spot ID to plot. If None, selects a random spot.
+            draw_seg (bool): Whether to draw segmentation overlays.
+        """
+
         if draw_seg:
             if self.seg_dict_w_class is None:
                 raise ValueError("You must run `generate_dicts_viz_pred` before to be able to plot segmentation.")
@@ -315,12 +388,12 @@ class PredAnalyzer:
 
         list_cells = self.spot_dict[spot_id]
 
-        dict_pie_colors = generate_color_dict(self.ct_list, format="classic")
+        pie_color_dict = generate_color_dict(self.ct_list, format="classic")
 
         # mean predicted probabilities
         ax1 = fig.add_subplot(gs[0, 1])
         mean_prob_ct = self.predictions[self.predictions.index.isin(list_cells)].mean(axis=0)
-        plot_pie_chart(ax1, mean_prob_ct, dict_colors=dict_pie_colors)
+        plot_pie_chart(ax1, mean_prob_ct, color_dict=pie_color_dict)
         ax1.set_title("Mean Predicted Probabilities")
 
         # predicted cell type proportions
@@ -328,35 +401,31 @@ class PredAnalyzer:
         prop_ct = self.predictions[self.predictions.index.isin(list_cells)].idxmax(axis=1).value_counts() / len(
             list_cells
         )
-        plot_pie_chart(ax2, prop_ct, dict_colors=dict_pie_colors)
+        plot_pie_chart(ax2, prop_ct, color_dict=pie_color_dict)
         ax2.set_title("Predicted Cell Type Proportions")
 
         # true cell type proportions
         ax3 = fig.add_subplot(gs[1, 1])
         true_prop = self.proportions.loc[spot_id]
-        plot_pie_chart(ax3, true_prop, dict_colors=dict_pie_colors)
+        plot_pie_chart(ax3, true_prop, color_dict=pie_color_dict)
         ax3.set_title("True Cell Type Proportions")
 
         # legend
         ax4 = fig.add_subplot(gs[1, 2])
         ax4.axis("off")
-        plot_legend(dict_pie_colors, ax4)
+        plot_legend(pie_color_dict, ax4)
         ax4.set_title("Legend")
 
         plt.tight_layout()
         plt.show()
 
     @require_attributes("proportions", "spot_dict")
-    def evaluate_spot_predictions(self):
+    def evaluate_spot_predictions(self) -> Dict[str, float]:
         """
-        Compare the true and predicted proportions using multiple metrics.
-
-        Parameters:
-        - true_proportions (pd.DataFrame): DataFrame with true proportions per spot.
-        - predicted_proportions (pd.DataFrame): DataFrame with predicted proportions per spot.
+        Evaluate spot-level predictions using various metrics.
 
         Returns:
-        - dict: A dictionary with the calculated metrics.
+            Dict[str, float]: A dictionary of computed metrics.
         """
 
         predicted_proportions = self.get_predicted_proportions()
@@ -432,21 +501,21 @@ class PredAnalyzer:
         return metrics
 
     @require_attributes("image_dict")
-    def plot_grid_celltype(self, cell_type, n=20, selection="random", show_probs=True, display=False):
+    def plot_grid_celltype(
+        self, cell_type: str, n: int = 20, selection: str = "random", show_probs: bool = True, display: bool = False
+    ) -> Optional[plt.Figure]:
         """
-        Plots a grid with `n` images of cells predicted as a specific cell type, with optional probability labels.
+        Plot a grid of cell images predicted as a specific cell type.
 
         Args:
-            cell_images (dict): A dictionary where each key is a cell ID and each value is a tensor of a cell image.
-            predicted_labels_df (DataFrame): A DataFrame of predicted probabilities for each cell type.
-            cell_type (str): The cell type to filter images by (e.g., "fibroblast").
-            n (int): The number of images to display in the grid.
-            selection (str): The selection mode - "max" for top probabilities or "random" for random sampling.
-            show_probs (bool): Whether to show the probability on top of each image.
-            display (bool): Whether to display the plot directly.
+            cell_type (str): Target cell type to display.
+            n (int): Number of images to include in the grid.
+            selection (str): Selection mode ("max" or "random").
+            show_probs (bool): Whether to show probability labels.
+            display (bool): Whether to display the plot.
 
         Returns:
-            fig: A matplotlib figure containing the grid.
+            Optional[plt.Figure]: The generated matplotlib figure.
         """
 
         return plot_grid_celltype(
@@ -460,9 +529,12 @@ class PredAnalyzer:
         )
 
     @require_attributes("spot_dict")
-    def get_predicted_proportions(self):
+    def get_predicted_proportions(self) -> pd.DataFrame:
         """
-        Get the predicted proportions of cell types for each spot in the dataset.
+        Compute predicted proportions of cell types for each spot.
+
+        Returns:
+            pd.DataFrame: DataFrame with predicted proportions per spot.
         """
 
         cell_to_spot = {cell: spot for spot, cells in self.spot_dict.items() for cell in cells}
@@ -474,7 +546,14 @@ class PredAnalyzer:
 
         return proportion_df
 
-    def _get_labels_slide(self):
+    def _get_labels_slide(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Generate a dictionary mapping cell IDs to predicted labels.
+
+        Returns:
+            Dict[str, Dict[str, Any]]: Mapping of cell IDs to predicted labels.
+        """
+
         predicted_classes = self.predictions.idxmax(axis=1)
 
         predicted_class_indices = predicted_classes.map(self.predictions.columns.get_loc)
@@ -486,16 +565,13 @@ class PredAnalyzer:
 
         return predicted_labels
 
-    def _generate_dicts_viz_pred(self, seg_dict):
+    def _generate_dicts_viz_pred(self, seg_dict: Dict[str, Any]) -> None:
         """
-        Updates the nuclear dictionary with the predicted classes.
+        Update the segmentation dictionary with predicted classes.
+
+        Args:
+            seg_dict (Dict[str, Any]): Dictionary containing segmentation data.
         """
-
-        # self.seg_dict_w_class = deepcopy(seg_dict)
-
-        # for i, (key, _) in enumerate(self.seg_dict_w_class["nuc"].items()):
-        #     if str(i) in self.predicted_labels:
-        #         self.seg_dict_w_class["nuc"][key]["type"] = self.predicted_labels[str(i)]["predicted_class"]
 
         self.seg_dict_w_class = {
             "nuc": {

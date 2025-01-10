@@ -1,9 +1,28 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 
 
-def weighted_l1_loss(input, target, weights, reduction="mean"):
+def weighted_l1_loss(
+    input: torch.Tensor, target: torch.Tensor, weights: torch.Tensor, reduction: str = "mean"
+) -> torch.Tensor:
+    """
+    Computes the weighted L1 loss between input and target tensors.
+
+    Args:
+        input (torch.Tensor): The predicted values.
+        target (torch.Tensor): The ground truth values.
+        weights (torch.Tensor): Per-element weights for the loss.
+        reduction (str): Specifies the reduction to apply to the output.
+                         Options are 'mean' (default) or 'sum'.
+
+    Returns:
+        torch.Tensor: The computed weighted L1 loss. If `reduction` is 'mean', returns the mean loss;
+                      if 'sum', returns the sum of the losses.
+    """
+
     loss = weights * torch.abs(input - target)
 
     if reduction == "mean":
@@ -14,7 +33,24 @@ def weighted_l1_loss(input, target, weights, reduction="mean"):
         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
 
 
-def weighted_l2_loss(input, target, weights, reduction="mean"):
+def weighted_l2_loss(
+    input: torch.Tensor, target: torch.Tensor, weights: torch.Tensor, reduction: str = "mean"
+) -> torch.Tensor:
+    """
+    Computes the weighted L2 loss between input and target tensors.
+
+    Args:
+        input (torch.Tensor): The predicted values.
+        target (torch.Tensor): The ground truth values.
+        weights (torch.Tensor): Per-element weights for the loss.
+        reduction (str): Specifies the reduction to apply to the output.
+                         Options are 'mean' (default) or 'sum'.
+
+    Returns:
+        torch.Tensor: The computed weighted L2 loss. If `reduction` is 'mean', returns the mean loss;
+                      if 'sum', returns the sum of the losses.
+    """
+
     loss = weights * (input - target) ** 2
 
     if reduction == "mean":
@@ -25,7 +61,24 @@ def weighted_l2_loss(input, target, weights, reduction="mean"):
         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
 
 
-def weighted_kl_divergence(p, q, weights, reduction="mean"):
+def weighted_kl_divergence(
+    p: torch.Tensor, q: torch.Tensor, weights: torch.Tensor, reduction: str = "mean"
+) -> torch.Tensor:
+    """
+    Computes the weighted Kullback-Leibler divergence between two distributions.
+
+    Args:
+        p (torch.Tensor): The true probability distribution (must be positive).
+        q (torch.Tensor): The predicted probability distribution (must be positive).
+        weights (torch.Tensor): Per-element weights for the divergence.
+        reduction (str): Specifies the reduction to apply to the output.
+                         Options are 'mean' (default) or 'sum'.
+
+    Returns:
+        torch.Tensor: The computed weighted KL divergence. If `reduction` is 'mean', returns the mean loss;
+                      if 'sum', returns the sum of the losses.
+    """
+
     p = p.clamp(min=1e-10)
     q = q.clamp(min=1e-10)
 
@@ -40,24 +93,46 @@ def weighted_kl_divergence(p, q, weights, reduction="mean"):
         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
 
 
-def shannon_entropy(U):
+def shannon_entropy(U: torch.Tensor) -> torch.Tensor:
+    """
+    Computes the Shannon entropy of a probability distribution.
+
+    Args:
+        U (torch.Tensor): A probability distribution tensor.
+
+    Returns:
+        torch.Tensor: The Shannon entropy of the input distribution.
+    """
+
     return -(U * torch.log(U + 1e-12)).sum()
 
 
-def ROT(F, z, alpha=0.5, epsilon=1, n_iter=75, weights=None):
+def ROT(
+    F: torch.Tensor,
+    z: torch.Tensor,
+    alpha: float = 0.5,
+    epsilon: float = 1.0,
+    n_iter: int = 75,
+    weights: Optional[torch.Tensor] = None,
+) -> tuple:
     """
-    Compute a differentiable approximation to f_relax-ent using Algorithm 1.
+    Computes the Relaxed Optimal Transport (ROT) loss.
 
     Args:
-        F (torch.Tensor): Tensor of shape (n, k) representing the predicted probability distributions.
-        z (torch.Tensor): Tensor of shape (k,) representing the target distribution.
-        alpha (float): Smoothing parameter in [0, 1].
-        epsilon (float): Entropy parameter, must be > 0.
-        n_iter (int): Number of Sinkhorn iterations.
+        F (torch.Tensor): Input matrix of size (n, n).
+        z (torch.Tensor): Target distribution of size (n,).
+        alpha (float): Weight for the entropy loss term (default: 0.5).
+        epsilon (float): Regularization parameter (default: 1.0).
+        n_iter (int): Number of Sinkhorn iterations (default: 75).
+        weights (torch.Tensor, optional): Optional weights for KL divergence computation.
 
     Returns:
-        torch.Tensor: The differentiable approximation to f_relax-ent(F, z).
+        tuple: A tuple containing:
+               - loss (torch.Tensor): The total ROT loss.
+               - entropy_loss (torch.Tensor): The entropy-based loss component.
+               - kld (torch.Tensor): The KL divergence loss component.
     """
+
     n, _ = F.shape
     # Step 1: Initialize variables
     K = F.pow(1 / epsilon)

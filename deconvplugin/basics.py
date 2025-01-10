@@ -3,11 +3,18 @@ from __future__ import annotations
 import io
 import random
 from datetime import timedelta
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 from PIL import Image
 
 from deconvplugin.modeling.cell_classifier import CellClassifier
@@ -30,26 +37,27 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def load_model(model_path: str, size_edge: int, num_classes: int, mtype: str) -> CellClassifier:
+def load_model(model_path: str, edge_size: int, num_classes: int, mtype: str) -> CellClassifier:
     """
-    Loads a trained model from a file.
+    Load a trained model from a file.
 
     Parameters:
-    - model_path (str): The path to the model file.
-    - size_edge (int): The size of the image edge.
-    - num_classes (int): The number of classes.
+        model_path (str): Path to the model file.
+        edge_size (int): Size of the image edge.
+        num_classes (int): Number of classes in the model.
+        mtype (str): Model type.
 
     Returns:
-    - model (CellClassifier): The trained model.
+        CellClassifier: The loaded model.
 
     Example:
-    >>> model = load_model("results/model.pth")
+        >>> model = load_model("model.pth", 128, 10, "resnet")
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device found to load the model : ", device)
 
-    model = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
+    model = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
 
     model.load_state_dict(torch.load(model_path, map_location=device))
 
@@ -59,10 +67,17 @@ def load_model(model_path: str, size_edge: int, num_classes: int, mtype: str) ->
     return model
 
 
-def fig_to_array(fig):
+def fig_to_array(fig: Figure) -> np.ndarray:
     """
-    Convert a Matplotlib figure to a NumPy array (image array) that can be displayed using imshow.
+    Convert a Matplotlib figure to a NumPy array.
+
+    Parameters:
+        fig (Figure): A Matplotlib figure.
+
+    Returns:
+        np.ndarray: An image array.
     """
+
     buf = io.BytesIO()
     canvas = FigureCanvas(fig)
     canvas.print_png(buf)
@@ -71,65 +86,123 @@ def fig_to_array(fig):
     return np.array(img)
 
 
-def check_json_classification(dict):
-    first_key = next(iter(dict["nuc"]))
-    if dict["nuc"][first_key]["type"] is None:
-        return False
-    return True
+def check_json_classification(data: Dict[str, Dict[str, Dict[str, Optional[str]]]]) -> bool:
+    """
+    Check if all cells in the JSON classification data have a non-None type.
+
+    Parameters:
+        data (Dict): A nested dictionary containing classification data.
+
+    Returns:
+        bool: True if all cells have types, False otherwise.
+    """
+
+    first_key = next(iter(data["nuc"]))
+    return data["nuc"][first_key]["type"] is not None
 
 
-def seg_colors_compatible(seg_dict, color_dict):
+def seg_colors_compatible(
+    seg_dict: Dict[str, Dict[str, Dict[str, Union[str, int]]]], color_dict: Dict[str, Tuple[str, Tuple[int, int, int]]]
+) -> bool:
+    """
+    Check if segmentation labels are compatible with color dictionary.
+
+    Parameters:
+        seg_dict (Dict): Segmentation data dictionary.
+        color_dict (Dict): Color dictionary.
+
+    Returns:
+        bool: True if all segmentation labels have corresponding colors, False otherwise.
+    """
+
     seg_labels = set(str(cell["type"]) for cell_data in seg_dict["nuc"].values() for cell in [cell_data])
     color_labels = set(color_dict.keys())
 
     return (seg_labels - color_labels) == set()
 
 
-def format_time(seconds):
-    """Formats time in HH:MM:SS or MM:SS depending on the duration."""
+def format_time(seconds: int) -> str:
+    """
+    Format time duration in HH:MM:SS or MM:SS format.
+
+    Parameters:
+        seconds (int): Time duration in seconds.
+
+    Returns:
+        str: Formatted time string.
+    """
+
     formatted_time = str(timedelta(seconds=int(seconds)))
     if seconds < 3600:
         formatted_time = formatted_time[2:]
     return formatted_time
 
 
-def revert_dict(dict):
+def revert_dict(data: Dict[str, List[str]]) -> Dict[str, str]:
+    """
+    Revert a dictionary with lists as values to a dictionary mapping values to keys.
+
+    Parameters:
+        data (Dict): Input dictionary.
+
+    Returns:
+        Dict: Reverted dictionary.
+    """
+
     return {val: key for key, values in dict.items() for val in values}
 
 
-def remove_empty_keys(dict):
+def remove_empty_keys(data: Dict[str, List]) -> Dict[str, List]:
+    """
+    Remove keys with empty lists from a dictionary.
+
+    Parameters:
+        data (Dict): Input dictionary.
+
+    Returns:
+        Dict: Dictionary without empty keys.
+    """
+
     empty_keys = []
-    for key, value in dict.items():
+    for key, value in data.items():
         if value == []:
             empty_keys.append(key)
 
     for element in empty_keys:
-        del dict[element]
+        del data[element]
 
-    return dict
+    return data
 
 
-def generate_color_dict(list, palette="tab20", format="pie", n_max=40):
+def generate_color_dict(
+    labels: List[str], palette: str = "tab20", format: str = "classic", n_max: int = 40
+) -> Dict[str, Union[Tuple, Tuple[str, List[int]]]]:
     """
-    Generate a dictionary of colors for each class in the list.
-    Format can be either "classic" or "special".
-    'classic' will generate a dictionary with the class name as key and the color as value.
-    'special' will generate a dictionary with the class index as key and the doulbet [class_name, color] as value.
+    Generate a dictionary of colors for labels.
+
+    Parameters:
+        labels (List): List of class labels.
+        palette (str): Matplotlib color palette.
+        format (str): Output format - "classic" or "special".
+        n_max (int): Maximum number of unique colors.
+
+    Returns:
+        Dict: Color dictionary.
     """
 
-    if len(list) > n_max:
+    if len(labels) > n_max:
         print("Warning: The number of classes is greater than the maximum number of colors available in the palette.")
         print("The colors will be repeated.")
 
-    num_classes = len(list)
+    num_classes = len(labels)
     cmap = plt.get_cmap(palette)
 
     if format == "classic":
-        return {list[i]: cmap(i % n_max) for i in range(num_classes)}
+        return {labels[i]: cmap(i % n_max) for i in range(num_classes)}
 
     elif format == "special":
         color_dict = {}
-        for i, class_name in enumerate(list):
+        for i, class_name in enumerate(labels):
             color = cmap(i % n_max)
             color = [int(255 * c) for c in color]
             color_dict[str(i)] = [class_name, color]
@@ -140,15 +213,15 @@ def generate_color_dict(list, palette="tab20", format="pie", n_max=40):
         raise ValueError("Format must be either 'classic' or 'special'.")
 
 
-def require_attributes(*required_attributes):
+def require_attributes(*required_attributes: str) -> Callable:
     """
-    Décorateur pour vérifier que certains attributs de l'instance ne sont pas None.
+    Decorator to ensure required attributes of a class are not None.
 
-    Args:
-        *required_attributes (str): Liste des noms d'attributs à vérifier.
+    Parameters:
+        *required_attributes (str): Names of required attributes.
 
-    Raises:
-        ValueError: Si un ou plusieurs attributs sont None.
+    Returns:
+        Callable: Decorated function.
     """
 
     def decorator(func):

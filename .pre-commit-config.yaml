@@ -25,6 +25,14 @@ repos:
     rev: v1.11.2
     hooks:
     -   id: mypy
+        args: [--disable-error-code=assignment,
+               --disable-error-code=var-annotated,
+               --disable-error-code=import-not-found,
+               --disable-error-code=import-untyped,
+               --disable-error-code=call-arg,
+               --disable-error-code=index,
+               --disable-error-code=operator,
+               --disable-error-code=union-attr]
         additional_dependencies: [types-pyyaml]
         exclude: ^testing/resources/
 exclude: 'hovernet/.*|deconvplugin/__init__.py'

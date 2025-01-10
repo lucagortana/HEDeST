@@ -5,6 +5,11 @@ import itertools
 import os
 import pickle
 import subprocess
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import pandas as pd
 from loguru import logger
@@ -17,21 +22,31 @@ learning_rates = [1e-4, 1e-3]
 weights_options = [True, False]
 seeds = [42, 43]
 
-output_dir = "../out/new"
+out_dir = "../out/new"
 
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 
-def run_experiment(alpha, lr, weights, divergence, seed):
+def run_experiment(alpha: float, lr: float, weights: bool, divergence: str, seed: int) -> None:
+    """
+    Run an experiment with the specified parameters.
+
+    Args:
+        alpha (float): Regularization parameter for the model.
+        lr (float): Learning rate for training.
+        weights (bool): Whether to use weighted loss during training.
+        divergence (str): Divergence metric to use.
+        seed (int): Random seed for reproducibility.
+    """
 
     config_out_dir = os.path.join(
-        output_dir, f"alpha_{alpha}_lr_{lr}_weights_{weights}_divergence_{divergence}_seed_{seed}"
+        out_dir, f"alpha_{alpha}_lr_{lr}_weights_{weights}_divergence_{divergence}_seed_{seed}"
     )
     os.makedirs(config_out_dir, exist_ok=True)
 
-    proportions_file1 = "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma"
-    proportions_file2 = "/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv"
+    spot_prop_file1 = "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma"
+    spot_prop_file2 = "/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv"
 
     args = [
         "python3",
@@ -44,8 +59,8 @@ def run_experiment(alpha, lr, weights, divergence, seed):
         "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/image_dict_64.pt",
         "--path_st_adata",
         "/cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/",
-        "--proportions_file",
-        proportions_file1 + proportions_file2,
+        "--spot_prop_file",
+        spot_prop_file1 + spot_prop_file2,
         "--batch_size",
         "1",
         "--lr",
@@ -68,7 +83,7 @@ def run_experiment(alpha, lr, weights, divergence, seed):
         config_out_dir,
         "--level",
         "0",
-        "--size_edge",
+        "--edge_size",
         "64",
         "--rs",
         f"{seed}",
@@ -80,15 +95,44 @@ def run_experiment(alpha, lr, weights, divergence, seed):
     subprocess.run(args, check=True)
 
 
-def aggregate_metrics(metrics_list):
-    """Calculate the mean for each metric across multiple runs."""
+def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
+    """
+    Calculate the mean for each metric across multiple runs.
+
+    Args:
+        metrics_list (List[Dict[str, float]]): List of dictionaries containing metrics from each run.
+
+    Returns:
+        Dict[str, float]: Dictionary containing the mean of each metric.
+    """
+
     mean_metrics = pd.DataFrame(metrics_list).mean().to_dict()
     return mean_metrics
 
 
 def evaluate_performance(
-    table: pd.DataFrame, feature_a, feature_b, metric: str, na_fill=None, **fixed_features
+    table: pd.DataFrame,
+    feature_a: Union[str, List[str]],
+    feature_b: Union[str, List[str]],
+    metric: str,
+    na_fill: Optional[Any] = None,
+    **fixed_features: Any,
 ) -> pd.DataFrame:
+    """
+    Evaluate performance by calculating mean metrics grouped by two features.
+
+    Args:
+        table (pd.DataFrame): DataFrame containing performance metrics.
+        feature_a (Union[str, List[str]]): First feature(s) to group by.
+        feature_b (Union[str, List[str]]): Second feature(s) to group by.
+        metric (str): Metric to evaluate.
+        na_fill (Optional[Any]): Value to fill NaN values in the metric column.
+        **fixed_features: Fixed feature-value pairs to filter the DataFrame.
+
+    Returns:
+        pd.DataFrame: A DataFrame of mean metrics grouped by feature_a and feature_b.
+    """
+
     # Convert feature_a and feature_b to lists if they are not already
     if not isinstance(feature_a, list):
         feature_a = [feature_a]
@@ -121,7 +165,14 @@ def evaluate_performance(
     return performance_df
 
 
-def main_test(divergence):
+def main_simulation(divergence: str) -> None:
+    """
+    Perform the main simulation pipeline for a given divergence metric.
+
+    Args:
+        divergence (str): Divergence metric to use in the simulation.
+    """
+
     results_best = []
     results_best_adj = []
     results_final = []
@@ -138,9 +189,8 @@ def main_test(divergence):
 
             run_experiment(alpha, lr, weights, divergence, seed)
 
-            # Assuming predictions are saved in "predicted_proportions.csv" and "true_proportions.csv"
             info_path = os.path.join(
-                output_dir,
+                out_dir,
                 f"alpha_{alpha}_lr_{lr}_weights_{weights}_divergence_{divergence}_seed_{seed}",
                 "info.pickle",
             )
@@ -221,10 +271,10 @@ def main_test(divergence):
     results_df_final = pd.DataFrame(results_final)
     results_df_final_adj = pd.DataFrame(results_final_adj)
 
-    results_df_best.to_csv(os.path.join(output_dir, f"summary_metrics_{divergence}_best.csv"), index=False)
-    results_df_best_adj.to_csv(os.path.join(output_dir, f"summary_metrics_{divergence}_best_adj.csv"), index=False)
-    results_df_final.to_csv(os.path.join(output_dir, f"summary_metrics_{divergence}_final.csv"), index=False)
-    results_df_final_adj.to_csv(os.path.join(output_dir, f"summary_metrics_{divergence}_final_adj.csv"), index=False)
+    results_df_best.to_csv(os.path.join(out_dir, f"summary_metrics_{divergence}_best.csv"), index=False)
+    results_df_best_adj.to_csv(os.path.join(out_dir, f"summary_metrics_{divergence}_best_adj.csv"), index=False)
+    results_df_final.to_csv(os.path.join(out_dir, f"summary_metrics_{divergence}_final.csv"), index=False)
+    results_df_final_adj.to_csv(os.path.join(out_dir, f"summary_metrics_{divergence}_final_adj.csv"), index=False)
     logger.info("Testing completed. Summary metrics saved.")
 
 
@@ -234,4 +284,4 @@ if __name__ == "__main__":
         "divergence", type=str, choices=["l1", "l2", "kl", "rot"], help="Divergence type for the experiment"
     )
     args = parser.parse_args()
-    main_test(args.divergence)
+    main_simulation(args.divergence)

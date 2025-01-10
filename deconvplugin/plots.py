@@ -1,26 +1,38 @@
 from __future__ import annotations
 
 import random
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import torch
 from basics import fig_to_array
 from postseg import StdVisualizer
 
 
-def plot_pie_chart(ax, data, dict_colors, plot_labels=False, add_legend=False):
+def plot_pie_chart(
+    ax: plt.Axes, data: pd.Series, color_dict: Dict[str, Tuple], plot_labels: bool = False, add_legend: bool = False
+) -> None:
     """
     Plots a pie chart for the given data on the provided axis.
 
-    Parameters:
-        ax (matplotlib.axes.Axes): The axis to plot the pie chart on.
-        data (pd.Series): A Series object containing the proportions for each cell type.
-        dict_types_colors (dict, optional): A dictionary mapping cell type to a color code.
+    Args:
+        ax (plt.Axes): The axis to plot the pie chart on.
+        data (pd.Series): A Series containing the proportions for each category.
+        color_dict (Dict[str, Tuple]): A dictionary mapping category to color.
+        plot_labels (bool): Whether to display labels on the chart. Defaults to False.
+        add_legend (bool): Whether to add a legend to the chart. Defaults to False.
     """
+
     labels = data.index
     proportions = data.values
 
-    colors = [dict_colors[cell_type] for cell_type in labels if cell_type in dict_colors.keys()]
+    colors = [color_dict[cell_type] for cell_type in labels if cell_type in color_dict.keys()]
 
     if plot_labels:
         wedges, _, _ = ax.pie(proportions, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90)
@@ -36,23 +48,24 @@ def plot_pie_chart(ax, data, dict_colors, plot_labels=False, add_legend=False):
         ax.legend(wedges, legend_labels, loc="center left", bbox_to_anchor=(1, 0.5), fontsize=8)
 
 
-def plot_legend(dict_colors, ax=None):
+def plot_legend(color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: plt.Axes = None) -> None:
     """
-    Plot a legend with an optional axis. If `ax` is None, a new figure is created for the legend.
+    Plots a legend with an optional axis. If no axis is provided, a new figure is created.
 
-    Parameters:
-        dict_colors (dict): Dictionary where keys are identifiers, and values are [label, RGB color].
-        ax (matplotlib.axes._axes.Axes, optional): Axis to add the legend to. If None, a new figure is created.
+    Args:
+        color_dict (Dict[str, Union[Tuple, Tuple[str, List[int]]]]):
+            A dictionary mapping identifiers to labels and colors.
+        ax (plt.Axes): Axis to add the legend to. Defaults to None.
     """
 
-    if isinstance(next(iter(dict_colors.values())), tuple):
+    if isinstance(next(iter(color_dict.values())), tuple):
         # Format 1: {'fibroblast': (r, g, b, a)}
-        legend_labels = list(dict_colors.keys())
-        legend_colors = list(dict_colors.values())
+        legend_labels = list(color_dict.keys())
+        legend_colors = list(color_dict.values())
     else:
         # Format 2: {'0': ['fibroblast', [r, g, b, a]]}
-        legend_labels = [v[0] for v in dict_colors.values()]  # Extract labels
-        legend_colors = [tuple(c / 255 for c in v[1]) for v in dict_colors.values()]  # Normalize RGB to [0, 1]
+        legend_labels = [str(v[0]) for v in color_dict.values()]  # Extract labels
+        legend_colors = [tuple(c / 255 for c in v[1]) for v in color_dict.values()]  # Normalize RGB to [0, 1]
 
     # Create patches for the legend
     patches = [
@@ -72,10 +85,27 @@ def plot_legend(dict_colors, ax=None):
         plt.show()
 
 
-def plot_mosaic_cells(spot_dict, image_dict, spot_id=None, predicted_labels=None, num_cols=8, display=True):
+def plot_mosaic_cells(
+    spot_dict: Dict[str, List[str]],
+    image_dict: Dict[str, torch.Tensor],
+    spot_id: Optional[str] = None,
+    predicted_labels: Optional[Dict[str, Dict[str, str]]] = None,
+    num_cols: int = 8,
+    display: bool = True,
+) -> Optional[plt.Figure]:
     """
-    Plots a grid of individual cell images for a given spot_id along with their predicted labels if provided.
-    If labels_pred is None, no title is added to the cell images.
+    Plots a grid of cell images for a given spot along with predicted labels.
+
+    Args:
+        spot_dict (Dict[str, List[str]]): A dictionary mapping spot IDs to lists of cell IDs.
+        image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
+        spot_id (Optional[str]): The spot ID to visualize. Defaults to a random spot.
+        predicted_labels (Optional[Dict[str, Dict[str, str]]]): Predicted labels for the cells. Defaults to None.
+        num_cols (int): Number of columns in the grid. Defaults to 8.
+        display (bool): Whether to display the plot directly. Defaults to True.
+
+    Returns:
+        Optional[plt.Figure]: The figure object if `display` is False.
     """
 
     m = 4
@@ -91,7 +121,7 @@ def plot_mosaic_cells(spot_dict, image_dict, spot_id=None, predicted_labels=None
     # Handle case when no cells are found for the spot
     if len(cell_ids) == 0:
         print(f"No individual cells to display for spot_id: {spot_id}")
-        return  # Just return if no cells are found, no need to plot cells
+        return None  # Just return if no cells are found, no need to plot cells
 
     # Calculate the grid dimensions
     num_cells = len(cell_ids)
@@ -120,23 +150,31 @@ def plot_mosaic_cells(spot_dict, image_dict, spot_id=None, predicted_labels=None
     plt.tight_layout()
     if display:
         plt.show()
+        return None
     else:
         plt.close(fig)
         return fig
 
 
-def plot_cell(image_dict, ax=None, cell_id=None):
+def plot_cell(
+    image_dict: Dict[str, torch.Tensor], ax: Optional[plt.Axes] = None, cell_id: Optional[Union[str, int]] = None
+) -> None:
+    """
+    Plots a single cell image from the provided dictionary.
+
+    Args:
+        image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
+        ax (Optional[plt.Axes]): Axis to plot the cell on. If None, creates a new plot. Defaults to None.
+        cell_id (Optional[Union[str, int]]): The ID of the cell to plot. Defaults to a random cell.
+    """
 
     if cell_id is None:
         cell_id = np.random.choice(list(image_dict.keys()))
     else:
-        if not isinstance(cell_id, str):
-            if isinstance(cell_id, int):
-                cell_id = str(cell_id)
-            else:
-                raise ValueError("cell_id must be either a string or an integer")
+        if not (isinstance(cell_id, str) or isinstance(cell_id, int)):
+            raise ValueError("cell_id must be either a string or an integer")
 
-    image = image_dict[cell_id].permute(1, 2, 0)
+    image = image_dict[str(cell_id)].permute(1, 2, 0)
 
     if ax is None:
         plt.imshow(image)
@@ -147,16 +185,17 @@ def plot_cell(image_dict, ax=None, cell_id=None):
         ax.axis("off")
 
 
-def plot_history(history_train, history_val, show=False, savefig=None) -> None:
+def plot_history(
+    history_train: List[float], history_val: List[float], show: bool = False, savefig: Optional[str] = None
+) -> None:
     """
-    Plot the training and validation loss history.
+    Plots training and validation loss history.
 
-    Parameters:
-    - history_train (list): A list of training loss values.
-    - history_val (list): A list of validation loss values.
-    - criterion (str): The criterion used for calculating the loss.
-    - show (bool, optional): Whether to display the plot. Defaults to False.
-    - savefig (str, optional): The filename to save the plot. Defaults to None.
+    Args:
+        history_train (List[float]): List of training loss values.
+        history_val (List[float]): List of validation loss values.
+        show (bool): Whether to display the plot. Defaults to False.
+        savefig (Optional[str]): Filename to save the plot. Defaults to None.
     """
 
     plt.figure(figsize=(12, 5))
@@ -181,22 +220,31 @@ def plot_history(history_train, history_val, show=False, savefig=None) -> None:
         plt.close()
 
 
-def plot_grid_celltype(predictions, image_dict, cell_type, n=20, selection="random", show_probs=True, display=False):
+def plot_grid_celltype(
+    predictions: pd.DataFrame,
+    image_dict: Dict[str, np.ndarray],
+    cell_type: str,
+    n: int = 20,
+    selection: str = "random",
+    show_probs: bool = True,
+    display: bool = False,
+) -> Optional[plt.Figure]:
     """
-    Plots a grid with `n` images of cells predicted as a specific cell type, with optional probability labels.
+    Plots a grid of cell images predicted as a specific cell type.
 
     Args:
-        cell_images (dict): A dictionary where each key is a cell ID and each value is a tensor of a cell image.
-        predicted_labels_df (DataFrame): A DataFrame of predicted probabilities for each cell type.
-        cell_type (str): The cell type to filter images by (e.g., "fibroblast").
-        n (int): The number of images to display in the grid.
-        selection (str): The selection mode - "max" for top probabilities or "random" for random sampling.
-        show_probs (bool): Whether to show the probability on top of each image.
-        display (bool): Whether to display the plot directly.
+        predictions (pd.DataFrame): DataFrame of predicted probabilities for each cell type.
+        image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
+        cell_type (str): The cell type to filter images by.
+        n (int): Number of images to display. Defaults to 20.
+        selection (str): Selection mode ("max" or "random"). Defaults to "random".
+        show_probs (bool): Whether to display probabilities on the images. Defaults to True.
+        display (bool): Whether to display the plot. Defaults to False.
 
     Returns:
-        fig: A matplotlib figure containing the grid.
+        Optional[plt.Figure]: The figure object if `display` is False.
     """
+
     # Find cells where `cell_type` has the maximum predicted probability
     max_prob_cell_types = predictions.idxmax(axis=1)
     max_prob_indices = max_prob_cell_types[max_prob_cell_types == cell_type].index
@@ -237,17 +285,37 @@ def plot_grid_celltype(predictions, image_dict, cell_type, n=20, selection="rand
 
     if display:
         plt.show()
+        return None
     else:
         plt.close(fig)
         return fig
 
 
 def plot_predicted_cell_labels_in_spot(
-    spot_dict, adata, adata_name, image_path, image_dict, predicted_labels=None, spot_id=None, display=True
-):  # dict_cells,
+    spot_dict: Dict[str, List[str]],
+    adata: object,
+    adata_name: str,
+    image_path: str,
+    image_dict: Dict[str, np.ndarray],
+    predicted_labels: Optional[Dict[str, Dict[str, str]]] = None,
+    spot_id: Optional[str] = None,
+    display: bool = True,
+) -> Optional[plt.Figure]:
     """
-    Plot a spot's visualization along with all cell images arranged in a grid, showing predicted labels.
-    Combines the spot and the mosaic of cells into a single figure.
+    Plots a visualization of a spot with cell images and predicted labels.
+
+    Args:
+        spot_dict (Dict[str, List[str]]): A dictionary mapping spot IDs to cell IDs.
+        adata (object): Annotated data object.
+        adata_name (str): Name of the annotated dataset.
+        image_path (str): Path to the image data.
+        image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
+        predicted_labels (Optional[Dict[str, Dict[str, str]]]): Predicted labels for the cells. Defaults to None.
+        spot_id (Optional[str]): Spot ID to visualize. Defaults to a random spot.
+        display (bool): Whether to display the plot. Defaults to True.
+
+    Returns:
+        Optional[plt.Figure]: The combined figure object if `display` is False.
     """
 
     if spot_id is None:
@@ -278,6 +346,7 @@ def plot_predicted_cell_labels_in_spot(
 
     if display:
         plt.show()
+        return None
     else:
         plt.close(combined_fig)
         return combined_fig

@@ -2,55 +2,92 @@ from __future__ import annotations
 
 import os
 import random
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import torch
+import torch.optim as optim
 from loguru import logger
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from deconvplugin.basics import set_seed
+from deconvplugin.modeling.cell_classifier import CellClassifier
 from deconvplugin.modeling.predict import predict_slide
 from deconvplugin.plots import plot_grid_celltype
 from deconvplugin.plots import plot_history
 
 
 class ModelTrainer:
+    """
+    A class for training and evaluating a deep learning model for cell classification tasks.
+
+    Attributes:
+        model (nn.Module): The model to train and evaluate.
+        ct_list (List[str]): List of cell type names.
+        optimizer (optim.Optimizer): Optimizer for model training.
+        train_loader (DataLoader): DataLoader for the training dataset.
+        val_loader (DataLoader): DataLoader for the validation dataset.
+        test_loader (DataLoader): DataLoader for the test dataset.
+        weights (torch.Tensor, optional): Class weights for loss calculation, if applicable.
+        agg (str): Aggregation method for loss calculation ('proba', 'onehot').
+        divergence (str): Type of divergence used in loss calculation ('l1', 'l2', 'kl', 'rot').
+        reduction (str): Reduction method for the loss ('mean' or 'sum').
+        alpha (float): Weight parameter for loss components.
+        num_epochs (int): Number of training epochs.
+        out_dir (str): Directory to save model checkpoints and results.
+        tb_dir (str): Directory for TensorBoard logs.
+        rs (int): Random seed for reproducibility.
+        device (torch.device): Computation device ('cuda' or 'cpu').
+        best_val_loss (float): Best validation loss observed during training.
+        best_model_state (Optional[Dict[str, Any]]): State dictionary of the best model.
+        best_model_path (str): Path to save the best model.
+        final_model_path (str): Path to save the final model.
+        history_train (List[float]): List of training losses per epoch.
+        history_val (List[float]): List of validation losses per epoch.
+    """
+
     def __init__(
         self,
-        model,
-        ct_list,
-        optimizer,
-        train_loader,
-        val_loader,
-        test_loader,
-        weights=None,
-        agg="proba",
-        divergence="l1",
-        reduction="mean",
-        alpha=0.5,
-        num_epochs=25,
-        out_dir="results",
-        tb_dir="runs",
-        rs=42,
-    ):
+        model: CellClassifier,
+        ct_list: List[str],
+        optimizer: optim.Optimizer,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        test_loader: DataLoader,
+        weights: Optional[torch.Tensor] = None,
+        agg: str = "proba",
+        divergence: str = "l1",
+        reduction: str = "mean",
+        alpha: float = 0.5,
+        num_epochs: int = 25,
+        out_dir: str = "results",
+        tb_dir: str = "runs",
+        rs: int = 42,
+    ) -> None:
         """
-        ModelTrainer class for training a VAE model.
+        Initializes the ModelTrainer with the given parameters.
 
-        Attributes:
-            model (CellClassifier): The VAE model to train.
-            optimizer (torch.optim.Optimizer): The optimizer to use for training the model.
-            train_loader (torch.utils.data.DataLoader): The DataLoader for the training dataset.
-            val_loader (torch.utils.data.DataLoader): The DataLoader for the validation dataset.
-            test_loader (torch.utils.data.DataLoader): The DataLoader for the test dataset.
-            agg_loss (str): The type of loss aggregation to use ('mean' or 'sum'). Default is 'mean'.
-            alpha (float): The weight parameter for the KL divergence loss. Default is 0.5.
-            num_epochs (int): The number of epochs to train the model. Default is 25.
-            out_dir (str): The output directory to save the trained model. Default is 'results'.
-            rs (int): The random seed value to set for reproducibility. Default is 42.
-
-        Example:
-            >>> trainer = ModelTrainer(model, optimizer, train_loader, val_loader, test_loader)
-            >>> trainer.train()
+        Args:
+            model (CellClassifier): The cell classifier to train and evaluate.
+            ct_list (List[str]): List of cell type names.
+            optimizer (optim.Optimizer): Optimizer for model training.
+            train_loader (DataLoader): DataLoader for the training dataset.
+            val_loader (DataLoader): DataLoader for the validation dataset.
+            test_loader (DataLoader): DataLoader for the test dataset.
+            weights (torch.Tensor, optional): Class weights for loss calculation.
+            agg (str): Aggregation method for loss calculation.
+            divergence (str): Type of divergence used in loss calculation.
+            reduction (str): Reduction method for the loss.
+            alpha (float): Weight parameter for loss components.
+            num_epochs (int): Number of training epochs.
+            out_dir (str): Directory to save model checkpoints and results.
+            tb_dir (str): Directory for TensorBoard logs.
+            rs (int): Random seed for reproducibility.
         """
+
         self.model = model
         self.ct_list = ct_list
         self.optimizer = optimizer
@@ -72,31 +109,35 @@ class ModelTrainer:
         self.best_model_path = os.path.join(self.out_dir, "best_model.pth")
         self.final_model_path = os.path.join(self.out_dir, "final_model.pth")
 
-    def init_model(self):
+    def init_model(self) -> None:
         """
-        Initializes the history_train and history_val attributes as empty lists.
+        Initializes training history attributes as empty lists.
         """
+
         self.history_train = []
         self.history_val = []
 
-    def _setup_device(self):
+    def _setup_device(self) -> None:
         """
-        Sets up the device for training.
+        Sets up the computation device (CPU or GPU) for training.
         """
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Device used: {self.device}")
 
-    def prepare_training(self):
+    def prepare_training(self) -> None:
         """
-        Prepares the model for training by setting the seed, setting up the device, and setting the optimizer.
+        Prepares the model for training by setting the random seed,
+        configuring the computation device, and initializing the history.
         """
+
         set_seed(self.rs)
         self._setup_device()
         self.init_model()
 
-    def train(self):
+    def train(self) -> None:
         """
-        Trains the model using the specified optimizer and data loaders.
+        Trains the model using the specified parameters and logs the performance.
         """
 
         self.prepare_training()
@@ -160,21 +201,21 @@ class ModelTrainer:
 
                 img_plot_train = self._extract_images_for_tb(self.train_loader, n_img_train)
                 img_plot_val = self._extract_images_for_tb(self.val_loader, n_img_val)
-                pred_on_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
-                pred_on_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
+                cell_prob_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
+                cell_prob_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
 
                 for ct in self.ct_list:
                     writer.add_figure(
                         f"Train - {ct}",
                         plot_grid_celltype(
-                            pred_on_train, img_plot_train, ct, n=20, selection="max", show_probs=True, display=False
+                            cell_prob_train, img_plot_train, ct, n=20, selection="max", show_probs=True, display=False
                         ),
                         global_step=epoch + 1,
                     )
                     writer.add_figure(
                         f"Val - {ct}",
                         plot_grid_celltype(
-                            pred_on_val, img_plot_val, ct, n=20, selection="max", show_probs=True, display=False
+                            cell_prob_val, img_plot_val, ct, n=20, selection="max", show_probs=True, display=False
                         ),
                         global_step=epoch + 1,
                     )
@@ -201,9 +242,15 @@ class ModelTrainer:
         logger.info("Training complete. Evaluating on test set...")
         self.test()
 
-    def evaluate(self, dataloader):
+    def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
         """
         Evaluate the model on the validation or test set.
+
+        Args:
+            dataloader (DataLoader): The DataLoader for the dataset to evaluate.
+
+        Returns:
+            Tuple[float, float, float]: Total loss, loss component 1, and loss component 2.
         """
 
         self.model.eval()  # Set model to evaluation mode
@@ -231,7 +278,7 @@ class ModelTrainer:
 
         return running_loss, running_loss_half1, running_loss_half2
 
-    def test(self):
+    def test(self) -> None:
         """
         Evaluate the final model and the best model on the test set.
         """
@@ -243,7 +290,7 @@ class ModelTrainer:
         # Load and evaluate the best model
         logger.info("Loading best model for final test evaluation...")
         best_model = type(self.model)(
-            size_edge=self.model.size_edge,
+            edge_size=self.model.edge_size,
             num_classes=self.model.num_classes,
             mtype=self.model.mtype,
             device=self.device,
@@ -255,7 +302,13 @@ class ModelTrainer:
         test_loss_best, _, _ = self.evaluate(self.test_loader)
         logger.info(f"Test Loss on best model: {test_loss_best:.4f}")
 
-    def save_history(self):
+    def save_history(self) -> None:
+        """
+        Save training and validation history as a plot.
+
+        This method saves a visualization of the training history (losses per epoch)
+        as a PNG file in the output directory.
+        """
 
         history_filedir = os.path.join(self.out_dir, "/history.png")
         plot_history(
@@ -265,7 +318,18 @@ class ModelTrainer:
         )
         logger.info(f"History saved at {history_filedir}")
 
-    def _extract_images_for_tb(self, dataloader, n):
+    def _extract_images_for_tb(self, dataloader: DataLoader, n: int) -> Dict[str, torch.Tensor]:
+        """
+        Extracts a subset of images from a dataloader for visualization in TensorBoard.
+
+        Args:
+            dataloader (DataLoader): The DataLoader to extract images from.
+            n (int): The number of images to extract.
+
+        Returns:
+            Dict[str, torch.Tensor]: A dictionary where keys are indices and values are image tensors.
+        """
+
         global_dict = {}
         for spot in dataloader.dataset:
             for image in spot[0]:

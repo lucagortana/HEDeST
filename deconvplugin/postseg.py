@@ -8,6 +8,12 @@ import pathlib
 from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import cv2
 import matplotlib.pyplot as plt
@@ -16,6 +22,7 @@ import openslide
 import pandas as pd
 import plotly.graph_objects as go
 import torch
+from anndata import AnnData
 from PIL import Image
 from plotly.subplots import make_subplots
 from scipy.spatial import KDTree
@@ -30,18 +37,29 @@ from hovernet.misc.wsi_handler import get_file_handler
 class SlideVisualizer(ABC):
     def __init__(
         self,
-        image_path,
-        vis_data=None,
-        vis_dataname=None,
-        dict_cells=None,
-        dict_types_colors=None,
-    ):
+        image_path: str,
+        adata: Optional[AnnData] = None,
+        adata_name: Optional[str] = None,
+        seg_dict: Optional[Union[str, Dict[str, Any]]] = None,
+        color_dict: Optional[Dict[str, Tuple[str, Tuple[int, int, int]]]] = None,
+    ) -> None:
+        """
+        Initializes the SlideVisualizer.
+
+        Args:
+            image_path: Path to the histological image.
+            adata: Optional Anndata object containing Visium data.
+            adata_name: Name of the dataset in the adata object.
+            seg_dict: Segmentation dictionary or path to a JSON file.
+            color_dict: Dictionary mapping cell types to color tuples.
+        """
+
         # input variables
         self.image_path = image_path
-        self.adata = vis_data
-        self.adata_name = vis_dataname
-        self.dict_cells = dict_cells
-        self.dict_types_colors = dict_types_colors
+        self.adata = adata
+        self.adata_name = adata_name
+        self.seg_dict = seg_dict
+        self.color_dict = color_dict
 
         # initialize variables
         self.spots_center = None
@@ -67,34 +85,34 @@ class SlideVisualizer(ABC):
         elif self.adata is not None and self.adata_name is None:
             raise ValueError("Please provide the name of the dataset in the adata object.")
 
-        # check dict_cells and open it
-        if isinstance(dict_cells, str) and os.path.isfile(dict_cells):
-            if dict_cells.endswith(".json"):
-                with open(dict_cells) as json_file:
+        # check seg_dict and open it
+        if isinstance(seg_dict, str) and os.path.isfile(seg_dict):
+            if seg_dict.endswith(".json"):
+                with open(seg_dict) as json_file:
                     self.data = json.load(json_file)
             else:
-                raise ValueError("dict_cells must be a JSON file if given as a path.")
-        elif isinstance(dict_cells, dict) or dict_cells is None:
-            self.data = dict_cells
+                raise ValueError("seg_dict must be a JSON file if given as a path.")
+        elif isinstance(seg_dict, dict) or seg_dict is None:
+            self.data = seg_dict
         else:
-            raise ValueError("dict_cells must be a path to a JSON file or a dictionary.")
+            raise ValueError("seg_dict must be a path to a JSON file or a dictionary.")
 
-        # check dict_types_colors
+        # check color_dict
         if self.data is not None:
-            if self.dict_types_colors is None:
+            if self.color_dict is None:
                 if check_json_classification(self.data):
-                    error1 = "dict_types_colors must be provided if dict_cells is a JSON file with classified cells.\n"
+                    error1 = "color_dict must be provided if seg_dict is a JSON file with classified cells.\n"
                     error2 = "You can create one with basics.generate_color_dict()."
                     raise ValueError(error1 + error2)
                 else:
-                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+                    self.color_dict = {"None": ("Unkwnown", (0, 0, 0))}
 
-            elif self.dict_types_colors is not None:
+            elif self.color_dict is not None:
                 if not check_json_classification(self.data):
-                    print("Warning : You gave a dict_types_colors but the JSON file gives no classification.")
-                    self.dict_types_colors = {"None": ("Unkwnown", (0, 0, 0))}
+                    print("Warning : You gave a color_dict but the JSON file gives no classification.")
+                    self.color_dict = {"None": ("Unkwnown", (0, 0, 0))}
 
-                elif not seg_colors_compatible(self.data, self.dict_types_colors):
+                elif not seg_colors_compatible(self.data, self.color_dict):
                     raise ValueError("Some labels found in your data have not been found in the color dictionnary.")
 
         # Extract nuclear info
@@ -118,8 +136,26 @@ class SlideVisualizer(ABC):
         self.original_size = self.wsi_obj.file_ptr.level_dimensions[-1]
         self.overlaid_output = None
 
-    def plot_slide(self, window, show_visium=False, title=None, display=True, figsize=(18, 15)):
-        """Adds the histological slide to the plot."""
+    def plot_slide(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        show_visium: bool = False,
+        title: Optional[str] = None,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[plt.Figure]:
+        """
+        Plots the histological slide with an optional overlay of Visium spots.
+
+        Args:
+            window: Region of the slide to plot. "full" for the entire slide.
+            show_visium: Whether to overlay Visium spots.
+            title: Optional title for the plot.
+            display: Whether to display the plot or return the figure.
+            figsize: Size of the plot.
+        Returns:
+            Optional[plt.Figure]: The plotted figure if display is False.
+        """
 
         self._set_window(window)
 
@@ -138,13 +174,29 @@ class SlideVisualizer(ABC):
 
         if display:
             plt.show()
+            return None
         else:
             plt.close(fig)
             return fig
 
-    def plot_specific_spot(self, spot_id=None, figsize=(12, 10), display=True):
-        """Plots a specific spot with Visium circles and segmentation."""
+    def plot_specific_spot(
+        self,
+        spot_id: Optional[str] = None,
+        figsize: Tuple[int, int] = (12, 10),
+        display: bool = True,
+    ) -> Optional[plt.Figure]:
+        """
+        Plots a specific Visium spot with its segmentation contours.
 
+        Args:
+            spot_id: ID of the Visium spot to plot. Randomly selected if None.
+            figsize: Size of the plot.
+            display: Whether to display the plot or return the figure.
+        Returns:
+            Optional[plt.Figure]: The plotted figure if display is False.
+        """
+
+        assert self.adata is not None, "Please create a SlideVisualizer object with adata."
         spots_coordinates = pd.DataFrame(self.spots_center, columns=["x", "y"])
         spots_coordinates["id"] = self.adata.obs.index
 
@@ -156,7 +208,7 @@ class SlideVisualizer(ABC):
         img_diam = int(self.spots_diameter + 50)
         window = ((spot_x - img_diam / 2, spot_y - img_diam / 2), (img_diam, img_diam))
 
-        if self.dict_cells is not None:
+        if self.seg_dict is not None:
             fig = self.plot_seg(window, show_visium=True, title=f"Spot ID: {spot_id}", display=display, figsize=figsize)
         else:
             fig = self.plot_slide(
@@ -165,8 +217,9 @@ class SlideVisualizer(ABC):
 
         return fig
 
-    def _set_window(self, window):
-        """Sets the window to a specific region of the slide."""
+    def _set_window(self, window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]) -> None:
+        """Sets the current viewing window for the slide."""
+
         self.window = window
         if self.window == "full":
             self.window = (0, 0), self.original_size
@@ -175,17 +228,40 @@ class SlideVisualizer(ABC):
         self.region = self.wsi_obj.read_region(self.window[0], self.window[1])
 
     @abstractmethod
-    def plot_seg(self):
+    def plot_seg(self) -> None:
+        """Abstract method to plot segmentation overlays."""
         pass
 
     @abstractmethod
-    def _add_visium(self):
+    def _add_visium(self) -> None:
+        """Abstract method to add Visium overlays."""
         pass
 
 
 class StdVisualizer(SlideVisualizer):
-    def plot_seg(self, window, draw_dot=False, show_visium=False, title=None, display=True, figsize=(18, 15)):
-        """Adds segmentation contours to the slide."""
+    def plot_seg(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        draw_dot: bool = False,
+        show_visium: bool = False,
+        title: Optional[str] = None,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[Any]:
+        """
+        Adds segmentation contours to the slide.
+
+        Args:
+            window: The (x, y, width, height) of the region to display.
+            draw_dot: Whether to draw centroids as dots.
+            show_visium: Whether to overlay Visium spots.
+            title: Optional title for the plot.
+            display: Whether to display the plot. If False, returns the figure object.
+            figsize: Size of the figure.
+
+        Returns:
+            The matplotlib figure object if display is False, otherwise None.
+        """
 
         self._set_window(window)
 
@@ -213,7 +289,7 @@ class StdVisualizer(SlideVisualizer):
                 tile_info_dict[idx] = {"contour": cnt_adj, "type": label, "centroid": [centroid_x, centroid_y]}
 
         self.overlaid_output = self._visualize_instances_dict(
-            self.region, tile_info_dict, type_colour=self.dict_types_colors, draw_dot=draw_dot
+            self.region, tile_info_dict, color_dict=self.color_dict, draw_dot=draw_dot
         )
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -227,12 +303,16 @@ class StdVisualizer(SlideVisualizer):
 
         if display:
             plt.show()
+            return None
         else:
             plt.close(fig)
             return fig
 
-    def _add_visium(self):
-        """Adds Visium spots to the slide."""
+    def _add_visium(self) -> None:
+        """
+        Adds Visium spots to the slide.
+        """
+
         ext_vis = self.spots_diameter / 2
         for spot in self.spots_center:
             spot_x = spot[0] - self.x
@@ -241,24 +321,33 @@ class StdVisualizer(SlideVisualizer):
                 circle = plt.Circle((spot_x, spot_y), self.spots_diameter / 2, color="black", fill=False, linewidth=3)
                 plt.gca().add_patch(circle)
 
-    def _visualize_instances_dict(self, input_image, inst_dict, draw_dot=False, type_colour=None, line_thickness=2):
-        """Overlays segmentation results (dictionary) on image as contours.
+    def _visualize_instances_dict(
+        self,
+        input_image: np.ndarray,
+        inst_dict: Dict[int, Dict[str, Any]],
+        draw_dot: bool = False,
+        color_dict: Optional[Dict[str, Tuple[str, Tuple[int, int, int]]]] = None,
+        line_thickness: int = 2,
+    ) -> np.ndarray:
+        """
+        Overlays segmentation results (dictionary) on the image as contours. Adapted from Hovernet.
 
         Args:
-            input_image: input image
-            inst_dict: dict of output prediction, defined as in this library
-            draw_dot: to draw a dot for each centroid
-            type_colour: a dict of {type_id : (type_name, colour)} ,
-                        `type_id` is from 0-N and `colour` is a tuple of (R, G, B)
-            line_thickness: line thickness of contours
+            input_image: Input image array.
+            inst_dict: Dictionary containing segmentation instance data.
+            draw_dot: Whether to draw centroids as dots.
+            color_dict: Dictionary mapping type IDs to (name, color).
+            line_thickness: Thickness of contour lines.
 
-        from hovernet
+        Returns:
+            Image with overlaid segmentation contours.
         """
+
         overlay = np.copy((input_image))
 
         for _, [_, inst_info] in enumerate(inst_dict.items()):
             inst_contour = inst_info["contour"]
-            inst_colour = type_colour[inst_info["type"]][1]
+            inst_colour = color_dict[inst_info["type"]][1]
             cv2.drawContours(overlay, [inst_contour], -1, inst_colour, line_thickness)
 
             if draw_dot:
@@ -269,8 +358,29 @@ class StdVisualizer(SlideVisualizer):
 
 
 class IntVisualizer(SlideVisualizer):
-    def plot_seg(self, window, show_visium=False, line_width=2, title=None, display=True, figsize=(18, 15)):
-        """Adds segmentation contours to the slide using Plotly."""
+    def plot_seg(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        show_visium: bool = False,
+        line_width: int = 2,
+        title: Optional[str] = None,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[Any]:
+        """
+        Adds segmentation contours to the slide using Plotly.
+
+        Args:
+            window: The (x, y, width, height) of the region to display.
+            show_visium: Whether to overlay Visium spots.
+            line_width: Line width for segmentation contours.
+            title: Optional title for the plot.
+            display: Whether to display the plot. If False, returns the figure object.
+            figsize: Size of the figure.
+
+        Returns:
+            The Plotly figure object if display is False, otherwise None.
+        """
 
         self._set_window(window)
 
@@ -313,7 +423,7 @@ class IntVisualizer(SlideVisualizer):
             label = str(self.type_list_wsi[idx])
             if cnt_tmp.shape[0] > 0:
                 cnt_adj = np.round(cnt_tmp - np.array([self.x, self.y])).astype("int")
-                color_rgb = self.dict_types_colors[label][1]
+                color_rgb = self.color_dict[label][1]
                 color = f"rgb({color_rgb[0]}, {color_rgb[1]}, {color_rgb[2]})"
 
                 fig.add_trace(
@@ -321,7 +431,7 @@ class IntVisualizer(SlideVisualizer):
                         x=cnt_adj[:, 0],
                         y=[self.region.shape[0] - y for y in cnt_adj[:, 1]],  # Flipping the y-coordinates
                         mode="lines",
-                        name=self.dict_types_colors[label][0],
+                        name=self.color_dict[label][0],
                         hoverinfo="name",
                         line=dict(color=color, width=line_width),
                     )
@@ -347,11 +457,17 @@ class IntVisualizer(SlideVisualizer):
 
         if display:
             fig.show()
+            return None
         else:
             return fig
 
-    def _add_visium(self, fig=None):
-        """Adds Visium spots to the plot."""
+    def _add_visium(self, fig: Optional[Any] = None) -> None:
+        """
+        Adds Visium spots to the plot.
+
+        Args:
+            fig: Optional Plotly figure object for visualization.
+        """
 
         ext_vis = self.spots_diameter / 2
 
@@ -391,8 +507,17 @@ class IntVisualizer(SlideVisualizer):
                         )
                     )
 
-    def _convert_array_to_base64(self, array):
-        """Converts a NumPy array to a base64 string."""
+    def _convert_array_to_base64(self, array: np.ndarray) -> str:
+        """
+        Converts a NumPy array to a base64 string.
+
+        Args:
+            array: NumPy array representing an image.
+
+        Returns:
+            Base64-encoded string of the image.
+        """
+
         image = Image.fromarray(array)
         buffered = io.BytesIO()
         image.save(buffered, format="PNG")
@@ -403,7 +528,18 @@ class IntVisualizer(SlideVisualizer):
 # Tool functions
 
 
-def count_cell_types(seg_dict, ct_list):
+def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFrame:
+    """
+    Counts cell types in the segmentation dictionary.
+
+    Args:
+        seg_dict: Dictionary containing segmentation data.
+        ct_list: List of cell type names.
+
+    Returns:
+        DataFrame containing counts of each cell type.
+    """
+
     cell_type_counts = {}
     nuc = seg_dict["nuc"]
     for cell_id in nuc.keys():
@@ -419,20 +555,28 @@ def count_cell_types(seg_dict, ct_list):
 
 
 def extract_tiles_hovernet(
-    image_path, json_path, level=0, size=(64, 64), dict_types=None, save_images=None, save_dict=None
-):  # must adapt for segmentation without classification
+    image_path: str,
+    json_path: str,
+    level: int = 0,
+    size: Tuple[int, int] = (64, 64),
+    dict_types: Optional[Dict[int, str]] = None,
+    save_images: Optional[str] = None,
+    save_dict: Optional[str] = None,
+) -> Dict[str, torch.Tensor]:
     """
-    Extracts tiles from a WSI given a json file with the cell centroids.
+    Extracts tiles from a whole slide image (WSI) given a JSON file with cell centroids.
+
     Args:
-        image_path: Path to the WSI.
-        json_path: Path to the json file with the cell centroids.
+        image_path: Path to the WSI file.
+        json_path: Path to the JSON file with cell centroids.
         level: Level of the WSI to extract the tiles.
-        size: Size of the tiles.
-        dict_types: Dictionary with the cell types.
-        save_images: Path to save the images.
-        save_dict: Path to save the dictionary.
+        size: Size of the tiles (width, height).
+        dict_types: Optional dictionary mapping cell types to names.
+        save_images: Path to save extracted image tiles.
+        save_dict: Path to save the dictionary of extracted tiles.
+
     Returns:
-        image_dict: Dictionary with the extracted tiles.
+        Dictionary containing extracted tiles as tensors.
     """
 
     slide = openslide.open_slide(image_path)
@@ -488,20 +632,20 @@ def extract_tiles_hovernet(
     return image_dict
 
 
-def map_cells_to_spots(adata, adata_name, json_path, only_in=True):
+def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in: bool = True) -> Dict[str, List[str]]:
     """
-    Maps cells to spots based on the centroids of the cells and spots.
+    Maps cells to spots based on centroids of the cells and spots.
+
     Args:
         adata: Anndata object containing the Visium dataset.
         adata_name: Name of the dataset in the adata object.
-        json_path: Path to the json file with the cell centroids.
-        only_in: If True, map cells only to spots within the spot's diameter.
-                 If False, map each cell to its nearest spot regardless of distance.
+        json_path: Path to the JSON file with cell centroids.
+        only_in: Whether to map cells only to spots within the spot's diameter.
+
     Returns:
-        dict_cells_spots: Dictionary with the mapping of cells to spots.
-    Examples:
-        dict_cells_spots = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
+        Dictionary mapping cells to spots.
     """
+
     centroid_list = []
     spots_coordinates = adata.obsm["spatial"].astype("int64")
     diameter = adata.uns["spatial"][adata_name]["scalefactors"]["spot_diameter_fullres"]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Dict
 from typing import Optional
 
 import scanpy as sc
@@ -24,7 +25,7 @@ def main(
     json_path: str = typer.Argument(..., help="Path to the post-segmentation file."),
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
     path_st_adata: str = typer.Argument(..., help="Path to the ST anndata object."),
-    proportions_file: str = typer.Argument(..., help="Path to the proportions file."),
+    spot_prop_file: str = typer.Argument(..., help="Path to the proportions file."),
     mtype: str = typer.Option("convnet", help="Type of model. Can be 'convnet' or 'resnet18'."),
     batch_size: int = typer.Option(1, help="Batch size for model training."),
     lr: float = typer.Option(0.001, help="Learning rate."),
@@ -41,8 +42,10 @@ def main(
     out_dir: str = typer.Option("results", help="Output directory."),
     tb_dir: str = typer.Option("runs", help="Tensorboard directory."),
     level: int = typer.Option(0, help="Image extraction level."),
-    size_edge: int = typer.Option(64, help="Edge size of the extracted tiles."),
-    dict_types: Optional[str] = typer.Option(None, help="Dictionary of cell types to use for extraction."),
+    edge_size: int = typer.Option(64, help="Edge size of the extracted tiles."),
+    dict_types: Optional[Dict[int, str]] = typer.Option(
+        None, help="Dictionary of cell types to use for organization when saving cell images."
+    ),
     save_images: Optional[str] = typer.Option(
         None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both."
     ),
@@ -67,7 +70,7 @@ def main(
     MAIN_START = time.time()
 
     # Extract and load data
-    size = (size_edge, size_edge)
+    size = (edge_size, edge_size)
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -94,8 +97,8 @@ def main(
             raise ValueError("save_images must be one of None, 'jpg', 'dict', or 'both'")
         try:
             image_dict = extract_tiles_hovernet(
-                image_path,
-                json_path,
+                image_path=image_path,
+                json_path=json_path,
                 level=level,
                 size=size,
                 dict_types=dict_types,
@@ -116,8 +119,8 @@ def main(
 
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
     adata = sc.read_visium(path_st_adata)
-    logger.info(f"Loading proportions from {proportions_file}...")
-    proportions = pp_prop(proportions_file)
+    logger.info(f"Loading proportions from {spot_prop_file}...")
+    spot_prop_df = pp_prop(spot_prop_file)
     logger.info("Cell Mapping...")
     logger.info("-> Mapping cells to the spot in which they are located...")
     spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
@@ -146,10 +149,10 @@ def main(
 
     # Run secondary deconvolution
     run_sec_deconv(
-        image_dict,
-        spot_dict,
-        spot_dict_global,
-        proportions,
+        image_dict=image_dict,
+        spot_dict=spot_dict,
+        spot_dict_global=spot_dict_global,
+        spot_prop_df=spot_prop_df,
         mtype=mtype,
         batch_size=batch_size,
         lr=lr,

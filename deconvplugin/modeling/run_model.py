@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import pickle
 import time
+from typing import Dict
+from typing import List
 
 import pandas as pd
 import torch
@@ -23,25 +25,48 @@ from deconvplugin.modeling.trainer import ModelTrainer
 
 
 def run_sec_deconv(
-    image_dict,
-    spot_dict,
-    spot_dict_global,
-    proportions,
-    mtype="convnet",
-    batch_size=1,
-    lr=0.001,
-    weights=False,
-    agg="proba",
-    divergence="l1",
-    reduction="mean",
-    alpha=0.5,
-    epochs=25,
-    train_size=0.5,
-    val_size=0.25,
-    out_dir="results",
-    tb_dir="runs",
-    rs=42,
-):
+    image_dict: Dict[str, torch.Tensor],
+    spot_dict: Dict[str, List[str]],
+    spot_dict_global: Dict[str, List[str]],
+    spot_prop_df: pd.DataFrame,
+    mtype: str = "convnet",
+    batch_size: int = 1,
+    lr: float = 0.001,
+    weights: bool = False,
+    agg: str = "proba",
+    divergence: str = "l1",
+    reduction: str = "mean",
+    alpha: float = 0.5,
+    epochs: int = 25,
+    train_size: float = 0.5,
+    val_size: float = 0.25,
+    out_dir: str = "results",
+    tb_dir: str = "runs",
+    rs: int = 42,
+) -> None:
+    """
+    Runs secondary deconvolution pipeline for cell classification.
+
+    Args:
+        image_dict: Dictionary mapping cell IDs to image tensors.
+        spot_dict: Dictionary mapping cell IDs to their spot.
+        spot_dict_global: Dictionary mapping cell IDs to the closest spot.
+        spot_prop_df: DataFrame containing cell type proportions for each spot.
+        mtype: Model type to use ("convnet" or "resnet18").
+        batch_size: Batch size for data loaders.
+        lr: Learning rate for the optimizer.
+        weights: Whether to use class weights based on global proportions.
+        agg: Aggregation type for predictions ("proba" or "onehot").
+        divergence: Type of divergence loss to use ("l1", "l2", "kl", "rot").
+        reduction: Reduction method for the loss ("mean" or "sum").
+        alpha: Weighting factor for the loss function.
+        epochs: Number of training epochs.
+        train_size: Proportion of data used for training.
+        val_size: Proportion of data used for validation.
+        out_dir: Directory to save results.
+        tb_dir: Directory for TensorBoard logs.
+        rs: Random seed for reproducibility.
+    """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
@@ -51,7 +76,7 @@ def run_sec_deconv(
         logger.info(f"Created output directory: {out_dir}")
 
     train_spot_dict, train_proportions, val_spot_dict, val_proportions, test_spot_dict, test_proportions = split_data(
-        spot_dict, proportions, train_size=train_size, val_size=val_size, rs=rs
+        spot_dict, spot_prop_df, train_size=train_size, val_size=val_size, rs=rs
     )
 
     # Create datasets
@@ -66,32 +91,32 @@ def run_sec_deconv(
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    num_classes = proportions.shape[1]
-    ct_list = list(proportions.columns)
+    num_classes = spot_prop_df.shape[1]
+    ct_list = list(spot_prop_df.columns)
 
     # weights construction
     if weights:
-        global_proportions = proportions.mean(axis=0).values
+        global_proportions = spot_prop_df.mean(axis=0).values
         weights = 1.0 / global_proportions
         weights /= weights.sum()
         weights = torch.tensor(weights)
     else:
         weights = None
 
-    size_edge = image_dict["0"].shape[1]
-    model = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
+    edge_size = image_dict["0"].shape[1]
+    model = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
     model = model.to(device)
     logger.info(f"-> {num_classes} classes detected.")
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     trainer = ModelTrainer(
-        model,
-        ct_list,
-        optimizer,
-        train_loader,
-        val_loader,
-        test_loader,
+        model=model,
+        ct_list=ct_list,
+        optimizer=optimizer,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader,
         weights=weights,
         agg=agg,
         divergence=divergence,
@@ -112,59 +137,63 @@ def run_sec_deconv(
 
     # Predict on the whole slide
     logger.info("Starting prediction on the whole slide...")
-    model4pred_best = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
+    model4pred_best = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
     model4pred_best.load_state_dict(torch.load(trainer.best_model_path))
-    pred_best = predict_slide(model4pred_best, image_dict, ct_list)
+    cell_prob_best = predict_slide(model4pred_best, image_dict, ct_list)
 
     is_final = True
     try:
-        model4pred_final = CellClassifier(size_edge=size_edge, num_classes=num_classes, mtype=mtype, device=device)
+        model4pred_final = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
         model4pred_final.load_state_dict(torch.load(trainer.final_model_path))
-        pred_final = predict_slide(model4pred_final, image_dict, ct_list)
+        cell_prob_final = predict_slide(model4pred_final, image_dict, ct_list)
     except Exception:
         is_final = False
 
     # Bayesian adjustment
     logger.info("Starting Bayesian adjustment...")
-    p_c = proportions.loc[list(train_spot_dict.keys())].mean(axis=0)
-    pred_best_adjusted = BayesianAdjustment(pred_best, spot_dict_global, proportions, p_c, device=device).forward()
+    p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
+    cell_prob_best_adjusted = BayesianAdjustment(
+        cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
+    ).forward()
     if is_final:
-        pred_final_adjusted = BayesianAdjustment(
-            pred_final, spot_dict_global, proportions, p_c, device=device
+        cell_prob_final_adjusted = BayesianAdjustment(
+            cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
         ).forward()
 
     # Save model infos
-    info = {
+    model_info = {
         "mtype": mtype,
         "spot_dict": spot_dict,
-        "proportions": proportions,
+        "proportions": spot_prop_df,
         "history": {"train": trainer.history_train, "val": trainer.history_val},
-        "preds": {"pred_best": pred_best, "pred_best_adjusted": pred_best_adjusted},
+        "preds": {"pred_best": cell_prob_best, "pred_best_adjusted": cell_prob_best_adjusted},
     }
     if is_final:
-        info["preds"]["pred_final"] = pred_final
-        info["preds"]["pred_final_adjusted"] = pred_final_adjusted
+        model_info["preds"]["pred_final"] = cell_prob_final
+        model_info["preds"]["pred_final_adjusted"] = cell_prob_final_adjusted
     info_dir = os.path.join(out_dir, "info.pickle")
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
-        pickle.dump(info, f)
+        pickle.dump(model_info, f)
 
     logger.info("Extracting and saving statistics...")
 
-    stats_best_predicted = PredAnalyzer(model_info=info).extract_stats(metric="predicted")
-    stats_best_all = PredAnalyzer(model_info=info).extract_stats(metric="all")
+    stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")
+    stats_best_all = PredAnalyzer(model_info=model_info).extract_stats(metric="all")
 
-    stats_best_adj_predicted = PredAnalyzer(model_info=info, adjusted=True).extract_stats(metric="predicted")
-    stats_best_adj_all = PredAnalyzer(model_info=info, adjusted=True).extract_stats(metric="all")
+    stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
+    stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
 
     if is_final:
-        stats_final_predicted = PredAnalyzer(model_info=info, model_state="final").extract_stats(metric="predicted")
-        stats_final_all = PredAnalyzer(model_info=info, model_state="final").extract_stats(metric="all")
-
-        stats_final_adj_predicted = PredAnalyzer(model_info=info, model_state="final", adjusted=True).extract_stats(
+        stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(
             metric="predicted"
         )
-        stats_final_adj_all = PredAnalyzer(model_info=info, model_state="final", adjusted=True).extract_stats(
+        stats_final_all = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(metric="all")
+
+        stats_final_adj_predicted = PredAnalyzer(
+            model_info=model_info, model_state="final", adjusted=True
+        ).extract_stats(metric="predicted")
+        stats_final_adj_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True).extract_stats(
             metric="all"
         )
 
