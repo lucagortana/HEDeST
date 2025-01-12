@@ -142,17 +142,17 @@ def ROT(
 
     b = torch.ones(n, device=F.device)
 
-    # Steps 2-3: Perform Sinkhorn iterations
+    # Steps 2: Perform Sinkhorn iterations
     for _ in range(n_iter):
         # Update a
         a = (n * z / (K @ b)).pow(tau)
         # Update b
         b = torch.ones(n, device=F.device) / (K.t() @ a)
 
-    # Step 6: Compute U
+    # Step 3: Compute U
     U = torch.diag(a) @ K @ torch.diag(b)
 
-    # Step 7: Compute the final approximation to f_relax-ent
+    # Step 4: Compute the final approximation to f_relax-ent
     trace_logF_U = torch.trace(torch.log(F) @ U)
     entropy_U = shannon_entropy(U)
     kld = weighted_kl_divergence(U @ torch.ones(n, device=F.device) / n, z, weights=weights, reduction="sum")

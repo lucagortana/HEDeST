@@ -61,7 +61,7 @@ class PredAnalyzer:
         Args:
             model_state (str): Model state to use, either "best" or "final".
             adjusted (bool): Whether to use adjusted predictions.
-            model_info (Optional[Union[dict, str]]): Model information provided as:
+            model_info (Union[dict, str], optional): Model information provided as:
                 - A dictionary with variable data.
                 - A path to a pickle file.
             **kwargs: Additional variables to add dynamically.
@@ -91,7 +91,7 @@ class PredAnalyzer:
                 f"Unexpected keys: {unexpected_variables}. " f"Expected keys are: {self.EXPECTED_VARIABLES}"
             )
 
-        # Attribuer dynamiquement les valeurs
+        # Dynamic attribute assignment
         for key in self.EXPECTED_VARIABLES:
             setattr(self, key, self.model_info.get(key, None))
 
@@ -270,13 +270,17 @@ class PredAnalyzer:
 
         return df_stats
 
+    @require_attributes("history_train", "history_val")
     def plot_history(self, show: bool = False, savefig: Optional[str] = None) -> None:
         """
         Plot training and validation history.
 
         Args:
             show (bool): Whether to display the plot.
-            savefig (Optional[str]): File path to save the plot.
+            savefig (str, optional): File path to save the plot.
+
+        Returns:
+            Optional[plt.Figure]: Train and validation history of the model.
         """
 
         return plot_history(self.history_train, self.history_val, show=show, savefig=savefig)
@@ -286,10 +290,10 @@ class PredAnalyzer:
         Find the cell ID with the highest probability for a given cell type.
 
         Args:
-            cell_type (str): Target cell type.
+            cell_type (str): Name of a cell type.
 
         Returns:
-            str: Cell ID with the highest probability.
+            str: Cell ID with the highest probability for the corresponding cell type.
 
         Raises:
             ValueError: If the cell type is not found in the predictions.
@@ -308,9 +312,12 @@ class PredAnalyzer:
         Plot a grid of individual cell images for a given spot ID.
 
         Args:
-            spot_id (Optional[str]): Spot ID to plot. If None, spot ID will be random.
+            spot_id (str, optional): Spot ID to plot. If None, spot ID will be random.
             num_cols (int): Number of columns in the grid.
             display (bool): Whether to display the plot.
+
+        Returns:
+            Optional[plt.Figure]: Image grid with individual cell images of the same spot.
         """
 
         return plot_mosaic_cells(
@@ -330,9 +337,12 @@ class PredAnalyzer:
         Plot a spot's visualization with all cell images arranged in a grid.
 
         Args:
-            spot_id (Optional[str]): Spot ID to plot. If None, spot ID will be random.
+            spot_id (str, optional): Spot ID to plot. If None, spot ID will be random.
             show_labels (bool): Whether to show predicted labels.
             display (bool): Whether to display the plot.
+
+        Returns:
+            Optional[plt.Figure]: Image spot with cell spots and potentially cell labels.
         """
 
         return plot_predicted_cell_labels_in_spot(
@@ -352,7 +362,7 @@ class PredAnalyzer:
         Plot true and predicted cell type proportions for a given spot.
 
         Args:
-            spot_id (Optional[str]): Spot ID to plot. If None, selects a random spot.
+            spot_id (str, optional): Spot ID to plot. If None, selects a random spot.
             draw_seg (bool): Whether to draw segmentation overlays.
         """
 
@@ -367,11 +377,9 @@ class PredAnalyzer:
         elif spot_id not in self.spot_dict:
             raise ValueError(f"Spot ID {spot_id} not found in spot_dict.")
 
-        # Gridspec layout
         fig = plt.figure(figsize=(16, 8))
         gs = gridspec.GridSpec(2, 3, width_ratios=[2, 1, 1])
 
-        # Spot image
         ax0 = fig.add_subplot(gs[:, 0])
         plotter = StdVisualizer(
             self.image_path,
@@ -473,7 +481,7 @@ class PredAnalyzer:
         # balanced accuracy
         balanced_acc = balanced_accuracy_score(
             true_labels, predicted_labels
-        )  # sometimes warnings : classes in y_pred not in y_true
+        )  # -> sometimes warnings : classes in y_pred not in y_true
 
         # F1 score
         f1 = f1_score(true_labels, predicted_labels, average="weighted", zero_division=0)

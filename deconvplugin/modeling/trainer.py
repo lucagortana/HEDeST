@@ -140,6 +140,7 @@ class ModelTrainer:
         Trains the model using the specified parameters and logs the performance.
         """
 
+        # Prepare for training
         self.prepare_training()
         if self.weights is not None:
             self.weights = self.weights.to(self.device)
@@ -147,12 +148,14 @@ class ModelTrainer:
         tb_file = os.path.join(self.tb_dir, os.path.basename(self.out_dir))
         writer = SummaryWriter(tb_file)
 
+        # Begin training
         for epoch in range(self.num_epochs):
             self.model.train()
             train_loss = 0.0
             train_loss_half1 = 0.0
             train_loss_half2 = 0.0
 
+            # Training loop
             for images_list, true_proportions in self.train_loader:
                 self.optimizer.zero_grad()
                 true_proportions = true_proportions.to(self.device)
@@ -184,6 +187,7 @@ class ModelTrainer:
 
             torch.cuda.empty_cache()
 
+            # TensorBoard logging
             writer.add_scalar("Loss/Train", train_loss, epoch + 1)
             writer.add_scalar("Loss/Val", val_loss, epoch + 1)
             writer.add_scalar("Loss/Train_Half1", train_loss_half1, epoch + 1)
@@ -231,15 +235,16 @@ class ModelTrainer:
 
         writer.close()
 
-        # If the best model is different from the final model
+        # Save best and final models
         if self.best_val_loss != val_loss:
-            # Save the final model at the end of training
             torch.save(self.model.state_dict(), self.final_model_path)
             logger.info(f"Best model and final model are different. Final model saved at {self.final_model_path}.")
         else:
             logger.info("Best model and final model are the same.")
 
         logger.info("Training complete. Evaluating on test set...")
+
+        # Evaluate the final model on the test set
         self.test()
 
     def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
@@ -253,7 +258,7 @@ class ModelTrainer:
             Tuple[float, float, float]: Total loss, loss component 1, and loss component 2.
         """
 
-        self.model.eval()  # Set model to evaluation mode
+        self.model.eval()
         running_loss = 0.0
         running_loss_half1 = 0.0
         running_loss_half2 = 0.0
@@ -310,7 +315,7 @@ class ModelTrainer:
         as a PNG file in the output directory.
         """
 
-        history_filedir = os.path.join(self.out_dir, "/history.png")
+        history_filedir = os.path.join(self.out_dir, "history.png")
         plot_history(
             history_train=self.history_train,
             history_val=self.history_val,

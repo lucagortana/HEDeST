@@ -103,6 +103,7 @@ def run_sec_deconv(
     else:
         weights = None
 
+    # Model initialization
     edge_size = image_dict["0"].shape[1]
     model = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
     model = model.to(device)
@@ -110,6 +111,7 @@ def run_sec_deconv(
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    # Model training
     trainer = ModelTrainer(
         model=model,
         ct_list=ct_list,
@@ -176,6 +178,7 @@ def run_sec_deconv(
     with open(info_dir, "wb") as f:
         pickle.dump(model_info, f)
 
+    # Extract and save statistics
     logger.info("Extracting and saving statistics...")
 
     stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")

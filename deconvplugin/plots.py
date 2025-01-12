@@ -64,23 +64,19 @@ def plot_legend(color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: 
         legend_colors = list(color_dict.values())
     else:
         # Format 2: {'0': ['fibroblast', [r, g, b, a]]}
-        legend_labels = [str(v[0]) for v in color_dict.values()]  # Extract labels
-        legend_colors = [tuple(c / 255 for c in v[1]) for v in color_dict.values()]  # Normalize RGB to [0, 1]
+        legend_labels = [str(v[0]) for v in color_dict.values()]
+        legend_colors = [tuple(c / 255 for c in v[1]) for v in color_dict.values()]
 
-    # Create patches for the legend
     patches = [
         plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=18) for color in legend_colors
     ]
 
-    # If no axis is provided, create a new figure with an axis
     if ax is None:
-        fig, ax = plt.subplots(figsize=(4, 4))  # Adjust `figsize` as needed
-        ax.axis("off")  # Disable the axis for a clean legend-only display
+        fig, ax = plt.subplots(figsize=(4, 4))
+        ax.axis("off")
 
-    # Add the legend to the axis
     ax.legend(patches, legend_labels, loc="center", fontsize=14)
 
-    # If no axis was provided, show the new figure
     if ax is None:
         plt.show()
 
@@ -99,8 +95,8 @@ def plot_mosaic_cells(
     Args:
         spot_dict (Dict[str, List[str]]): A dictionary mapping spot IDs to lists of cell IDs.
         image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
-        spot_id (Optional[str]): The spot ID to visualize. Defaults to a random spot.
-        predicted_labels (Optional[Dict[str, Dict[str, str]]]): Predicted labels for the cells. Defaults to None.
+        spot_id (str, optional): The spot ID to visualize. Defaults to a random spot.
+        predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
         num_cols (int): Number of columns in the grid. Defaults to 8.
         display (bool): Whether to display the plot directly. Defaults to True.
 
@@ -115,24 +111,21 @@ def plot_mosaic_cells(
         spot_id = random.choice(list(spot_dict.keys()))
         print(f"Randomly selected spot_id: {spot_id}")
 
-    # Get the cell IDs corresponding to the chosen spot_id
     cell_ids = spot_dict[spot_id]
 
-    # Handle case when no cells are found for the spot
     if len(cell_ids) == 0:
         print(f"No individual cells to display for spot_id: {spot_id}")
         return None  # Just return if no cells are found, no need to plot cells
 
-    # Calculate the grid dimensions
     num_cells = len(cell_ids)
-    num_rows = (num_cells + num_cols - 1) // num_cols  # Calculate the number of rows needed
+    num_rows = (num_cells + num_cols - 1) // num_cols
 
     # Create the mosaic plot
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(20, (num_cells // num_cols * m) + m))
     axes = axes.flatten()
 
     for i, cell_id in enumerate(cell_ids):
-        cell_image = image_dict[cell_id].cpu().numpy().transpose(1, 2, 0)  # Convert torch image to numpy
+        cell_image = image_dict[cell_id].cpu().numpy().transpose(1, 2, 0)
 
         # Plot the cell image
         axes[i].imshow(cell_image)
@@ -143,7 +136,6 @@ def plot_mosaic_cells(
             predicted_class = predicted_labels[cell_id]["predicted_class"]
             axes[i].set_title(f"Label: {predicted_class}", color="black")
 
-    # Hide any extra subplots if not enough cells to fill the grid
     for i in range(len(cell_ids), len(axes)):
         axes[i].axis("off")
 
@@ -164,8 +156,8 @@ def plot_cell(
 
     Args:
         image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
-        ax (Optional[plt.Axes]): Axis to plot the cell on. If None, creates a new plot. Defaults to None.
-        cell_id (Optional[Union[str, int]]): The ID of the cell to plot. Defaults to a random cell.
+        ax (plt.Axes, optional): Axis to plot the cell on. If None, creates a new plot. Defaults to None.
+        cell_id (Union[str, int], optional): The ID of the cell to plot. Defaults to a random cell.
     """
 
     if cell_id is None:
@@ -195,7 +187,7 @@ def plot_history(
         history_train (List[float]): List of training loss values.
         history_val (List[float]): List of validation loss values.
         show (bool): Whether to display the plot. Defaults to False.
-        savefig (Optional[str]): Filename to save the plot. Defaults to None.
+        savefig (str, optional): Filename to save the plot. Defaults to None.
     """
 
     plt.figure(figsize=(12, 5))
@@ -245,32 +237,26 @@ def plot_grid_celltype(
         Optional[plt.Figure]: The figure object if `display` is False.
     """
 
-    # Find cells where `cell_type` has the maximum predicted probability
     max_prob_cell_types = predictions.idxmax(axis=1)
     max_prob_indices = max_prob_cell_types[max_prob_cell_types == cell_type].index
     max_probs = predictions.loc[max_prob_indices, cell_type]
 
     if selection == "max":
-        # Sort by highest probability and take the top `n`
         selected_indices = max_probs.nlargest(n).index
     elif selection == "random":
-        # Randomly sample `n` indices
         selected_indices = max_prob_indices.to_series().sample(n=min(n, len(max_prob_indices)))
     else:
         raise ValueError("Invalid selection mode. Choose 'max' or 'random'.")
 
-    # Retrieve images from the dictionary based on selected indices
     selected_images = [image_dict[cell_id] for cell_id in selected_indices if cell_id in image_dict]
     selected_probs = max_probs[selected_indices]
 
-    # Determine grid dimensions (e.g., 4x5 for 20 images)
     num_rows = (n + 9) // 10
     fig, axes = plt.subplots(num_rows, 10, figsize=(15, 2 * num_rows))
 
-    # Plot the selected images
     for i, ax in enumerate(axes.flat):
         if i < len(selected_images):
-            img = selected_images[i].cpu().numpy().transpose((1, 2, 0))  # Adjust shape if necessary
+            img = selected_images[i].cpu().numpy().transpose((1, 2, 0))
             ax.imshow(img, cmap="gray")
             ax.axis("off")
 
@@ -278,7 +264,7 @@ def plot_grid_celltype(
                 prob_text = f"{selected_probs.iloc[i]:.2f}"
                 ax.set_title(prob_text, fontsize=8, color="blue")
         else:
-            ax.axis("off")  # Hide any remaining empty subplots
+            ax.axis("off")
 
     plt.suptitle(cell_type)
     plt.tight_layout()
@@ -310,8 +296,8 @@ def plot_predicted_cell_labels_in_spot(
         adata_name (str): Name of the annotated dataset.
         image_path (str): Path to the image data.
         image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
-        predicted_labels (Optional[Dict[str, Dict[str, str]]]): Predicted labels for the cells. Defaults to None.
-        spot_id (Optional[str]): Spot ID to visualize. Defaults to a random spot.
+        predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
+        spot_id (str, optional): Spot ID to visualize. Defaults to a random spot.
         display (bool): Whether to display the plot. Defaults to True.
 
     Returns:

@@ -149,7 +149,7 @@ def revert_dict(data: Dict[str, List[str]]) -> Dict[str, str]:
         Dict: Reverted dictionary.
     """
 
-    return {val: key for key, values in dict.items() for val in values}
+    return {val: key for key, values in data.items() for val in values}
 
 
 def remove_empty_keys(data: Dict[str, List]) -> Dict[str, List]:

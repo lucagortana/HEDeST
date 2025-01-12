@@ -16,7 +16,7 @@ from loguru import logger
 
 from deconvplugin.analysis import PredAnalyzer
 
-# Hyperparameters to test
+# Hyperparameters to test (to be changed)
 alphas = [0, 0.0001, 0.001]
 learning_rates = [1e-4, 1e-3]
 weights_options = [True, False]
@@ -30,7 +30,7 @@ if not os.path.exists(out_dir):
 
 def run_experiment(alpha: float, lr: float, weights: bool, divergence: str, seed: int) -> None:
     """
-    Run an experiment with the specified parameters.
+    Run one experiment (model) with the specified parameters.
 
     Args:
         alpha (float): Regularization parameter for the model.
@@ -187,6 +187,7 @@ def main_simulation(divergence: str) -> None:
 
         for seed in seeds:
 
+            # Run the experiment
             run_experiment(alpha, lr, weights, divergence, seed)
 
             info_path = os.path.join(
@@ -207,7 +208,7 @@ def main_simulation(divergence: str) -> None:
             except Exception:
                 is_final = False
 
-            # Evaluate the metrics
+            # Evaluate the predictions
             metrics_best = analyzer_best.evaluate_spot_predictions()
             metrics_best_adj = analyzer_best_adj.evaluate_spot_predictions()
 
@@ -262,7 +263,6 @@ def main_simulation(divergence: str) -> None:
         results_final.append(result_final)
         results_final_adj.append(result_final_adj)
 
-        # Log results
         logger.info(f"Completed configuration: alpha={alpha}, lr={lr}, weights={weights}, divergence={divergence}")
 
     # Save final results

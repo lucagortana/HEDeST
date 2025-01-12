@@ -53,9 +53,7 @@ class SpotDataset(Dataset):
 
         spot_id = self.spot_ids[idx]
         cell_ids = self.spot_dict[spot_id]
-        images = torch.stack(
-            [self.image_dict[cell_id].float() / 255.0 for cell_id in cell_ids]
-        )  # change to float and normalize
+        images = torch.stack([self.image_dict[cell_id].float() / 255.0 for cell_id in cell_ids])
         proportions = torch.tensor(self.spot_prop_df.loc[spot_id].values, dtype=torch.float32)
 
         return images, proportions
@@ -90,16 +88,13 @@ def split_data(
 
     spot_ids = list(spot_dict.keys())
 
-    # Split into train, validation, and test sets
     train_ids, temp_ids = train_test_split(spot_ids, train_size=train_size, random_state=rs)
     val_ids, test_ids = train_test_split(temp_ids, train_size=val_size / (1 - train_size), random_state=rs)
 
-    # Create dictionaries for each set
     train_spot_dict = {spot: spot_dict[spot] for spot in train_ids}
     val_spot_dict = {spot: spot_dict[spot] for spot in val_ids}
     test_spot_dict = {spot: spot_dict[spot] for spot in test_ids}
 
-    # Subset spot_prop_df
     train_proportions = spot_prop_df.loc[train_ids]
     val_proportions = spot_prop_df.loc[val_ids]
     test_proportions = spot_prop_df.loc[test_ids]

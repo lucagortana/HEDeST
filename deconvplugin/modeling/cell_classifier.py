@@ -30,7 +30,7 @@ class ResidualBlock(nn.Module):
         Args:
             inchannel (int): Number of input channels.
             outchannel (int): Number of output channels.
-            stride (int, optional): Stride for the convolutional layer. Default is 1.
+            stride (int): Stride for the convolutional layer. Default is 1.
         """
 
         super(ResidualBlock, self).__init__()
@@ -197,8 +197,8 @@ class CellClassifier(nn.Module):
         self,
         edge_size: int,
         num_classes: int,
-        mtype: Optional[str] = "resnet18",
-        device: Optional[torch.device] = torch.device("cpu"),
+        mtype: str = "resnet18",
+        device: torch.device = torch.device("cpu"),
     ) -> None:
         """
         Initializes the CellClassifier.
@@ -206,8 +206,8 @@ class CellClassifier(nn.Module):
         Args:
             edge_size (int): The edge size of the input image.
             num_classes (int): Number of classes for classification.
-            mtype (str, optional): Type of the model backbone. Default is "resnet18".
-            device (torch.device, optional): Device to run the model. Default is CPU.
+            mtype (str): Type of the model backbone. Default is "resnet18".
+            device (torch.device): Device to run the model. Default is CPU.
         """
 
         super(CellClassifier, self).__init__()
@@ -265,7 +265,7 @@ class CellClassifier(nn.Module):
         Args:
             outputs (torch.Tensor): The output probabilities from the model (num_cells x num_classes).
             true_proportions (torch.Tensor): The ground-truth class proportions (num_classes).
-            weights (Optional[torch.Tensor]): Weights for each class. Default is uniform weights.
+            weights (torch.Tensor, optional): Weights for each class. Default is uniform weights.
             agg (str): Method to aggregate cell predictions into spot proportions.
                     Options are "proba" (mean probabilities) or "onehot" (one-hot encoded class predictions).
             divergence (str): Type of divergence loss to use. Options are "l1", "l2", "kl", or "rot".

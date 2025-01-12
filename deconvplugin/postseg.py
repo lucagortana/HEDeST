@@ -47,25 +47,22 @@ class SlideVisualizer(ABC):
         Initializes the SlideVisualizer.
 
         Args:
-            image_path: Path to the histological image.
-            adata: Optional Anndata object containing Visium data.
-            adata_name: Name of the dataset in the adata object.
-            seg_dict: Segmentation dictionary or path to a JSON file.
-            color_dict: Dictionary mapping cell types to color tuples.
+            image_path (str): Path to the histological image.
+            adata (AnnData, optional): Optional Anndata object containing Visium data.
+            adata_name (str, optional): Name of the dataset in the adata object.
+            seg_dict(Union[str, Dict[str, Any]], optional): Segmentation dictionary or path to a JSON file.
+            color_dict(Dict, optional): Dictionary mapping cell types to color tuples.
         """
 
-        # input variables
         self.image_path = image_path
         self.adata = adata
         self.adata_name = adata_name
         self.seg_dict = seg_dict
         self.color_dict = color_dict
-
-        # initialize variables
         self.spots_center = None
         self.spots_diameter = None
 
-        # change : adata must be provided
+        # Check Visium data
         if self.adata is not None and self.adata_name is not None:
             try:
                 self.spots_center = self.adata.obsm["spatial"].astype("int64")
@@ -148,11 +145,12 @@ class SlideVisualizer(ABC):
         Plots the histological slide with an optional overlay of Visium spots.
 
         Args:
-            window: Region of the slide to plot. "full" for the entire slide.
-            show_visium: Whether to overlay Visium spots.
-            title: Optional title for the plot.
-            display: Whether to display the plot or return the figure.
-            figsize: Size of the plot.
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
+                    "full" for the entire slide.
+            show_visium (bool): Whether to overlay Visium spots.
+            title (str, optional): Optional title for the plot.
+            display (bool): Whether to display the plot or return the figure.
+            figsize (Tuple[int, int]): Size of the plot.
         Returns:
             Optional[plt.Figure]: The plotted figure if display is False.
         """
@@ -189,9 +187,9 @@ class SlideVisualizer(ABC):
         Plots a specific Visium spot with its segmentation contours.
 
         Args:
-            spot_id: ID of the Visium spot to plot. Randomly selected if None.
-            figsize: Size of the plot.
-            display: Whether to display the plot or return the figure.
+            spot_id (str, optional): ID of the Visium spot to plot. Randomly selected if None.
+            figsize (Tuple[int, int]): Size of the plot.
+            display (bool): Whether to display the plot or return the figure.
         Returns:
             Optional[plt.Figure]: The plotted figure if display is False.
         """
@@ -252,12 +250,13 @@ class StdVisualizer(SlideVisualizer):
         Adds segmentation contours to the slide.
 
         Args:
-            window: The (x, y, width, height) of the region to display.
-            draw_dot: Whether to draw centroids as dots.
-            show_visium: Whether to overlay Visium spots.
-            title: Optional title for the plot.
-            display: Whether to display the plot. If False, returns the figure object.
-            figsize: Size of the figure.
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): The (x, y, width, height) of the
+                    region to display. "full" for the entire slide.
+            draw_dot (bool): Whether to draw centroids as dots.
+            show_visium (bool): Whether to overlay Visium spots.
+            title (str, optional): Optional title for the plot.
+            display (bool): Whether to display the plot. If False, returns the figure object.
+            figsize (Tuple[int, int]): Size of the figure.
 
         Returns:
             The matplotlib figure object if display is False, otherwise None.
@@ -333,11 +332,11 @@ class StdVisualizer(SlideVisualizer):
         Overlays segmentation results (dictionary) on the image as contours. Adapted from Hovernet.
 
         Args:
-            input_image: Input image array.
-            inst_dict: Dictionary containing segmentation instance data.
-            draw_dot: Whether to draw centroids as dots.
-            color_dict: Dictionary mapping type IDs to (name, color).
-            line_thickness: Thickness of contour lines.
+            input_image (np.ndarray): Input image array.
+            inst_dict (Dict): Dictionary containing segmentation instance data.
+            draw_dot (bool): Whether to draw centroids as dots.
+            color_dict (Dict, optional): Dictionary mapping type IDs to (name, color).
+            line_thickness (int): Thickness of contour lines.
 
         Returns:
             Image with overlaid segmentation contours.
@@ -371,12 +370,13 @@ class IntVisualizer(SlideVisualizer):
         Adds segmentation contours to the slide using Plotly.
 
         Args:
-            window: The (x, y, width, height) of the region to display.
-            show_visium: Whether to overlay Visium spots.
-            line_width: Line width for segmentation contours.
-            title: Optional title for the plot.
-            display: Whether to display the plot. If False, returns the figure object.
-            figsize: Size of the figure.
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): The (x, y, width, height) of the
+                    region to display. "full" for the entire slide.
+            show_visium (bool): Whether to overlay Visium spots.
+            line_width (int): Line width for segmentation contours.
+            title (str, optional): Optional title for the plot.
+            display (bool): Whether to display the plot. If False, returns the figure object.
+            figsize (Tuple[int, int]): Size of the figure.
 
         Returns:
             The Plotly figure object if display is False, otherwise None.
@@ -392,8 +392,6 @@ class IntVisualizer(SlideVisualizer):
             raise ValueError("You must create a SlideVisualizer object with segmentation info to apply plot_seg()")
 
         fig = make_subplots()
-
-        # Convert the region (NumPy array) to a base64 string
         img_str = self._convert_array_to_base64(self.region)
 
         # Add the slide image
@@ -429,7 +427,7 @@ class IntVisualizer(SlideVisualizer):
                 fig.add_trace(
                     go.Scatter(
                         x=cnt_adj[:, 0],
-                        y=[self.region.shape[0] - y for y in cnt_adj[:, 1]],  # Flipping the y-coordinates
+                        y=[self.region.shape[0] - y for y in cnt_adj[:, 1]],
                         mode="lines",
                         name=self.color_dict[label][0],
                         hoverinfo="name",
@@ -482,7 +480,7 @@ class IntVisualizer(SlideVisualizer):
                     plt.gca().add_patch(circle)
 
         else:
-            rad_visium = (self.spots_diameter / 2) * (self.original_size[0] / self.w) / 20  # to be changed
+            rad_visium = (self.spots_diameter / 2) * (self.original_size[0] / self.w) / 20  # -> to be changed
             for i, spot in enumerate(self.spots_center):
                 spot_x = spot[0] - self.x
                 spot_y = spot[1] - self.y
@@ -525,16 +523,13 @@ class IntVisualizer(SlideVisualizer):
         return "data:image/png;base64," + img_str
 
 
-# Tool functions
-
-
 def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFrame:
     """
     Counts cell types in the segmentation dictionary.
 
     Args:
-        seg_dict: Dictionary containing segmentation data.
-        ct_list: List of cell type names.
+        seg_dict (Dict): Dictionary containing segmentation data.
+        ct_list (List[str]): List of cell type names.
 
     Returns:
         DataFrame containing counts of each cell type.
@@ -567,13 +562,13 @@ def extract_tiles_hovernet(
     Extracts tiles from a whole slide image (WSI) given a JSON file with cell centroids.
 
     Args:
-        image_path: Path to the WSI file.
-        json_path: Path to the JSON file with cell centroids.
-        level: Level of the WSI to extract the tiles.
-        size: Size of the tiles (width, height).
-        dict_types: Optional dictionary mapping cell types to names.
-        save_images: Path to save extracted image tiles.
-        save_dict: Path to save the dictionary of extracted tiles.
+        image_path (str): Path to the WSI file.
+        json_path (str): Path to the JSON file with cell centroids.
+        level (int): Level of the WSI to extract the tiles.
+        size (Tuple[int, int]): Size of the tiles (width, height).
+        dict_types (Dict, optional): Optional dictionary mapping cell types to names.
+        save_images (str, optional): Path to save extracted image tiles.
+        save_dict (str, optional): Path to save the dictionary of extracted tiles.
 
     Returns:
         Dictionary containing extracted tiles as tensors.
@@ -584,7 +579,7 @@ def extract_tiles_hovernet(
     type_list_wsi = []
     image_dict = {}
 
-    # add results to individual lists
+    # Extract nuclear info
     with open(json_path) as json_file:
         data = json.load(json_file)
         nuc_info = data["nuc"]
@@ -619,7 +614,7 @@ def extract_tiles_hovernet(
 
             img_cell.save(os.path.join(save_dir, f"cell{i}.jpg"))
 
-        img_tensor = torch.tensor(np.array(img_cell)).permute(2, 0, 1)  # Convert image to tensor (C, H, W)
+        img_tensor = torch.tensor(np.array(img_cell)).permute(2, 0, 1)
         image_dict[str(i)] = img_tensor
 
     if save_images is not None:
@@ -637,10 +632,11 @@ def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in:
     Maps cells to spots based on centroids of the cells and spots.
 
     Args:
-        adata: Anndata object containing the Visium dataset.
-        adata_name: Name of the dataset in the adata object.
-        json_path: Path to the JSON file with cell centroids.
-        only_in: Whether to map cells only to spots within the spot's diameter.
+        adata (AnnData): Anndata object containing the Visium dataset.
+        adata_name (str): Name of the dataset in the adata object.
+        json_path (str): Path to the JSON file with cell centroids.
+        only_in (bool): If True, maps cells only if they are located in a spot.
+                        If False, maps cells to the closest spot regardless of distance.
 
     Returns:
         Dictionary mapping cells to spots.
