@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Dict
 from typing import Optional
 
 import scanpy as sc
@@ -43,9 +42,7 @@ def main(
     tb_dir: str = typer.Option("runs", help="Tensorboard directory."),
     level: int = typer.Option(0, help="Image extraction level."),
     edge_size: int = typer.Option(64, help="Edge size of the extracted tiles."),
-    dict_types: Optional[Dict[int, str]] = typer.Option(
-        None, help="Dictionary of cell types to use for organization when saving cell images."
-    ),
+    dict_types=typer.Option(None, help="Dictionary of cell types to use for organization when saving cell images."),
     save_images: Optional[str] = typer.Option(
         None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both."
     ),

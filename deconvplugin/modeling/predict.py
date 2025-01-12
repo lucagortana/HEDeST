@@ -5,6 +5,7 @@ from typing import List
 
 import pandas as pd
 import torch
+from loguru import logger
 from tqdm import tqdm
 
 from deconvplugin.modeling.cell_classifier import CellClassifier
@@ -33,7 +34,7 @@ def predict_slide(
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if verbose:
-        print("Device used : ", device)
+        logger.info("Device used : ", device)
 
     model.eval()
     model = model.to(device)

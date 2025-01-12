@@ -23,6 +23,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import torch
 from anndata import AnnData
+from loguru import logger
 from PIL import Image
 from plotly.subplots import make_subplots
 from scipy.spatial import KDTree
@@ -618,11 +619,11 @@ def extract_tiles_hovernet(
         image_dict[str(i)] = img_tensor
 
     if save_images is not None:
-        print("-> Tile images saved.")
+        logger.info("-> Tile images saved.")
 
     if save_dict is not None:
         torch.save(image_dict, save_dict)
-        print("-> image_dict saved.")
+        logger.info("-> image_dict saved.")
 
     return image_dict
 
