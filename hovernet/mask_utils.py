@@ -17,7 +17,7 @@ from skimage.morphology import square
 from skimage.transform import resize
 
 
-def make_auto_mask(slide: Union[OpenSlide, str], 
+def make_auto_mask(slide: Union[OpenSlide, str],
                    mask_level: int, 
                    save: Optional[str] = None) -> ndarray:
     

@@ -15,13 +15,13 @@ conda activate hovernet
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/hovernet/lib:$LD_LIBRARY_PATH
 
-python ../hover_net/run_infer.py \
+python hovernet/run_infer.py \
     --gpu='0,1' \
-    --nr_types=0 \
-    --type_info_path=../hover_net/type_info.json \
+    --nr_types=6 \
+    --type_info_path=hovernet/type_info.json \
     --model_mode=fast \
     --model_path=/cluster/CBIO/data1/lgortana/pretrained/seg_classif/hovernet_fast_pannuke_type_tf2pytorch.tar \
     wsi \
-    --input_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/tif/ \
-    --output_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/seg_json/ \
-    --input_mask_dir=data/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/mask/lvl3/ \
+    --input_dir=/cluster/CBIO/data1/lgortana/CytAssist_FFPE_Sagittal_Mouse_Brain/tif/ \
+    --output_dir=/cluster/CBIO/data1/lgortana/CytAssist_FFPE_Sagittal_Mouse_Brain/seg_json/ \
+    --input_mask_dir=data/CytAssist_FFPE_Sagittal_Mouse_Brain/mask/lvl3/ \
