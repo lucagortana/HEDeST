@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import cv2
 import numpy as np
@@ -16,14 +17,20 @@ from skimage.morphology import square
 from skimage.transform import resize
 
 
-def make_auto_mask(slide: OpenSlide, mask_level: int, save: Optional[str] = None) -> ndarray:
-    """make_auto_mask. Create a binary mask from a downsampled version
-    of a WSI. Uses the Otsu algorithm and a morphological opening.
+def make_auto_mask(slide: Union[OpenSlide, str], 
+                   mask_level: int, 
+                   save: Optional[str] = None) -> ndarray:
+    
+    """Create a binary mask from a downsampled version of a WSI. Uses the Otsu algorithm 
+    and a morphological opening.
 
-    :param slide: WSI. Accepted extension *.tiff, *.svs, *ndpi.
-    :param mask_level: level of the pyramidal WSI used to create the mask.
-    :return mask: ndarray. Binary mask of the WSI. Dimensions are the one of the
-    dowsampled image.
+    Args:
+        slide: OpenSlide object or path to a WSI.
+        mask_level: Level at which to create the mask.
+        save: Path to save the mask.
+
+    Returns:
+        ndarray: Binary mask.
     """
 
     assert mask_level >= 0, "mask_level must be a positive integer"
@@ -38,11 +45,14 @@ def make_auto_mask(slide: OpenSlide, mask_level: int, save: Optional[str] = None
     )
     im = resize(im, desired_dims, anti_aliasing=True)
 
+    print("-> (1/3) RGB to Gray conversion...")
     im_gray = rgb2gray(im)
+    print("-> (2/3) Clearing border...")
     im_gray = clear_border(im_gray, prop=30)
     size = im_gray.shape
     im_gray = im_gray.flatten()
     pixels_int = im_gray[np.logical_and(im_gray > 0.1, im_gray < 0.98)]
+    print("-> (3/3) Otsu thresholding...")
     t = threshold_otsu(pixels_int)
     mask = opening(
         closing(np.logical_and(im_gray < t, im_gray > 0.1).reshape(size), footprint=square(32)), footprint=square(32)
@@ -53,7 +63,17 @@ def make_auto_mask(slide: OpenSlide, mask_level: int, save: Optional[str] = None
     return mask
 
 
-def clear_border(mask: ndarray, prop: int):
+def clear_border(mask: ndarray, prop: int) -> ndarray:
+    """
+    Clear the border of a binary mask.
+    Args:
+        mask: Binary mask.
+        prop: Proportion of the border to clear.
+    
+    Returns:
+        ndarray: Mask with cleared border
+    """
+
     r, c = mask.shape
     pr, pc = r // prop, c // prop
     mask[:pr, :] = 0
@@ -63,17 +83,22 @@ def clear_border(mask: ndarray, prop: int):
     return mask
 
 
-def get_x_y(slide: OpenSlide, point_l: Tuple[int, int], level: int, integer: bool = True):
+def get_x_y(slide: OpenSlide, 
+            point_l: Tuple[int, int], 
+            level: int, 
+            integer: bool = True) -> Tuple[int, int]:
     """
     Code @PeterNaylor from useful_wsi.
     Given a point point_l = (x_l, y_l) at a certain level. This function
     will return the coordinates associated to level 0 of this point point_0 = (x_0, y_0).
+
     Args:
-        slide : Openslide object from which we extract.
-        point_l : A tuple, or tuple like object of size 2 with integers.
-        level : Integer, level of the associated point.
-        integer : Boolean, by default True. Wether or not to round
+        slide: Openslide object from which we extract.
+        point_l: A tuple, or tuple like object of size 2 with integers.
+        level: Integer, level of the associated point.
+        integer: Boolean, by default True. Wether or not to round
                   the output.
+
     Returns:
         A tuple corresponding to the converted coordinates, point_0.
     """
