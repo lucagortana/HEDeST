@@ -8,11 +8,15 @@ from typing import Union
 
 import pandas as pd
 import torch
+from loguru import logger
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from deconvplugin.basics import revert_dict
+from deconvplugin.config import TqdmToLogger
+
+tqdm_out = TqdmToLogger(logger, level="INFO")
 
 
 class CellProbDataset(Dataset):
@@ -137,7 +141,7 @@ class BayesianAdjustment:
 
         p_tilde_c_x = torch.zeros_like(self.cell_prob_tensor).to(self.device)
 
-        for cell_probs, spot_ids, idx in tqdm(dataloader, desc="Adjusting cell probabilities"):
+        for cell_probs, spot_ids, idx in tqdm(dataloader, file=tqdm_out, desc="Adjusting cell probabilities"):
             cell_probs = cell_probs.to(self.device)
             p_tilde_c_batch = self.spot_prop_tensor[spot_ids].to(self.device)
 

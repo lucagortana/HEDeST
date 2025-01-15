@@ -32,7 +32,10 @@ from tqdm import tqdm
 from deconvplugin.basics import check_json_classification
 from deconvplugin.basics import remove_empty_keys
 from deconvplugin.basics import seg_colors_compatible
+from deconvplugin.config import TqdmToLogger
 from hovernet.misc.wsi_handler import get_file_handler
+
+tqdm_out = TqdmToLogger(logger, level="INFO")
 
 
 class SlideVisualizer(ABC):
@@ -596,7 +599,7 @@ def extract_tiles_hovernet(
     if dict_types is not None:
         cell_table["class"] = type_list_wsi
 
-    for i in tqdm(range(len(cell_table))):
+    for i in tqdm(range(len(cell_table)), file=tqdm_out, desc="Extracting tiles"):
         cell_line = cell_table[cell_table.index == i]
         img_cell = slide.read_region(
             (int(cell_line["x"].values[0]) - size[0] // 2, int(cell_line["y"].values[0]) - size[1] // 2), level, size
@@ -667,7 +670,7 @@ def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in:
     dict_cells_spots = defaultdict(list)
 
     # Query the KDTree based on only_in parameter
-    for i, cell in enumerate(tqdm(centroid_array, desc="Mapping cells to spots")):
+    for i, cell in enumerate(tqdm(centroid_array, file=tqdm_out, desc="Mapping cells to spots")):
         if only_in:
             # "only in" method: find spots within the diameter
             indices = tree.query_ball_point(cell, r=diameter / 2)

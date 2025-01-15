@@ -8,7 +8,10 @@ import torch
 from loguru import logger
 from tqdm import tqdm
 
+from deconvplugin.config import TqdmToLogger
 from deconvplugin.modeling.cell_classifier import CellClassifier
+
+tqdm_out = TqdmToLogger(logger, level="INFO")
 
 
 def predict_slide(
@@ -43,7 +46,7 @@ def predict_slide(
     dataloader = torch.utils.data.DataLoader(list(image_dict.items()), batch_size=batch_size, shuffle=False)
 
     with torch.no_grad():
-        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch", disable=(not verbose)):
+        for batch in tqdm(dataloader, desc="Predicting on cells", unit="batch", file=tqdm_out, disable=(not verbose)):
             cell_ids, images = batch
             images = images.to(device).float() / 255.0
 
