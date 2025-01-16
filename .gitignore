@@ -4,6 +4,7 @@ deconvplugin/modeling/__pycache__
 log
 models
 !hovernet/models
+debug.log
 run_deconv2.sh
 run_deconv3.sh
 run_deconv4.sh
