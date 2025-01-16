@@ -3,7 +3,6 @@
 #SBATCH --job-name=hovernet
 #SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.log
 #SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.err
-#SBATCH --mem 80000
 #SBATCH --gres=gpu:P100:1
 #SBATCH -p cbio-gpu
 #SBATCH --cpus-per-task=4
@@ -15,6 +14,11 @@ conda activate hovernet
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/hovernet/lib:$LD_LIBRARY_PATH
 
+cache_dir="cache"
+if [ -f "$cache_dir" ]; then
+    rm "$cache_dir"
+fi
+
 python hovernet/run_infer.py \
     --gpu='0,1' \
     --nr_types=6 \
@@ -24,4 +28,4 @@ python hovernet/run_infer.py \
     wsi \
     --input_dir=/cluster/CBIO/data1/lgortana/CytAssist_FFPE_Sagittal_Mouse_Brain/tif/ \
     --output_dir=/cluster/CBIO/data1/lgortana/CytAssist_FFPE_Sagittal_Mouse_Brain/seg_json/ \
-    --input_mask_dir=data/CytAssist_FFPE_Sagittal_Mouse_Brain/mask/lvl3/ \
+    --input_mask_dir=/cluster/CBIO/data1/lgortana/CytAssist_FFPE_Sagittal_Mouse_Brain/mask/lvl3/
