@@ -60,6 +60,7 @@ def make_auto_mask(slide: Union[OpenSlide, str],
     mask = (np.stack([mask] * 3, axis=-1).astype(np.uint8)) * 255
     if save is not None:
         cv2.imwrite(save, mask)
+        print(f"Mask saved at {save}")
     return mask
 
 
