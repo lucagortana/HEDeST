@@ -58,7 +58,7 @@ def cropping_center(x, crop_shape, batch=False):
 def rm_n_mkdir(dir_path):
     """Remove and make directory."""
     if os.path.isdir(dir_path):
-        shutil.rmtree(dir_path)
+        shutil.rmtree(dir_path, ignore_errors=True)
     os.makedirs(dir_path)
 
 
