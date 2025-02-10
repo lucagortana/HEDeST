@@ -48,7 +48,9 @@ def plot_pie_chart(
         ax.legend(wedges, legend_labels, loc="center left", bbox_to_anchor=(1, 0.5), fontsize=8)
 
 
-def plot_legend(color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: plt.Axes = None) -> None:
+def plot_legend(
+    color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: plt.Axes = None, savefig: Optional[str] = None
+) -> None:
     """
     Plots a legend with an optional axis. If no axis is provided, a new figure is created.
 
@@ -56,6 +58,7 @@ def plot_legend(color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: 
         color_dict (Dict[str, Union[Tuple, Tuple[str, List[int]]]]):
             A dictionary mapping identifiers to labels and colors.
         ax (plt.Axes): Axis to add the legend to. Defaults to None.
+        savefig (str, optional): Filename to save the plot. Defaults to None.
     """
 
     if isinstance(next(iter(color_dict.values())), tuple):
@@ -71,13 +74,18 @@ def plot_legend(color_dict: Dict[str, Union[Tuple, Tuple[str, List[int]]]], ax: 
         plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=color, markersize=18) for color in legend_colors
     ]
 
+    fig_created = False
     if ax is None:
-        fig, ax = plt.subplots(figsize=(4, 4))
+        _, ax = plt.subplots(figsize=(4, 4))
         ax.axis("off")
+        fig_created = True
 
     ax.legend(patches, legend_labels, loc="center", fontsize=14)
 
-    if ax is None:
+    if savefig and fig_created:
+        plt.savefig(savefig, bbox_inches="tight", dpi=300)
+
+    if fig_created:
         plt.show()
 
 
