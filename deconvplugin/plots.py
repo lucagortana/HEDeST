@@ -94,6 +94,7 @@ def plot_mosaic_cells(
     image_dict: Dict[str, torch.Tensor],
     spot_id: Optional[str] = None,
     predicted_labels: Optional[Dict[str, Dict[str, str]]] = None,
+    true_labels: Optional[Dict[str, Dict[str, str]]] = None,
     num_cols: int = 8,
     display: bool = True,
 ) -> Optional[plt.Figure]:
@@ -105,6 +106,7 @@ def plot_mosaic_cells(
         image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
         spot_id (str, optional): The spot ID to visualize. Defaults to a random spot.
         predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
+        true_labels (Dict[str, Dict[str, str]], optional): True labels for the cells. Defaults to None.
         num_cols (int): Number of columns in the grid. Defaults to 8.
         display (bool): Whether to display the plot directly. Defaults to True.
 
@@ -113,6 +115,9 @@ def plot_mosaic_cells(
     """
 
     m = 4
+
+    if true_labels is not None and predicted_labels is None:
+        raise ValueError("If true_labels is provided, predicted_labels must also be provided.")
 
     # Select a random spot_id if not provided
     if spot_id is None:
@@ -139,10 +144,18 @@ def plot_mosaic_cells(
         axes[i].imshow(cell_image)
         axes[i].axis("off")
 
-        # Add predicted class as title if labels_pred is provided
         if predicted_labels is not None:
-            predicted_class = predicted_labels[cell_id]["predicted_class"]
-            axes[i].set_title(f"Label: {predicted_class}", color="black")
+            predicted_class = predicted_labels[cell_id]["class"]
+
+            if true_labels is not None:
+                true_class = true_labels[cell_id]["class"]
+
+                if predicted_class == true_class:
+                    axes[i].set_title(f"Label: {predicted_class}", color="black")
+                else:
+                    axes[i].set_title(f"Label: {predicted_class} ({true_class})", color="red")
+            else:
+                axes[i].set_title(f"Label: {predicted_class}", color="black")
 
     for i in range(len(cell_ids), len(axes)):
         axes[i].axis("off")
@@ -292,6 +305,7 @@ def plot_predicted_cell_labels_in_spot(
     image_path: str,
     image_dict: Dict[str, np.ndarray],
     predicted_labels: Optional[Dict[str, Dict[str, str]]] = None,
+    true_labels: Optional[Dict[str, Dict[str, str]]] = None,
     spot_id: Optional[str] = None,
     display: bool = True,
 ) -> Optional[plt.Figure]:
@@ -305,6 +319,7 @@ def plot_predicted_cell_labels_in_spot(
         image_path (str): Path to the image data.
         image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
         predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
+        true_labels (Dict[str, Dict[str, str]], optional): True labels for the cells. Defaults to None.
         spot_id (str, optional): Spot ID to visualize. Defaults to a random spot.
         display (bool): Whether to display the plot. Defaults to True.
 
@@ -322,7 +337,12 @@ def plot_predicted_cell_labels_in_spot(
     plotter = StdVisualizer(image_path, adata, adata_name)
     fig1 = plotter.plot_specific_spot(spot_id=spot_id, display=False)
     fig2 = plot_mosaic_cells(
-        spot_dict=spot_dict, image_dict=image_dict, spot_id=spot_id, predicted_labels=predicted_labels, display=False
+        spot_dict=spot_dict,
+        image_dict=image_dict,
+        spot_id=spot_id,
+        predicted_labels=predicted_labels,
+        true_labels=true_labels,
+        display=False,
     )
 
     img1 = fig_to_array(fig1)

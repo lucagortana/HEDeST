@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import time
 from typing import Optional
@@ -20,11 +21,12 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    adata_name: str = typer.Argument(..., help="Name of the sample."),
-    json_path: str = typer.Argument(..., help="Path to the post-segmentation file."),
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
-    path_st_adata: str = typer.Argument(..., help="Path to the ST anndata object."),
     spot_prop_file: str = typer.Argument(..., help="Path to the proportions file."),
+    json_path: Optional[str] = typer.Option(None, help="Path to the post-segmentation file."),
+    path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
+    adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
+    spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     mtype: str = typer.Option("convnet", help="Type of model. Can be 'convnet' or 'resnet18'."),
     batch_size: int = typer.Option(1, help="Batch size for model training."),
     lr: float = typer.Option(0.001, help="Learning rate."),
@@ -116,13 +118,26 @@ def main(
 
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
     adata = sc.read_visium(path_st_adata)
+
     logger.info(f"Loading proportions from {spot_prop_file}...")
     spot_prop_df = pp_prop(spot_prop_file)
+
     logger.info("Cell Mapping...")
-    logger.info("-> Mapping cells to the spot in which they are located...")
-    spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
+    if spot_dict_file is not None and os.path.splitext(spot_dict_file)[1] == ".json":
+        logger.info(f"Loading spot-to-cell dictionary from {spot_dict_file}...")
+        with open(spot_dict_file) as json_file:
+            spot_dict = json.load(json_file)
+    else:
+        logger.info("Mapping cells to the spot in which they are located...")
+        spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
+
     logger.info("-> Mapping cells to the closest spot...")
-    spot_dict_global = map_cells_to_spots(adata, adata_name, json_path, only_in=False)
+
+    try:
+        spot_dict_global = map_cells_to_spots(adata, adata_name, json_path, only_in=False)
+    except Exception:
+        logger.warning("Failed to map cells to the closest spot." "Have you provided adata, adata_name, and json_path?")
+        spot_dict_global = None
 
     # Recap variables
     logger.info("=" * 50)

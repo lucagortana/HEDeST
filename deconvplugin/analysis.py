@@ -48,6 +48,7 @@ class PredAnalyzer:
         "adata",
         "adata_name",
         "seg_dict",
+        "ground_truth",
     }
 
     def __init__(
@@ -119,8 +120,11 @@ class PredAnalyzer:
         self.color_dict = generate_color_dict(self.ct_list, format="special")
 
         print("Loading predicted labels...")
-        self.predicted_labels = self._get_labels_slide()
-        print("-> ok")
+        self.predicted_labels = self._get_labels_slide(self.predictions)
+
+        print("Loading true labels...")
+        if self.ground_truth is not None:
+            self.true_labels = self._get_labels_slide(self.ground_truth)
 
         if self.history is not None:
             self.history_train = self.history["train"]
@@ -175,6 +179,9 @@ class PredAnalyzer:
                 raise ValueError(
                     f"Cannot add attribute '{key}', " f"it is not in the expected keys: {self.EXPECTED_VARIABLES}"
                 )
+
+            elif key == "ground_truth":
+                self.true_labels = self._get_labels_slide(value)
 
             elif key == "history":
                 self.history_train = value["train"]
@@ -325,6 +332,7 @@ class PredAnalyzer:
             self.image_dict,
             spot_id=spot_id,
             predicted_labels=self.predicted_labels,
+            true_labels=self.true_labels,
             num_cols=num_cols,
             display=display,
         )
@@ -352,6 +360,7 @@ class PredAnalyzer:
             image_path=self.image_path,
             image_dict=self.image_dict,
             predicted_labels=[None, self.predicted_labels][show_labels],
+            true_labels=[None, self.true_labels][show_labels],
             spot_id=spot_id,
             display=display,
         )
@@ -554,7 +563,7 @@ class PredAnalyzer:
 
         return proportion_df
 
-    def _get_labels_slide(self) -> Dict[str, Dict[str, Any]]:
+    def _get_labels_slide(self, data) -> Dict[str, Dict[str, Any]]:
         """
         Generate a dictionary mapping cell IDs to predicted labels.
 
@@ -562,13 +571,13 @@ class PredAnalyzer:
             Dict[str, Dict[str, Any]]: Mapping of cell IDs to predicted labels.
         """
 
-        predicted_classes = self.predictions.idxmax(axis=1)
+        predicted_classes = data.idxmax(axis=1)
 
-        predicted_class_indices = predicted_classes.map(self.predictions.columns.get_loc)
+        predicted_class_indices = predicted_classes.map(data.columns.get_loc)
 
         predicted_labels = {
-            cell_id: {"predicted_class": cls_idx, "cell_type": cls}
-            for cell_id, cls_idx, cls in zip(self.predictions.index, predicted_class_indices, predicted_classes)
+            cell_id: {"class": cls_idx, "cell_type": cls}
+            for cell_id, cls_idx, cls in zip(data.index, predicted_class_indices, predicted_classes)
         }
 
         return predicted_labels
@@ -585,7 +594,7 @@ class PredAnalyzer:
             "nuc": {
                 key: {
                     **value,
-                    "type": self.predicted_labels[str(i)]["predicted_class"]
+                    "type": self.predicted_labels[str(i)]["class"]
                     if str(i) in self.predicted_labels
                     else value.get("type", None),
                 }

@@ -5,6 +5,7 @@ import pickle
 import time
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import pandas as pd
 import torch
@@ -27,8 +28,8 @@ from deconvplugin.modeling.trainer import ModelTrainer
 def run_sec_deconv(
     image_dict: Dict[str, torch.Tensor],
     spot_dict: Dict[str, List[str]],
-    spot_dict_global: Dict[str, List[str]],
     spot_prop_df: pd.DataFrame,
+    spot_dict_global: Optional[Dict[str, List[str]]] = None,
     mtype: str = "convnet",
     batch_size: int = 1,
     lr: float = 0.001,
@@ -50,8 +51,8 @@ def run_sec_deconv(
     Args:
         image_dict: Dictionary mapping cell IDs to image tensors.
         spot_dict: Dictionary mapping cell IDs to their spot.
-        spot_dict_global: Dictionary mapping cell IDs to the closest spot.
         spot_prop_df: DataFrame containing cell type proportions for each spot.
+        spot_dict_global: Dictionary mapping cell IDs to the closest spot.
         mtype: Model type to use ("convnet" or "resnet18").
         batch_size: Batch size for data loaders.
         lr: Learning rate for the optimizer.
@@ -152,15 +153,17 @@ def run_sec_deconv(
         is_final = False
 
     # Bayesian adjustment
-    logger.info("Starting Bayesian adjustment...")
-    p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
-    cell_prob_best_adjusted = BayesianAdjustment(
-        cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
-    ).forward()
-    if is_final:
-        cell_prob_final_adjusted = BayesianAdjustment(
-            cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
+    is_bayesian = spot_dict_global is not None
+    if is_bayesian:
+        logger.info("Starting Bayesian adjustment...")
+        p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
+        cell_prob_best_adjusted = BayesianAdjustment(
+            cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
         ).forward()
+        if is_final:
+            cell_prob_final_adjusted = BayesianAdjustment(
+                cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
+            ).forward()
 
     # Save model infos
     model_info = {
@@ -168,11 +171,18 @@ def run_sec_deconv(
         "spot_dict": spot_dict,
         "proportions": spot_prop_df,
         "history": {"train": trainer.history_train, "val": trainer.history_val},
-        "preds": {"pred_best": cell_prob_best, "pred_best_adjusted": cell_prob_best_adjusted},
+        "preds": {
+            "pred_best": cell_prob_best,
+            **({"pred_best_adjusted": cell_prob_best_adjusted} if is_bayesian else {}),
+            **(
+                {"pred_final": cell_prob_final, "pred_final_adjusted": cell_prob_final_adjusted}
+                if is_final and is_bayesian
+                else {}
+            ),
+            **({"pred_final": cell_prob_final} if is_final and not is_bayesian else {}),
+        },
     }
-    if is_final:
-        model_info["preds"]["pred_final"] = cell_prob_final
-        model_info["preds"]["pred_final_adjusted"] = cell_prob_final_adjusted
+
     info_dir = os.path.join(out_dir, "info.pickle")
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
@@ -184,8 +194,9 @@ def run_sec_deconv(
     stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")
     stats_best_all = PredAnalyzer(model_info=model_info).extract_stats(metric="all")
 
-    stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
-    stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
+    if is_bayesian:
+        stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
+        stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
 
     if is_final:
         stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(
@@ -193,23 +204,26 @@ def run_sec_deconv(
         )
         stats_final_all = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(metric="all")
 
-        stats_final_adj_predicted = PredAnalyzer(
-            model_info=model_info, model_state="final", adjusted=True
-        ).extract_stats(metric="predicted")
-        stats_final_adj_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True).extract_stats(
-            metric="all"
-        )
+        if is_bayesian:
+            stats_final_adj_predicted = PredAnalyzer(
+                model_info=model_info, model_state="final", adjusted=True
+            ).extract_stats(metric="predicted")
+            stats_final_adj_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True).extract_stats(
+                metric="all"
+            )
 
     with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
         stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
         stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
-        stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
-        stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
+        if is_bayesian:
+            stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
+            stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
         if is_final:
             stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
             stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
-            stats_final_adj_predicted.to_excel(writer, sheet_name="final_adj_predicted", index=False)
-            stats_final_adj_all.to_excel(writer, sheet_name="final_adj_all", index=False)
+            if is_bayesian:
+                stats_final_adj_predicted.to_excel(writer, sheet_name="final_adj_predicted", index=False)
+                stats_final_adj_all.to_excel(writer, sheet_name="final_adj_all", index=False)
 
     logger.info("Secondary deconvolution process completed successfully.")
     logger.info(f"Training time: {TRAIN_TIME}")
