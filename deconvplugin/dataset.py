@@ -118,6 +118,7 @@ def pp_prop(spot_prop: Union[pd.DataFrame, str]) -> pd.DataFrame:
     if isinstance(spot_prop, str):
         spot_prop = pd.read_csv(spot_prop, index_col=0)
 
+    spot_prop.index = spot_prop.index.astype(str)
     row_sums = spot_prop.sum(axis=1)
     spot_prop = spot_prop.div(row_sums, axis=0)
 

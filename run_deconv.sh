@@ -26,11 +26,11 @@ for divergence in "${divergence_options[@]}"; do
       out_dir="../models/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
 
       python3 -u deconvplugin/run.py \
-        CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
         /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/image_dict_64.pt \
-        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/C2L_CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma_prop.csv \
+        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/sim/4clusters_500spots_balanced_prop.csv \
+        --json-path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
+        --path-st-adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
+        --adata-name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
         --lr 1e-5 \
         --weights \
         --agg "proba" \

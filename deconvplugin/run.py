@@ -117,7 +117,9 @@ def main(
     size = (image_dict["0"].shape[1], image_dict["0"].shape[1])
 
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
-    adata = sc.read_visium(path_st_adata)
+
+    if path_st_adata is not None:
+        adata = sc.read_visium(path_st_adata)
 
     logger.info(f"Loading proportions from {spot_prop_file}...")
     spot_prop_df = pp_prop(spot_prop_file)
