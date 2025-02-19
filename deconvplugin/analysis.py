@@ -14,11 +14,14 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
+from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import r2_score
 from sklearn.metrics import recall_score
+from sklearn.metrics import roc_auc_score
 
 from deconvplugin.basics import fig_to_array
 from deconvplugin.basics import generate_color_dict
@@ -513,6 +516,69 @@ class PredAnalyzer:
             "Weighted F1 Score": f1,
             "Weighted Precision": precision,
             "Weighted Recall": recall,
+        }
+
+        return metrics
+
+    def evaluate_cell_predictions(self) -> Dict[str, float]:
+        """
+        Evaluate cell-level predictions using various metrics.
+
+        Returns:
+            Dict[str, float]: A dictionary of computed metrics.
+        """
+
+        if self.true_labels is None:
+            raise ValueError("True labels are not available. Please provide ground_truth.")
+
+        true_labels = pd.Series(self.true_labels).map(lambda x: x["cell_type"])
+        predicted_labels = pd.Series(self.predicted_labels).map(lambda x: x["cell_type"])
+
+        # Global accuracy
+        global_accuracy = accuracy_score(true_labels, predicted_labels)
+
+        # Balanced accuracy
+        balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)
+
+        # Weighted metrics
+        weighted_f1 = f1_score(true_labels, predicted_labels, average="weighted", zero_division=0)
+        weighted_precision = precision_score(true_labels, predicted_labels, average="weighted", zero_division=0)
+        weighted_recall = recall_score(true_labels, predicted_labels, average="weighted", zero_division=0)
+
+        # Non-weighted metrics (per-class)
+        f1_per_class = f1_score(true_labels, predicted_labels, average=None, zero_division=0)
+        precision_per_class = precision_score(true_labels, predicted_labels, average=None, zero_division=0)
+        recall_per_class = recall_score(true_labels, predicted_labels, average=None, zero_division=0)
+
+        # Confusion matrix
+        cm = confusion_matrix(true_labels, predicted_labels)
+
+        # ROC AUC for multi-class classification
+        # Ensure true_labels are encoded as integers for roc_auc_score
+        unique_classes = np.unique(true_labels)
+        class_to_index = {cls: idx for idx, cls in enumerate(unique_classes)}
+        true_labels_encoded = np.array([class_to_index[cls] for cls in true_labels])
+
+        # Compute ROC AUC
+        roc_auc = roc_auc_score(
+            true_labels_encoded,
+            self.predictions.values,  # Use the predicted probabilities
+            multi_class="ovr",  # One-vs-Rest strategy
+            average="weighted",
+        )
+
+        # Compile metrics
+        metrics = {
+            "Global Accuracy": global_accuracy,
+            "Balanced Accuracy": balanced_acc,
+            "Weighted F1 Score": weighted_f1,
+            "F1 Score (Per Class)": dict(zip(unique_classes, f1_per_class)),
+            "Weighted Precision": weighted_precision,
+            "Precision (Per Class)": dict(zip(unique_classes, precision_per_class)),
+            "Weighted Recall": weighted_recall,
+            "Recall (Per Class)": dict(zip(unique_classes, recall_per_class)),
+            "Confusion Matrix": cm,
+            "OVR ROC AUC (Weighted)": roc_auc,
         }
 
         return metrics
