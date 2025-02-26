@@ -51,7 +51,7 @@ def predict_slide(
         for images, cell_ids in tqdm(
             dataloader, desc="Predicting on cells", unit="batch", file=tqdm_out, disable=(not verbose)
         ):
-            images = images.to(device).float() / 255.0
+            images = images.to(device)
             outputs = model(images)
 
             for cell_id, prob_vector in zip(cell_ids, outputs):
