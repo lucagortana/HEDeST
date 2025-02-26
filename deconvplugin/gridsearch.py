@@ -14,7 +14,7 @@ from typing import Union
 import pandas as pd
 from loguru import logger
 
-from deconvplugin.analysis import PredAnalyzer
+from deconvplugin.analysis.pred_analyzer import PredAnalyzer
 
 # Hyperparameters to test (to be changed)
 alphas = [0, 0.0001, 0.001]

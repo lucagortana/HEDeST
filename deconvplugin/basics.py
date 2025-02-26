@@ -17,7 +17,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PIL import Image
 
-from deconvplugin.modeling.cell_classifier import CellClassifier
+from deconvplugin.model.cell_classifier import CellClassifier
 
 
 def set_seed(seed: int) -> None:
@@ -37,7 +37,7 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def load_model(model_path: str, edge_size: int, num_classes: int, mtype: str) -> CellClassifier:
+def load_model(model_path: str, model_name: str, num_classes: int, hidden_dims: List[int]) -> CellClassifier:
     """
     Load a trained model from a file.
 
@@ -57,7 +57,7 @@ def load_model(model_path: str, edge_size: int, num_classes: int, mtype: str) ->
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device found to load the model : ", device)
 
-    model = CellClassifier(edge_size=edge_size, num_classes=num_classes, mtype=mtype, device=device)
+    model = CellClassifier(model_name=model_name, num_classes=num_classes, hidden_dims=hidden_dims, device=device)
 
     model.load_state_dict(torch.load(model_path, map_location=device))
 
