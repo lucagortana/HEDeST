@@ -11,7 +11,7 @@ class ImageDataset(Dataset):
 
     def __init__(self, image_dict):
         self.image_dict = image_dict
-        self.cell_ids = list(image_dict.keys())  # Store all cell IDs
+        self.cell_ids = list(image_dict.keys())
         self.transform = transforms.Compose(
             [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
         )
@@ -21,7 +21,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         cell_id = self.cell_ids[idx]
-        image = self.image_dict[cell_id]  # Tensor (3, 64, 64)
+        image = self.image_dict[cell_id]
 
         image = image.float() / 255.0
         image = self.transform(image)

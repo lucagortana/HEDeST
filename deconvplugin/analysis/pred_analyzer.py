@@ -449,12 +449,14 @@ class PredAnalyzer:
             Dict[str, float]: A dictionary of computed metrics.
         """
 
-        predicted_proportions = self.get_predicted_proportions()
+        self.predicted_proportions = self.get_predicted_proportions()
 
         # Align dataframes and extracting labels
-        true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
+        true_proportions, self.predicted_proportions = self.proportions.align(
+            self.predicted_proportions, join="inner", axis=0
+        )
         true_labels = true_proportions.idxmax(axis=1)
-        predicted_labels = predicted_proportions.idxmax(axis=1)
+        predicted_labels = self.predicted_proportions.idxmax(axis=1)
 
         # Computing weights
         class_frequencies = true_proportions.mean(axis=0)
@@ -463,24 +465,24 @@ class PredAnalyzer:
         weights = np.array([class_weights[col] for col in true_proportions.columns])
 
         # mse
-        squared_errors = (true_proportions - predicted_proportions) ** 2
+        squared_errors = (true_proportions - self.predicted_proportions) ** 2
         weighted_mse = (squared_errors * weights).mean().mean()
         mse = squared_errors.mean().mean()
 
         # mae
-        absolute_errors = (true_proportions - predicted_proportions).abs()
+        absolute_errors = (true_proportions - self.predicted_proportions).abs()
         weighted_mae = (absolute_errors * weights).mean().mean()
         mae = absolute_errors.mean().mean()
 
         # R^2 score
-        r2 = r2_score(true_proportions, predicted_proportions)
+        r2 = r2_score(true_proportions, self.predicted_proportions)
 
         # Pearson and Spearman correlation
         spearman_corrs = []
         pearson_corrs = []
         for spot in true_proportions.index:
             true_values = true_proportions.loc[spot]
-            pred_values = predicted_proportions.loc[spot]
+            pred_values = self.predicted_proportions.loc[spot]
 
             spearman_corr, _ = spearmanr(true_values, pred_values)
             spearman_corrs.append(spearman_corr)
