@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from basics import fig_to_array
-from postseg import StdVisualizer
+
+from deconvplugin.analysis.postseg import StdVisualizer
+from deconvplugin.basics import fig_to_array
 
 
 def plot_pie_chart(

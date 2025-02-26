@@ -41,7 +41,8 @@ class PredAnalyzer:
     """
 
     EXPECTED_VARIABLES = {
-        "mtype",
+        "model_name",
+        "hidden_dims",
         "spot_dict",
         "proportions",
         "history",

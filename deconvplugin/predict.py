@@ -19,7 +19,7 @@ def predict_slide(
     model: CellClassifier,
     image_dict: Dict[str, torch.Tensor],
     ct_list: List[str],
-    batch_size: int = 32,
+    batch_size: int = 1024,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """

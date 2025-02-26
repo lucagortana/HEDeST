@@ -20,6 +20,14 @@ from deconvplugin.run_model import run_sec_deconv
 app = typer.Typer()
 
 
+def parse_hidden_dims(hidden_dims: str) -> List[int]:
+    try:
+        return [int(dim) for dim in hidden_dims.split(",")]
+    except ValueError:
+        typer.echo("'hidden_dims' should be a str chain of integers separated by comas (e.g. '512,258').", err=True)
+        raise typer.Abort()
+
+
 @app.command()
 def main(
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
@@ -29,7 +37,7 @@ def main(
     adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
-    hidden_dims: List[int] = typer.Option([512, 256], help="Hidden dimensions for the model."),
+    hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(1, help="Batch size for model training."),
     lr: float = typer.Option(0.001, help="Learning rate."),
     weights: bool = typer.Option(False, help="If True, the model uses a weighted loss."),
@@ -52,6 +60,8 @@ def main(
     ),
     rs: int = typer.Option(42, help="Random seed"),
 ):
+
+    hidden_dims = parse_hidden_dims(hidden_dims)
 
     # Validate inputs
     valid_agg = {"proba", "onehot"}
@@ -139,7 +149,9 @@ def main(
     try:
         spot_dict_global = map_cells_to_spots(adata, adata_name, json_path, only_in=False)
     except Exception:
-        logger.warning("Failed to map cells to the closest spot." "Have you provided adata, adata_name, and json_path?")
+        logger.warning(
+            "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
+        )
         spot_dict_global = None
 
     # Recap variables

@@ -3,9 +3,10 @@ from __future__ import annotations
 import timm
 import torch
 import torch.nn.functional as F
-from model.base_cell_classifier import BaseCellClassifier
 from torch import nn
 from torch import Tensor
+
+from deconvplugin.model.base_cell_classifier import BaseCellClassifier
 
 
 class CellClassifier(BaseCellClassifier):
@@ -28,6 +29,7 @@ class CellClassifier(BaseCellClassifier):
         """
         super().__init__(num_classes, device)
         self.model_name = model_name
+        self.hidden_dims = hidden_dims
 
         self.backbone = timm.create_model(model_name, pretrained=True, num_classes=0)
         backbone_output_dim = self.backbone(torch.randn(1, 3, 64, 64)).shape[1]
@@ -35,7 +37,7 @@ class CellClassifier(BaseCellClassifier):
         # Add fully connected layers for transfer learning
         self.fc_layers = nn.Sequential()
         input_dim = backbone_output_dim
-        for i, hidden_dim in enumerate(hidden_dims):
+        for i, hidden_dim in enumerate(self.hidden_dims):
             self.fc_layers.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
             self.fc_layers.add_module(f"relu_{i}", nn.ReLU())
             input_dim = hidden_dim

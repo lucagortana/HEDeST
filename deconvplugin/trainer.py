@@ -295,9 +295,9 @@ class ModelTrainer:
         # Load and evaluate the best model
         logger.info("Loading best model for final test evaluation...")
         best_model = type(self.model)(
-            edge_size=self.model.edge_size,
+            model_name=self.model.model_name,
             num_classes=self.model.num_classes,
-            mtype=self.model.mtype,
+            hidden_dims=self.model.hidden_dims,
             device=self.device,
         )
         best_model.load_state_dict(torch.load(self.best_model_path))
