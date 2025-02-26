@@ -5,6 +5,8 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 
+# from torchvision.transforms import InterpolationMode
+
 
 class ImageDataset(Dataset):
     """Dataset for loading images from a pre-saved image_dict.pt"""
@@ -15,6 +17,12 @@ class ImageDataset(Dataset):
         self.transform = transforms.Compose(
             [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
         )
+        # self.transform = transforms.Compose([
+        #     transforms.Resize(size=[232], interpolation=InterpolationMode.BILINEAR),  # Resize to 232
+        #     transforms.CenterCrop(size=[224]),  # Center crop to 224
+        #     transforms.Lambda(lambda x: x.float() / 255.0),  # Rescale to [0.0, 1.0]
+        #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalize
+        # ])
 
     def __len__(self):
         return len(self.cell_ids)

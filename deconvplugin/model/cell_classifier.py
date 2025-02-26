@@ -32,11 +32,12 @@ class CellClassifier(BaseCellClassifier):
         self.hidden_dims = hidden_dims
 
         self.backbone = timm.create_model(model_name, pretrained=True, num_classes=0)
-        backbone_output_dim = self.backbone(torch.randn(1, 3, 64, 64)).shape[1]
 
-        # Add fully connected layers for transfer learning
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+
         self.fc_layers = nn.Sequential()
-        input_dim = backbone_output_dim
+        input_dim = self.backbone(torch.randn(1, 3, 64, 64)).shape[1]
         for i, hidden_dim in enumerate(self.hidden_dims):
             self.fc_layers.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
             self.fc_layers.add_module(f"relu_{i}", nn.ReLU())
