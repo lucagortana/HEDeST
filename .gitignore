@@ -1,6 +1,7 @@
 cache
 deconvplugin/__pycache__
-deconvplugin/modeling/__pycache__
+deconvplugin/analysis/__pycache__
+deconvplugin/model/__pycache__
 log
 models
 !hovernet/models
