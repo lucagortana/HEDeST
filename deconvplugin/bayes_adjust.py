@@ -149,7 +149,10 @@ class BayesianAdjustment:
             alphas = alphas.to(self.device)
 
             for i in range(len(cell_probs)):
-                adjusted_probs = cell_probs[i] * alphas[i] * (p_tilde_c_batch[i] / self.p_c)
+                if torch.isinf(alphas[i]):
+                    adjusted_probs = cell_probs[i]
+                else:
+                    adjusted_probs = cell_probs[i] * alphas[i] * (p_tilde_c_batch[i] / self.p_c)
                 p_tilde_c_x[idx[i]] = adjusted_probs
 
         p_tilde_c_x_df = pd.DataFrame(
