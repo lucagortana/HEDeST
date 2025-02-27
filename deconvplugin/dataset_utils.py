@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Union
 
 import pandas as pd
+import timm
+import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 
 
@@ -70,3 +72,22 @@ def pp_prop(spot_prop: Union[pd.DataFrame, str]) -> pd.DataFrame:
     spot_prop = spot_prop.div(row_sums, axis=0)
 
     return spot_prop
+
+
+def get_transform(model_name) -> transforms.Compose:
+    """
+    Returns the appropriate image transformation for a given model.
+
+    Args:
+        model_name (str): The name of the model.
+
+    Returns:
+        transforms.Compose: A composition of image transformations.
+    """
+
+    model = timm.create_model(model_name, pretrained=True)
+    model = model.eval()
+    data_config = timm.data.resolve_model_data_config(model)
+    transforms = timm.data.create_transform(**data_config, is_training=False)
+
+    return transforms

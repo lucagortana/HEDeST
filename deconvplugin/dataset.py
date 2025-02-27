@@ -5,33 +5,22 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 
-# from torchvision.transforms import InterpolationMode
-
 
 class ImageDataset(Dataset):
     """Dataset for loading images from a pre-saved image_dict.pt"""
 
-    def __init__(self, image_dict):
+    def __init__(self, image_dict: dict[str, torch.Tensor], transform: transforms.Compose) -> None:
         self.image_dict = image_dict
         self.cell_ids = list(image_dict.keys())
-        self.transform = transforms.Compose(
-            [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
-        )
-        # self.transform = transforms.Compose([
-        #     transforms.Resize(size=[232], interpolation=InterpolationMode.BILINEAR),  # Resize to 232
-        #     transforms.CenterCrop(size=[224]),  # Center crop to 224
-        #     transforms.Lambda(lambda x: x.float() / 255.0),  # Rescale to [0.0, 1.0]
-        #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalize
-        # ])
+
+        self.transform = transform
 
     def __len__(self):
         return len(self.cell_ids)
 
     def __getitem__(self, idx):
         cell_id = self.cell_ids[idx]
-        image = self.image_dict[cell_id]
-
-        image = image.float() / 255.0
+        image = self.image_dict[cell_id].float() / 255.0
         image = self.transform(image)
 
         return image, cell_id
@@ -49,16 +38,18 @@ class SpotDataset(Dataset):
     """
 
     def __init__(
-        self, spot_dict: dict[str, list[str]], spot_prop_df: pd.DataFrame, image_dict: dict[str, torch.Tensor]
+        self,
+        spot_dict: dict[str, list[str]],
+        spot_prop_df: pd.DataFrame,
+        image_dict: dict[str, torch.Tensor],
+        transform: transforms.Compose,
     ) -> None:
 
         self.spot_dict = spot_dict
         self.spot_prop_df = spot_prop_df
         self.image_dict = image_dict
         self.spot_ids = list(spot_dict.keys())
-        self.transform = transforms.Compose(
-            [transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
-        )
+        self.transform = transform
 
     def __len__(self) -> int:
         """

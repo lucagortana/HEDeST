@@ -198,31 +198,32 @@ class ModelTrainer:
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
 
-            if epoch % 10 == 0:
+            # if epoch % 10 == 0:
 
-                n_img_train = sum(element[0].size(0) for element in self.train_loader.dataset)
-                n_img_val = sum(element[0].size(0) for element in self.val_loader.dataset)
+            #     n_img_train = sum(element[0].size(0) for element in self.train_loader.dataset)
+            #     n_img_val = sum(element[0].size(0) for element in self.val_loader.dataset)
 
-                img_plot_train = self._extract_images_for_tb(self.train_loader, n_img_train)
-                img_plot_val = self._extract_images_for_tb(self.val_loader, n_img_val)
-                cell_prob_train = predict_slide(self.model, img_plot_train, self.ct_list, batch_size=256, verbose=False)
-                cell_prob_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
+            #     img_plot_train = self._extract_images_for_tb(self.train_loader, n_img_train)
+            #     img_plot_val = self._extract_images_for_tb(self.val_loader, n_img_val)
+            #     cell_prob_train = predict_slide(self.model, img_plot_train,
+            #                                     self.ct_list, batch_size=256, verbose=False)
+            #     cell_prob_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
 
-                for ct in self.ct_list:
-                    writer.add_figure(
-                        f"Train - {ct}",
-                        plot_grid_celltype(
-                            cell_prob_train, img_plot_train, ct, n=20, selection="max", show_probs=True, display=False
-                        ),
-                        global_step=epoch + 1,
-                    )
-                    writer.add_figure(
-                        f"Val - {ct}",
-                        plot_grid_celltype(
-                            cell_prob_val, img_plot_val, ct, n=20, selection="max", show_probs=True, display=False
-                        ),
-                        global_step=epoch + 1,
-                    )
+            #     for ct in self.ct_list:
+            #         writer.add_figure(
+            #             f"Train - {ct}",
+            #             plot_grid_celltype(
+            #                 cell_prob_train, img_plot_train, ct, n=20, selection="max", show_probs=True, display=False
+            #             ),
+            #             global_step=epoch + 1,
+            #         )
+            #         writer.add_figure(
+            #             f"Val - {ct}",
+            #             plot_grid_celltype(
+            #                 cell_prob_val, img_plot_val, ct, n=20, selection="max", show_probs=True, display=False
+            #             ),
+            #             global_step=epoch + 1,
+            #         )
 
             # Save best model based on validation loss
             if val_loss < self.best_val_loss:

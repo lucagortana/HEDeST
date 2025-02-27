@@ -17,6 +17,7 @@ from deconvplugin.basics import format_time
 from deconvplugin.basics import set_seed
 from deconvplugin.bayes_adjust import BayesianAdjustment
 from deconvplugin.dataset import SpotDataset
+from deconvplugin.dataset_utils import get_transform
 from deconvplugin.dataset_utils import split_data
 from deconvplugin.model.cell_classifier import CellClassifier
 from deconvplugin.predict import predict_slide
@@ -84,9 +85,10 @@ def run_sec_deconv(
     # Create datasets
     set_seed(rs)
     logger.debug("Creating datasets...")
-    train_dataset = SpotDataset(train_spot_dict, train_proportions, image_dict)
-    val_dataset = SpotDataset(val_spot_dict, val_proportions, image_dict)
-    test_dataset = SpotDataset(test_spot_dict, test_proportions, image_dict)
+    transform = get_transform(model_name)
+    train_dataset = SpotDataset(train_spot_dict, train_proportions, image_dict, transform)
+    val_dataset = SpotDataset(val_spot_dict, val_proportions, image_dict, transform)
+    test_dataset = SpotDataset(test_spot_dict, test_proportions, image_dict, transform)
 
     # Create dataloaders
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
