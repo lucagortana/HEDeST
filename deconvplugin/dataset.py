@@ -21,7 +21,9 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         cell_id = self.cell_ids[idx]
         image = self.image_dict[cell_id].float() / 255.0
-        image = self.transform(image)
+
+        if self.transform is not None:
+            image = self.transform(image)
 
         return image, cell_id
 
@@ -76,7 +78,10 @@ class SpotDataset(Dataset):
 
         spot_id = self.spot_ids[idx]
         cell_ids = self.spot_dict[spot_id]
-        images = torch.stack([self.transform(self.image_dict[cell_id].float() / 255.0) for cell_id in cell_ids])
+        if self.transform is not None:
+            images = torch.stack([self.transform(self.image_dict[cell_id].float() / 255.0) for cell_id in cell_ids])
+        else:
+            images = torch.stack([self.image_dict[cell_id].float() / 255.0 for cell_id in cell_ids])
         proportions = torch.tensor(self.spot_prop_df.loc[spot_id].values, dtype=torch.float32)
 
         return images, proportions

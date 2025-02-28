@@ -66,7 +66,7 @@ def main(
     # Validate inputs
     valid_agg = {"proba", "onehot"}
     valid_divergence = {"l1", "l2", "kl", "rot"}
-    valid_model_name = {"resnet18", "resnet50"}
+    valid_model_name = {"convnet", "resnet18", "resnet50"}
     valid_reduction = {"mean", "sum"}
 
     if agg not in valid_agg:
@@ -74,7 +74,7 @@ def main(
     if divergence not in valid_divergence:
         raise ValueError(f"Invalid value for 'divergence': {divergence}. Must be one of {valid_divergence}.")
     if model_name not in valid_model_name:
-        raise ValueError(f"Invalid value for 'mtype': {model_name}. Must be one of {valid_model_name}.")
+        raise ValueError(f"Invalid value for 'model_name': {model_name}. Must be one of {valid_model_name}.")
     if reduction not in valid_reduction:
         raise ValueError(f"Invalid value for 'reduction': {reduction}. Must be one of {valid_reduction}.")
 

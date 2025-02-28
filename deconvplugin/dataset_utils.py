@@ -93,5 +93,8 @@ def get_transform(model_name) -> transforms.Compose:
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]
         )
-
+    elif model_name == "convnet":
+        transform = None
+    else:
+        raise ValueError(f"Model {model_name} not recognized or not supported.")
     return transform
