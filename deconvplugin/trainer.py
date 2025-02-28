@@ -173,9 +173,9 @@ class ModelTrainer:
                 loss.backward()
                 self.optimizer.step()
 
-                train_loss += loss.item()
-                train_loss_half1 += loss_half1.item()
-                train_loss_half2 += loss_half2.item()
+                train_loss += loss.item() / len(self.train_loader)
+                train_loss_half1 += loss_half1.item() / len(self.train_loader)
+                train_loss_half2 += loss_half2.item() / len(self.train_loader)
 
                 torch.cuda.empty_cache()
 
@@ -278,9 +278,9 @@ class ModelTrainer:
                     reduction=self.reduction,
                     alpha=self.alpha,
                 )
-                running_loss += loss.item()
-                running_loss_half1 += loss_half1.item()
-                running_loss_half2 += loss_half2.item()
+                running_loss += loss.item() / len(dataloader)
+                running_loss_half1 += loss_half1.item() / len(dataloader)
+                running_loss_half2 += loss_half2.item() / len(dataloader)
 
         return running_loss, running_loss_half1, running_loss_half2
 
