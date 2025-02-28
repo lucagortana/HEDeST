@@ -125,7 +125,8 @@ def main(
                 ".tif, .tiff, .svs, .dcm, or .ndpi."
             ) from e
 
-    size = (image_dict["0"].shape[1], image_dict["0"].shape[1])
+    example_img = image_dict[list(image_dict.keys())[0]]
+    size = (example_img.shape[1], example_img.shape[1])
 
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
 
@@ -152,7 +153,8 @@ def main(
         logger.warning(
             "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
         )
-        spot_dict_global = None
+        logger.info("spot_dict_global will be the same as spot_dict.")
+        spot_dict_global = spot_dict.copy()
 
     # Recap variables
     logger.info("=" * 50)
@@ -178,9 +180,9 @@ def main(
     # Run secondary deconvolution
     run_sec_deconv(
         image_dict=image_dict,
+        spot_prop_df=spot_prop_df,
         spot_dict=spot_dict,
         spot_dict_global=spot_dict_global,
-        spot_prop_df=spot_prop_df,
         model_name=model_name,
         hidden_dims=hidden_dims,
         batch_size=batch_size,

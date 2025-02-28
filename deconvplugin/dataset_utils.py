@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Union
 
 import pandas as pd
-import timm
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 
@@ -85,9 +84,14 @@ def get_transform(model_name) -> transforms.Compose:
         transforms.Compose: A composition of image transformations.
     """
 
-    model = timm.create_model(model_name, pretrained=True)
-    model = model.eval()
-    data_config = timm.data.resolve_model_data_config(model)
-    transforms = timm.data.create_transform(**data_config, is_training=False)
+    if "resnet" in model_name:
+        transform = transforms.Compose(
+            [
+                # transforms.Resize(256),
+                # transforms.CenterCrop(224),
+                # transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
-    return transforms
+    return transform
