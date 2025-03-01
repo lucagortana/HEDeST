@@ -122,7 +122,7 @@ def run_experiment(
     args = [
         "python3",
         "-u",
-        "deconvplugin/main.py",
+        "main.py",
         image_dict_path,
         spot_prop_df,
         "--spot-dict-file",
@@ -144,7 +144,7 @@ def run_experiment(
         "--out-dir",
         config_out_dir,
         "--tb-dir",
-        "models/TBruns",
+        "../models/TBruns",
         "--rs",
         seed,
     ]
