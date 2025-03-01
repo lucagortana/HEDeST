@@ -200,7 +200,7 @@ def main(
         rs=rs,
     )
     TOTAL_TIME = format_time(time.time() - MAIN_START)
-    logger.info(f"Total time: {TOTAL_TIME}")
+    logger.info(f"Total time: {TOTAL_TIME}\n")
 
 
 if __name__ == "__main__":
