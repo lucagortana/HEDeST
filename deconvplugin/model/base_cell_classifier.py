@@ -72,7 +72,9 @@ class BaseCellClassifier(nn.Module, ABC):
         if divergence == "rot":
             return ROT(outputs, true_proportions, alpha=alpha, weights=weights)
 
-        max_prob_loss = -torch.mean(torch.log(outputs.max(dim=1)[0]))
+        max_probs, max_indices = outputs.max(dim=1)
+        max_weights = weights[max_indices]
+        max_prob_loss = -torch.mean(max_weights * torch.log(max_probs))
 
         if agg == "proba":
             pred_proportions = outputs.mean(dim=0)

@@ -122,7 +122,7 @@ def run_experiment(
     args = [
         "python3",
         "-u",
-        "main.py",
+        "deconvplugin/main.py",
         image_dict_path,
         spot_prop_df,
         "--spot-dict-file",
@@ -130,7 +130,7 @@ def run_experiment(
         "--model-name",
         model_name,
         "--lr",
-        lr,
+        str(lr),
         "--agg",
         "proba",
         "--divergence",
@@ -138,15 +138,15 @@ def run_experiment(
         "--reduction",
         "mean",
         "--alpha",
-        alpha,
+        str(alpha),
         "--epochs",
         "80",
         "--out-dir",
         config_out_dir,
         "--tb-dir",
-        "../models/TBruns",
+        "models/TBruns",
         "--rs",
-        seed,
+        str(seed),
     ]
 
     if weights:
@@ -159,6 +159,7 @@ def main_simulation(
     image_dict_path: str,
     spot_prop_df: str,
     spot_dict_file: str,
+    ground_truth_file: str,
     models: List[str],
     alphas: List[float],
     learning_rates: List[float],
@@ -174,17 +175,17 @@ def main_simulation(
         divergence (str): Divergence metric to use in the simulation.
     """
 
-    logger.info("Starting simulation...")
-    logger.info("Image dictionary path: ", image_dict_path)
-    logger.info("Spot proportions DataFrame path: ", spot_prop_df)
-    logger.info("Spot dictionary file path: ", spot_dict_file)
-    logger.info("Models: ", models)
-    logger.info("Alpha values: ", alphas)
-    logger.info("Learning rates: ", learning_rates)
-    logger.info("Weights options: ", weights_options)
-    logger.info("Divergence metrics: ", divergences)
-    logger.info("Random seeds: ", seeds)
-    logger.info("Output directory: ", out_dir)
+    logger.info(f"Image dictionary path: {image_dict_path}")
+    logger.info(f"Spot proportions DataFrame path: {spot_prop_df}")
+    logger.info(f"Spot dictionary file path: {spot_dict_file}")
+    logger.info(f"Ground truth file path: {ground_truth_file}")
+    logger.info(f"Models: {models}")
+    logger.info(f"Alpha values: {alphas}")
+    logger.info(f"Learning rates: {learning_rates}")
+    logger.info(f"Weights options: {weights_options}")
+    logger.info(f"Divergence metrics: {divergences}")
+    logger.info(f"Random seeds: {seeds}")
+    logger.info(f"Output directory: {out_dir}\n")
 
     results_spots_best = []
     results_spots_best_adj = []
@@ -194,6 +195,18 @@ def main_simulation(
     results_spots_final_adj = []
     results_cells_final = []
     results_cells_final_adj = []
+
+    ground_truth = pd.read_csv(ground_truth_file, index_col=0)
+    ground_truth.index = ground_truth.index.astype(str)
+
+    keys_to_keep = [
+        "Global Accuracy",
+        "Balanced Accuracy",
+        "Weighted F1 Score",
+        "Weighted Precision",
+        "Weighted Recall",
+        "OVR ROC AUC (Weighted)",
+    ]
 
     combinations = list(itertools.product(models, alphas, learning_rates, weights_options, divergences))
 
@@ -224,27 +237,41 @@ def main_simulation(
             with open(info_path, "rb") as f:
                 model_info = pickle.load(f)
 
-            analyzer_best = PredAnalyzer(model_info=model_info, model_state="best", adjusted=False)
-            analyzer_best_adj = PredAnalyzer(model_info=model_info, model_state="best", adjusted=True)
+            analyzer_best = PredAnalyzer(
+                model_info=model_info, model_state="best", adjusted=False, ground_truth=ground_truth
+            )
+            analyzer_best_adj = PredAnalyzer(
+                model_info=model_info, model_state="best", adjusted=True, ground_truth=ground_truth
+            )
 
             is_final = True
             try:
-                analyzer_final = PredAnalyzer(model_info=model_info, model_state="final", adjusted=False)
-                analyzer_final_adj = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True)
+                analyzer_final = PredAnalyzer(
+                    model_info=model_info, model_state="final", adjusted=False, ground_truth=ground_truth
+                )
+                analyzer_final_adj = PredAnalyzer(
+                    model_info=model_info, model_state="final", adjusted=True, ground_truth=ground_truth
+                )
             except Exception:
                 is_final = False
 
             # Evaluate the predictions
             metrics_spots_best = analyzer_best.evaluate_spot_predictions()
             metrics_spots_best_adj = analyzer_best_adj.evaluate_spot_predictions()
-            metrics_cells_best = analyzer_best.evaluate_cell_predictions()
-            metrics_cells_best_adj = analyzer_best_adj.evaluate_cell_predictions()
+            metrics_cells_best = dict((key, analyzer_best.evaluate_cell_predictions()[key]) for key in keys_to_keep)
+            metrics_cells_best_adj = dict(
+                (key, analyzer_best_adj.evaluate_cell_predictions()[key]) for key in keys_to_keep
+            )
 
             if is_final:
                 metrics_spots_final = analyzer_final.evaluate_spot_predictions()
                 metrics_spots_final_adj = analyzer_final_adj.evaluate_spot_predictions()
-                metrics_cells_final = analyzer_final.evaluate_cell_predictions()
-                metrics_cells_final_adj = analyzer_final_adj.evaluate_cell_predictions()
+                metrics_cells_final = dict(
+                    (key, analyzer_final.evaluate_cell_predictions()[key]) for key in keys_to_keep
+                )
+                metrics_cells_final_adj = dict(
+                    (key, analyzer_final_adj.evaluate_cell_predictions()[key]) for key in keys_to_keep
+                )
 
             metrics_spots_best_list.append(metrics_spots_best)
             metrics_spots_best_adj_list.append(metrics_spots_best_adj)
@@ -333,10 +360,9 @@ def main_simulation(
         results_cells_final.append(result_cells_final)
         results_cells_final_adj.append(result_cells_final_adj)
 
-        logger.info(
-            f"Completed configuration: model={model_name}, alpha={alpha}, ",
-            f"lr={lr}, weights={weights}, divergence={divergence}.",
-        )
+        info1 = f"Completed configuration: model={model_name}, alpha={alpha}, "
+        info2 = f"lr={lr}, weights={weights}, divergence={divergence}."
+        logger.info(info1 + info2)
 
     # Save final results
     results_df_spots_best = pd.DataFrame(results_spots_best)
@@ -367,6 +393,7 @@ if __name__ == "__main__":
     parser.add_argument("image_dict_path", type=str, help="Path to the image dictionary file")
     parser.add_argument("spot_prop_df", type=str, help="Path to the spot proportions DataFrame")
     parser.add_argument("spot_dict_file", type=str, help="Path to the spot dictionary file")
+    parser.add_argument("ground_truth_file", type=str, help="Path to the ground truth file")
 
     # List arguments
     parser.add_argument("--models", nargs="+", type=str, required=True, help="List of model names")
@@ -393,6 +420,7 @@ if __name__ == "__main__":
         args.image_dict_path,
         args.spot_prop_df,
         args.spot_dict_file,
+        args.ground_truth_file,
         args.models,
         args.alphas,
         args.learning_rates,
