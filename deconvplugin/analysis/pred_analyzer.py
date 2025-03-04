@@ -580,7 +580,7 @@ class PredAnalyzer:
             "Precision (Per Class)": dict(zip(unique_classes, precision_per_class)),
             "Weighted Recall": weighted_recall,
             "Recall (Per Class)": dict(zip(unique_classes, recall_per_class)),
-            "Confusion Matrix": cm,
+            "Confusion Matrix": pd.DataFrame(cm, columns=list(unique_classes), index=list(unique_classes)),
             "OVR ROC AUC (Weighted)": roc_auc,
         }
 
@@ -663,10 +663,27 @@ class PredAnalyzer:
             "nuc": {
                 key: {
                     **value,
-                    "type": self.predicted_labels[str(i)]["class"]
-                    if str(i) in self.predicted_labels
-                    else value.get("type", None),
+                    "type": self.predicted_labels[key]["class"],
                 }
-                for i, (key, value) in enumerate(seg_dict["nuc"].items())
+                for key, value in seg_dict["nuc"].items()
+                if key in self.predicted_labels
             }
         }
+
+        # self.seg_dict_w_class = {
+        #     "nuc": {
+        #         key: {
+        #             **value,
+        #             "type": self.predicted_labels[key]["class"]
+        #             if key in self.predicted_labels
+        #             else value.get("type", None),
+        #         }
+        #         for i, (key, value) in enumerate(seg_dict["nuc"].items())
+        #     }
+        # }
+        # change because when original seg_dict is provided the key is str(i):
+        # predicted_labels[str(i)]['class']
+        # if str(i)...
+        # for i, (key, value) in enumerate...
+        # otherwise use key
+        # CONVERT SEG_DICT_W_CLASS INTO A INPUT OF THE USER AND REMOVE THIS METHOD
