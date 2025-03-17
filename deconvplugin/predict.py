@@ -9,6 +9,7 @@ from loguru import logger
 from tqdm import tqdm
 
 from deconvplugin.config import TqdmToLogger
+from deconvplugin.dataset import EmbedDataset
 from deconvplugin.dataset import ImageDataset
 from deconvplugin.dataset_utils import get_transform
 from deconvplugin.model.cell_classifier import CellClassifier
@@ -45,8 +46,11 @@ def predict_slide(
     model = model.to(device)
     cell_prob = []
 
-    transform = get_transform(model.model_name)
-    dataset = ImageDataset(image_dict, transform)
+    if model.model_name == "quick":
+        dataset = EmbedDataset(image_dict)
+    else:
+        transform = get_transform(model.model_name)
+        dataset = ImageDataset(image_dict, transform)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     with torch.no_grad():

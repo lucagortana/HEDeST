@@ -126,8 +126,8 @@ class PredAnalyzer:
         print("Loading predicted labels...")
         self.predicted_labels = self._get_labels_slide(self.predictions)
 
-        print("Loading true labels...")
         if self.ground_truth is not None:
+            print("Loading true labels...")
             self.true_labels = self._get_labels_slide(self.ground_truth)
 
         if self.history is not None:

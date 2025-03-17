@@ -36,6 +36,7 @@ def main(
     path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
     adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
+    spot_dict_global_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
     hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(1, help="Batch size for model training."),
@@ -45,7 +46,6 @@ def main(
     divergence: str = typer.Option(
         "l1", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
     ),
-    reduction: str = typer.Option("mean", help="Aggregation parameter for loss computation. Can be 'mean' or 'sum'."),
     alpha: float = typer.Option(0.5, help="Alpha parameter for loss function."),
     epochs: int = typer.Option(25, help="Number of training epochs."),
     train_size: float = typer.Option(0.5, help="Training set size as a fraction."),
@@ -66,8 +66,7 @@ def main(
     # Validate inputs
     valid_agg = {"proba", "onehot"}
     valid_divergence = {"l1", "l2", "kl", "rot"}
-    valid_model_name = {"convnet", "resnet18", "resnet50"}
-    valid_reduction = {"mean", "sum"}
+    valid_model_name = {"convnet", "resnet18", "resnet50", "quick"}
 
     if agg not in valid_agg:
         raise ValueError(f"Invalid value for 'agg': {agg}. Must be one of {valid_agg}.")
@@ -75,8 +74,6 @@ def main(
         raise ValueError(f"Invalid value for 'divergence': {divergence}. Must be one of {valid_divergence}.")
     if model_name not in valid_model_name:
         raise ValueError(f"Invalid value for 'model_name': {model_name}. Must be one of {valid_model_name}.")
-    if reduction not in valid_reduction:
-        raise ValueError(f"Invalid value for 'reduction': {reduction}. Must be one of {valid_reduction}.")
 
     MAIN_START = time.time()
 
@@ -126,7 +123,10 @@ def main(
             ) from e
 
     example_img = image_dict[list(image_dict.keys())[0]]
-    size = (example_img.shape[1], example_img.shape[1])
+    try:
+        size = (example_img.shape[1], example_img.shape[1])
+    except Exception:
+        size = example_img.shape[0]
 
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
 
@@ -153,8 +153,15 @@ def main(
         logger.warning(
             "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
         )
-        logger.info("spot_dict_global will be the same as spot_dict.")
-        spot_dict_global = spot_dict.copy()
+        if spot_dict_global_file is not None and os.path.splitext(spot_dict_global_file)[1] == ".json":
+            logger.info(f"Loading spot-to-cell dictionary from {spot_dict_global_file}...")
+            with open(spot_dict_global_file) as json_file:
+                spot_dict_global = json.load(
+                    json_file
+                )  # maybe put an assert here to be sure that spot_dict and spot_dict_global are ok
+        else:
+            logger.info("spot_dict_global will be the same as spot_dict.")
+            spot_dict_global = spot_dict.copy()
 
     # Recap variables
     logger.info("=" * 50)
@@ -168,7 +175,6 @@ def main(
     logger.info(f"Weighted loss: {weights}")
     logger.info(f"Aggregation: {agg}")
     logger.info(f"Divergence: {divergence}")
-    logger.info(f"Reduction: {reduction}")
     logger.info(f"Alpha: {alpha}")
     logger.info(f"Number of epochs: {epochs}")
     logger.info(f"Train size: {train_size}")
@@ -190,7 +196,6 @@ def main(
         weights=weights,
         agg=agg,
         divergence=divergence,
-        reduction=reduction,
         alpha=alpha,
         epochs=epochs,
         train_size=train_size,

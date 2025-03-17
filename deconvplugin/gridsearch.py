@@ -135,8 +135,6 @@ def run_experiment(
         "proba",
         "--divergence",
         divergence,
-        "--reduction",
-        "mean",
         "--alpha",
         str(alpha),
         "--epochs",

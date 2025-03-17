@@ -13,11 +13,12 @@ from loguru import logger
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from deconvplugin.analysis.plots import plot_grid_celltype
 from deconvplugin.analysis.plots import plot_history
 from deconvplugin.basics import set_seed
 from deconvplugin.model.cell_classifier import CellClassifier
-from deconvplugin.predict import predict_slide
+
+# from deconvplugin.analysis.plots import plot_grid_celltype
+# from deconvplugin.predict import predict_slide
 
 
 class ModelTrainer:
@@ -34,7 +35,6 @@ class ModelTrainer:
         weights (torch.Tensor, optional): Class weights for loss calculation, if applicable.
         agg (str): Aggregation method for loss calculation ('proba', 'onehot').
         divergence (str): Type of divergence used in loss calculation ('l1', 'l2', 'kl', 'rot').
-        reduction (str): Reduction method for the loss ('mean' or 'sum').
         alpha (float): Weight parameter for loss components.
         num_epochs (int): Number of training epochs.
         out_dir (str): Directory to save model checkpoints and results.
@@ -60,7 +60,6 @@ class ModelTrainer:
         weights: Optional[torch.Tensor] = None,
         agg: str = "proba",
         divergence: str = "l1",
-        reduction: str = "mean",
         alpha: float = 0.5,
         num_epochs: int = 25,
         out_dir: str = "results",
@@ -80,7 +79,6 @@ class ModelTrainer:
             weights (torch.Tensor, optional): Class weights for loss calculation.
             agg (str): Aggregation method for loss calculation.
             divergence (str): Type of divergence used in loss calculation.
-            reduction (str): Reduction method for the loss.
             alpha (float): Weight parameter for loss components.
             num_epochs (int): Number of training epochs.
             out_dir (str): Directory to save model checkpoints and results.
@@ -97,7 +95,7 @@ class ModelTrainer:
         self.weights = weights
         self.agg = agg
         self.divergence = divergence
-        self.reduction = reduction
+        self.reduction = "mean"
         self.alpha = alpha
         self.num_epochs = num_epochs
         self.out_dir = out_dir
@@ -156,14 +154,20 @@ class ModelTrainer:
             train_loss_half2 = 0.0
 
             # Training loop
-            for images_list, true_proportions in self.train_loader:
+            for batch in self.train_loader:
                 self.optimizer.zero_grad()
-                true_proportions = true_proportions.to(self.device)
-                images = images_list[0].to(self.device)
-                outputs = self.model(images)
+                images = batch["images"].to(self.device)
+                proportions = batch["proportions"].to(self.device)
+                bag_indices = batch["bag_indices"].to(self.device)
+                unique_indices = torch.unique(bag_indices, sorted=False).flip(0)
+                mapping = {val.item(): idx for idx, val in enumerate(unique_indices)}
+                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices])
+
+                cell_probs = self.model(images)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
-                    outputs,
-                    true_proportions[0],
+                    cell_probs,
+                    new_bag_indices,
+                    proportions,
                     weights=self.weights,
                     agg=self.agg,
                     divergence=self.divergence,
@@ -265,13 +269,19 @@ class ModelTrainer:
         running_loss_half2 = 0.0
 
         with torch.no_grad():
-            for images_list, true_proportions in dataloader:
-                true_proportions = true_proportions.to(self.device)
-                images = images_list[0].to(self.device)
-                outputs = self.model(images)
+            for batch in dataloader:
+                images = batch["images"].to(self.device)
+                proportions = batch["proportions"].to(self.device)
+                bag_indices = batch["bag_indices"].to(self.device)
+                unique_indices = torch.unique(bag_indices, sorted=False).flip(0)
+                mapping = {val.item(): idx for idx, val in enumerate(unique_indices)}
+                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices])
+
+                cell_probs = self.model(images)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
-                    outputs,
-                    true_proportions[0],
+                    cell_probs,
+                    new_bag_indices,
+                    proportions,
                     weights=self.weights,
                     agg=self.agg,
                     divergence=self.divergence,

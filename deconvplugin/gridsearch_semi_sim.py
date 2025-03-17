@@ -139,8 +139,6 @@ def run_experiment(
         "proba",
         "--divergence",
         divergence,
-        "--reduction",
-        "mean",
         "--alpha",
         str(alpha),
         "--epochs",
@@ -321,7 +319,7 @@ def main_simulation(
         mean_metrics_cells_final = aggregate_metrics(metrics_cells_final_list)
         mean_metrics_cells_final_adj = aggregate_metrics(metrics_cells_final_adj_list)
 
-        result_spots_best = {
+        result_spots_best = {  # add model name
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),

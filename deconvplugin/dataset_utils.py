@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 import pandas as pd
+import torch
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 
@@ -99,3 +100,11 @@ def get_transform(model_name) -> transforms.Compose:
     else:
         raise ValueError(f"Model {model_name} not recognized or not supported.")
     return transform
+
+
+def custom_collate(batch):
+    images = torch.cat([b["images"] for b in batch])
+    proportions = torch.stack([b["proportions"] for b in batch])
+    bag_indices = torch.cat([b["bag_indices"] for b in batch])
+
+    return {"images": images, "proportions": proportions, "bag_indices": bag_indices}

@@ -88,6 +88,16 @@ class CellClassifier(BaseCellClassifier):
 
             self.classifier = nn.Linear(int(8 * (self.size_edge / 8) ** 2), self.num_classes)
 
+        elif self.model_name == "quick":
+            self.backbone = nn.Sequential()
+            input_dim = 2048
+            for i, hidden_dim in enumerate(self.hidden_dims):
+                self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
+                self.backbone.add_module(f"relu_{i}", nn.ReLU())
+                input_dim = hidden_dim
+
+            self.backbone.add_module("final", nn.Linear(input_dim, num_classes))
+
         else:
             self.backbone = timm.create_model(model_name, pretrained=False, num_classes=self.num_classes)
 

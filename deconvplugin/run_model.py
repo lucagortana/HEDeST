@@ -16,6 +16,8 @@ from deconvplugin.basics import format_time
 from deconvplugin.basics import set_seed
 from deconvplugin.bayes_adjust import BayesianAdjustment
 from deconvplugin.dataset import SpotDataset
+from deconvplugin.dataset import SpotEmbedDataset
+from deconvplugin.dataset_utils import custom_collate
 from deconvplugin.dataset_utils import get_transform
 from deconvplugin.dataset_utils import split_data
 from deconvplugin.model.cell_classifier import CellClassifier
@@ -37,7 +39,6 @@ def run_sec_deconv(
     weights: bool = False,
     agg: str = "proba",
     divergence: str = "l1",
-    reduction: str = "mean",
     alpha: float = 0.5,
     epochs: int = 25,
     train_size: float = 0.5,
@@ -60,7 +61,6 @@ def run_sec_deconv(
         weights: Whether to use class weights based on global proportions.
         agg: Aggregation type for predictions ("proba" or "onehot").
         divergence: Type of divergence loss to use ("l1", "l2", "kl", "rot").
-        reduction: Reduction method for the loss ("mean" or "sum").
         alpha: Weighting factor for the loss function.
         epochs: Number of training epochs.
         train_size: Proportion of data used for training.
@@ -84,15 +84,27 @@ def run_sec_deconv(
     # Create datasets
     set_seed(rs)
     logger.debug("Creating datasets...")
-    transform = get_transform(model_name)
-    train_dataset = SpotDataset(train_spot_dict, train_proportions, image_dict, transform)
-    val_dataset = SpotDataset(val_spot_dict, val_proportions, image_dict, transform)
-    test_dataset = SpotDataset(test_spot_dict, test_proportions, image_dict, transform)
+    if model_name == "quick":
+        train_dataset = SpotEmbedDataset(train_spot_dict, train_proportions, image_dict)
+        val_dataset = SpotEmbedDataset(val_spot_dict, val_proportions, image_dict)
+        test_dataset = SpotEmbedDataset(test_spot_dict, test_proportions, image_dict)
+
+    else:
+        transform = get_transform(model_name)
+        train_dataset = SpotDataset(train_spot_dict, train_proportions, image_dict, transform)
+        val_dataset = SpotDataset(val_spot_dict, val_proportions, image_dict, transform)
+        test_dataset = SpotDataset(test_spot_dict, test_proportions, image_dict, transform)
 
     # Create dataloaders
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False, collate_fn=custom_collate
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, collate_fn=custom_collate
+    )
 
     num_classes = spot_prop_df.shape[1]
     ct_list = list(spot_prop_df.columns)
@@ -124,7 +136,6 @@ def run_sec_deconv(
         weights=weights,
         agg=agg,
         divergence=divergence,
-        reduction=reduction,
         alpha=alpha,
         num_epochs=epochs,
         out_dir=out_dir,

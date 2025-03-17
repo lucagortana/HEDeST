@@ -8,8 +8,8 @@ from typing import Tuple
 import torch
 from torch import nn
 from torch import Tensor
+from torch_scatter import scatter_mean
 
-from deconvplugin.loss import ROT
 from deconvplugin.loss import weighted_kl_divergence
 from deconvplugin.loss import weighted_l1_loss
 from deconvplugin.loss import weighted_l2_loss
@@ -38,6 +38,7 @@ class BaseCellClassifier(nn.Module, ABC):
     def compute_loss(
         self,
         outputs: Tensor,
+        bag_indices: Tensor,
         true_proportions: Tensor,
         weights: Optional[torch.Tensor] = None,
         agg: str = "proba",
@@ -67,17 +68,14 @@ class BaseCellClassifier(nn.Module, ABC):
         """
 
         if weights is None:
-            weights = torch.ones_like(true_proportions).to(self.device)
-
-        if divergence == "rot":
-            return ROT(outputs, true_proportions, alpha=alpha, weights=weights)
+            weights = torch.ones_like(true_proportions)[0].to(self.device)
 
         max_probs, max_indices = outputs.max(dim=1)
         max_weights = weights[max_indices]
         max_prob_loss = -torch.mean(max_weights * torch.log(max_probs))
 
         if agg == "proba":
-            pred_proportions = outputs.mean(dim=0)
+            pred_proportions = scatter_mean(outputs, bag_indices, dim=0)
         elif agg == "onehot":
             predicted_classes = torch.argmax(outputs, dim=1)
             one_hot_preds = torch.nn.functional.one_hot(predicted_classes, num_classes=outputs.size(1))
