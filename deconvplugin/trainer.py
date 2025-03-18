@@ -158,10 +158,10 @@ class ModelTrainer:
                 self.optimizer.zero_grad()
                 images = batch["images"].to(self.device)
                 proportions = batch["proportions"].to(self.device)
-                bag_indices = batch["bag_indices"].to(self.device)
+                bag_indices = batch["bag_indices"]
                 unique_indices = torch.unique(bag_indices, sorted=False).flip(0)
                 mapping = {val.item(): idx for idx, val in enumerate(unique_indices)}
-                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices])
+                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
@@ -272,10 +272,10 @@ class ModelTrainer:
             for batch in dataloader:
                 images = batch["images"].to(self.device)
                 proportions = batch["proportions"].to(self.device)
-                bag_indices = batch["bag_indices"].to(self.device)
+                bag_indices = batch["bag_indices"]
                 unique_indices = torch.unique(bag_indices, sorted=False).flip(0)
                 mapping = {val.item(): idx for idx, val in enumerate(unique_indices)}
-                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices])
+                new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(

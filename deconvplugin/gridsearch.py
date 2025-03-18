@@ -91,7 +91,9 @@ def run_experiment(
     image_dict_path: str,
     spot_prop_df: str,
     spot_dict_file: str,
+    spot_dict_global_file: str,
     model_name: str,
+    batch_size: int,
     alpha: float,
     lr: float,
     weights: bool,
@@ -106,7 +108,9 @@ def run_experiment(
         image_dict_path (str): Path to the image dictionary file.
         spot_prop_df (str): Path to the spot proportions DataFrame.
         spot_dict_file (str): Path to the spot dictionary file.
+        spot_dict_global_file (str): Path to the global spot dictionary file.
         model_name (str): Name of the model to use.
+        batch_size (int): Batch size for training.
         alpha (float): Regularization parameter for the model.
         lr (float): Learning rate for training.
         weights (bool): Whether to use weighted loss during training.
@@ -127,8 +131,12 @@ def run_experiment(
         spot_prop_df,
         "--spot-dict-file",
         spot_dict_file,
+        "--spot-dict-global-file",
+        spot_dict_global_file,
         "--model-name",
         model_name,
+        "--batch-size",
+        str(batch_size),
         "--lr",
         str(lr),
         "--agg",
@@ -157,6 +165,7 @@ def main_simulation(
     image_dict_path: str,
     spot_prop_df: str,
     spot_dict_file: str,
+    spot_dict_global_file: str,
     ground_truth_file: str,
     models: List[str],
     alphas: List[float],
@@ -164,18 +173,32 @@ def main_simulation(
     weights_options: List[bool],
     divergences: List[str],
     seeds: List[int],
+    batch_size: int,
     out_dir: str,
 ) -> None:
     """
     Perform the main simulation pipeline for a given divergence metric.
 
     Args:
-        divergence (str): Divergence metric to use in the simulation.
+        image_dict_path (str): Path to the image dictionary file.
+        spot_prop_df (str): Path to the spot proportions DataFrame.
+        spot_dict_file (str): Path to the spot dictionary file.
+        spot_dict_global_file (str): Path to the global spot dictionary file.
+        ground_truth_file (str): Path to the ground truth file.
+        models (List[str]): List of model names.
+        alphas (List[float]): List of alpha values.
+        learning_rates (List[float]): List of learning rates.
+        weights_options (List[bool]): List of weight options.
+        divergences (List[str]): List of divergence metrics.
+        seeds (List[int]): List of random seed values.
+        batch_size (int): Batch size for training.
+        out_dir (str): Output directory path.
     """
 
     logger.info(f"Image dictionary path: {image_dict_path}")
     logger.info(f"Spot proportions DataFrame path: {spot_prop_df}")
     logger.info(f"Spot dictionary file path: {spot_dict_file}")
+    logger.info(f"Global spot dictionary file path: {spot_dict_global_file}")
     logger.info(f"Ground truth file path: {ground_truth_file}")
     logger.info(f"Models: {models}")
     logger.info(f"Alpha values: {alphas}")
@@ -223,7 +246,18 @@ def main_simulation(
 
             # Run the experiment
             run_experiment(
-                image_dict_path, spot_prop_df, spot_dict_file, model_name, alpha, lr, weights, divergence, out_dir, seed
+                image_dict_path,
+                spot_prop_df,
+                spot_dict_file,
+                spot_dict_global_file,
+                model_name,
+                batch_size,
+                alpha,
+                lr,
+                weights,
+                divergence,
+                out_dir,
+                seed,
             )
 
             info_path = os.path.join(
@@ -293,6 +327,7 @@ def main_simulation(
         mean_metrics_cells_final_adj = aggregate_metrics(metrics_cells_final_adj_list)
 
         result_spots_best = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -300,6 +335,7 @@ def main_simulation(
             **mean_metrics_spots_best,
         }
         result_spots_best_adj = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -307,6 +343,7 @@ def main_simulation(
             **mean_metrics_spots_best_adj,
         }
         result_cells_best = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -314,6 +351,7 @@ def main_simulation(
             **mean_metrics_cells_best,
         }
         result_cells_best_adj = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -321,6 +359,7 @@ def main_simulation(
             **mean_metrics_cells_best_adj,
         }
         result_spots_final = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -328,6 +367,7 @@ def main_simulation(
             **mean_metrics_spots_final,
         }
         result_spots_final_adj = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -335,6 +375,7 @@ def main_simulation(
             **mean_metrics_spots_final_adj,
         }
         result_cells_final = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -342,6 +383,7 @@ def main_simulation(
             **mean_metrics_cells_final,
         }
         result_cells_final_adj = {
+            "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
@@ -391,6 +433,7 @@ if __name__ == "__main__":
     parser.add_argument("image_dict_path", type=str, help="Path to the image dictionary file")
     parser.add_argument("spot_prop_df", type=str, help="Path to the spot proportions DataFrame")
     parser.add_argument("spot_dict_file", type=str, help="Path to the spot dictionary file")
+    parser.add_argument("spot_dict_global_file", type=str, help="Path to the global spot dictionary file")
     parser.add_argument("ground_truth_file", type=str, help="Path to the ground truth file")
 
     # List arguments
@@ -407,6 +450,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--divergences", nargs="+", type=str, required=True, help="List of divergence metrics")
     parser.add_argument("--seeds", nargs="+", type=int, required=True, help="List of random seed values")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
 
     # Output directory
     parser.add_argument("--out_dir", type=str, required=True, help="Output directory path")
@@ -418,6 +462,7 @@ if __name__ == "__main__":
         args.image_dict_path,
         args.spot_prop_df,
         args.spot_dict_file,
+        args.spot_dict_global_file,
         args.ground_truth_file,
         args.models,
         args.alphas,
@@ -425,5 +470,6 @@ if __name__ == "__main__":
         weights_options,
         args.divergences,
         args.seeds,
+        args.batch_size,
         args.out_dir,
     )
