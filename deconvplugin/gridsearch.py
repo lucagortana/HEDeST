@@ -9,27 +9,35 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
+import numpy as np
 import pandas as pd
 from loguru import logger
 
 from deconvplugin.analysis.pred_analyzer import PredAnalyzer
 
 
-def aggregate_metrics(metrics_list: List[Dict[str, float]]) -> Dict[str, float]:
+def compute_statistics(metrics_list: List[Dict[str, float]]) -> Tuple[Dict[str, float], Dict[str, float]]:
     """
-    Calculate the mean for each metric across multiple runs.
+    Compute mean and confidence intervals for a list of metrics.
 
     Args:
         metrics_list (List[Dict[str, float]]): List of dictionaries containing metrics from each run.
 
     Returns:
-        Dict[str, float]: Dictionary containing the mean of each metric.
+        Tuple[Dict[str, float], Dict[str, float]]: Tuple containing the mean and confidence intervals for each metric.
     """
 
-    mean_metrics = pd.DataFrame(metrics_list).mean().to_dict()
-    return mean_metrics
+    df_metrics = pd.DataFrame(metrics_list)
+    mean_values = df_metrics.mean().to_dict()
+    std_values = df_metrics.std()
+    count_values = df_metrics.count()
+    se_values = std_values / np.sqrt(count_values)
+    ci_values = {f"{key} ci": 1.96 * se for key, se in se_values.items()}
+
+    return mean_values, ci_values
 
 
 def evaluate_performance(
@@ -317,14 +325,14 @@ def main_simulation(
                 metrics_cells_final_adj_list.append(metrics_cells_final_adj)
 
         # Calculate the mean metrics across seeds
-        mean_metrics_spots_best = aggregate_metrics(metrics_spots_best_list)
-        mean_metrics_spots_best_adj = aggregate_metrics(metrics_spots_best_adj_list)
-        mean_metrics_cells_best = aggregate_metrics(metrics_cells_best_list)
-        mean_metrics_cells_best_adj = aggregate_metrics(metrics_cells_best_adj_list)
-        mean_metrics_spots_final = aggregate_metrics(metrics_spots_final_list)
-        mean_metrics_spots_final_adj = aggregate_metrics(metrics_spots_final_adj_list)
-        mean_metrics_cells_final = aggregate_metrics(metrics_cells_final_list)
-        mean_metrics_cells_final_adj = aggregate_metrics(metrics_cells_final_adj_list)
+        mean_metrics_spots_best, ci_metrics_spots_best = compute_statistics(metrics_spots_best_list)
+        mean_metrics_spots_best_adj, ci_metrics_spots_best_adj = compute_statistics(metrics_spots_best_adj_list)
+        mean_metrics_cells_best, ci_metrics_cells_best = compute_statistics(metrics_cells_best_list)
+        mean_metrics_cells_best_adj, ci_metrics_cells_best_adj = compute_statistics(metrics_cells_best_adj_list)
+        mean_metrics_spots_final, ci_metrics_spots_final = compute_statistics(metrics_spots_final_list)
+        mean_metrics_spots_final_adj, ci_metrics_spots_final_adj = compute_statistics(metrics_spots_final_adj_list)
+        mean_metrics_cells_final, ci_metrics_cells_final = compute_statistics(metrics_cells_final_list)
+        mean_metrics_cells_final_adj, ci_metrics_cells_final_adj = compute_statistics(metrics_cells_final_adj_list)
 
         result_spots_best = {
             "model": model_name,
@@ -333,6 +341,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_spots_best,
+            **ci_metrics_spots_best,
         }
         result_spots_best_adj = {
             "model": model_name,
@@ -341,6 +350,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_spots_best_adj,
+            **ci_metrics_spots_best_adj,
         }
         result_cells_best = {
             "model": model_name,
@@ -349,6 +359,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_cells_best,
+            **ci_metrics_cells_best,
         }
         result_cells_best_adj = {
             "model": model_name,
@@ -357,6 +368,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_cells_best_adj,
+            **ci_metrics_cells_best_adj,
         }
         result_spots_final = {
             "model": model_name,
@@ -365,6 +377,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_spots_final,
+            **ci_metrics_spots_final,
         }
         result_spots_final_adj = {
             "model": model_name,
@@ -373,6 +386,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_spots_final_adj,
+            **ci_metrics_spots_final_adj,
         }
         result_cells_final = {
             "model": model_name,
@@ -381,6 +395,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_cells_final,
+            **ci_metrics_cells_final,
         }
         result_cells_final_adj = {
             "model": model_name,
@@ -389,6 +404,7 @@ def main_simulation(
             "weights": str(weights),
             "divergence": str(divergence),
             **mean_metrics_cells_final_adj,
+            **ci_metrics_cells_final_adj,
         }
 
         results_spots_best.append(result_spots_best)
