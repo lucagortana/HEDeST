@@ -21,7 +21,6 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import r2_score
 from sklearn.metrics import recall_score
-from sklearn.metrics import roc_auc_score
 
 from deconvplugin.analysis.plots import plot_grid_celltype
 from deconvplugin.analysis.plots import plot_history
@@ -44,6 +43,7 @@ class PredAnalyzer:
         "model_name",
         "hidden_dims",
         "spot_dict",
+        "train_spot_dict",
         "proportions",
         "history",
         "preds",
@@ -101,6 +101,7 @@ class PredAnalyzer:
             setattr(self, key, self.model_info.get(key, None))
 
         assert self.preds is not None, "The 'preds' attribute must be provided and cannot be None."
+        assert self.spot_dict is not None, "The 'spot_dict' attribute must be provided and cannot be None."
 
         if self.model_state == "best":
             if self.adjusted:
@@ -125,6 +126,14 @@ class PredAnalyzer:
 
         print("Loading predicted labels...")
         self.predicted_labels = self._get_labels_slide(self.predictions)
+
+        all_spots = set(self.spot_dict.keys())
+        all_cells = {cell for cell_list in self.spot_dict.values() for cell in cell_list}
+        if self.train_spot_dict is not None:
+            self.train_spots = list(self.train_spot_dict.keys())
+            self.train_cells = list({cell for cell_list in self.train_spot_dict.values() for cell in cell_list})
+            self.no_train_spots = list(all_spots - set(self.train_spots))
+            self.no_train_cells = list(all_cells - set(self.train_cells))
 
         if self.ground_truth is not None:
             print("Loading true labels...")
@@ -441,7 +450,7 @@ class PredAnalyzer:
         plt.show()
 
     @require_attributes("proportions", "spot_dict")
-    def evaluate_spot_predictions(self) -> Dict[str, float]:
+    def evaluate_spot_predictions(self, subset="all") -> Dict[str, float]:
         """
         Evaluate spot-level predictions using various metrics.
 
@@ -451,12 +460,19 @@ class PredAnalyzer:
 
         self.predicted_proportions = self.get_predicted_proportions()
 
+        if subset == "train":
+            predicted_proportions = self.predicted_proportions.loc[self.train_spots]
+        elif subset == "no_train":
+            predicted_proportions = self.predicted_proportions.loc[self.no_train_spots]
+        elif subset == "all":
+            predicted_proportions = self.predicted_proportions.copy()
+        else:
+            raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
+
         # Align dataframes and extracting labels
-        true_proportions, self.predicted_proportions = self.proportions.align(
-            self.predicted_proportions, join="inner", axis=0
-        )
+        true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
         true_labels = true_proportions.idxmax(axis=1)
-        predicted_labels = self.predicted_proportions.idxmax(axis=1)
+        predicted_labels = predicted_proportions.idxmax(axis=1)
 
         # Computing weights
         class_frequencies = true_proportions.mean(axis=0)
@@ -465,24 +481,24 @@ class PredAnalyzer:
         weights = np.array([class_weights[col] for col in true_proportions.columns])
 
         # mse
-        squared_errors = (true_proportions - self.predicted_proportions) ** 2
+        squared_errors = (true_proportions - predicted_proportions) ** 2
         weighted_mse = (squared_errors * weights).mean().mean()
         mse = squared_errors.mean().mean()
 
         # mae
-        absolute_errors = (true_proportions - self.predicted_proportions).abs()
+        absolute_errors = (true_proportions - predicted_proportions).abs()
         weighted_mae = (absolute_errors * weights).mean().mean()
         mae = absolute_errors.mean().mean()
 
         # R^2 score
-        r2 = r2_score(true_proportions, self.predicted_proportions)
+        r2 = r2_score(true_proportions, predicted_proportions)
 
         # Pearson and Spearman correlation
         spearman_corrs = []
         pearson_corrs = []
         for spot in true_proportions.index:
             true_values = true_proportions.loc[spot]
-            pred_values = self.predicted_proportions.loc[spot]
+            pred_values = predicted_proportions.loc[spot]
 
             spearman_corr, _ = spearmanr(true_values, pred_values)
             spearman_corrs.append(spearman_corr)
@@ -523,7 +539,7 @@ class PredAnalyzer:
 
         return metrics
 
-    def evaluate_cell_predictions(self) -> Dict[str, float]:
+    def evaluate_cell_predictions(self, subset="all") -> Dict[str, float]:
         """
         Evaluate cell-level predictions using various metrics.
 
@@ -533,6 +549,18 @@ class PredAnalyzer:
 
         if self.true_labels is None:
             raise ValueError("True labels are not available. Please provide ground_truth.")
+
+        if subset == "train":
+            true_labels = {k: v for k, v in self.true_labels.items() if k in self.train_cells}
+            predicted_labels = {k: v for k, v in self.predicted_labels.items() if k in self.train_cells}
+        elif subset == "no_train":
+            true_labels = {k: v for k, v in self.true_labels.items() if k in self.no_train_cells}
+            predicted_labels = {k: v for k, v in self.predicted_labels.items() if k in self.no_train_cells}
+        elif subset == "all":
+            true_labels = self.true_labels.copy()
+            predicted_labels = self.predicted_labels.copy()
+        else:
+            raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
 
         true_labels = pd.Series(self.true_labels).map(lambda x: x["cell_type"])
         predicted_labels = pd.Series(self.predicted_labels).map(lambda x: x["cell_type"])
@@ -555,20 +583,7 @@ class PredAnalyzer:
 
         # Confusion matrix
         cm = confusion_matrix(true_labels, predicted_labels)
-
-        # ROC AUC for multi-class classification
-        # Ensure true_labels are encoded as integers for roc_auc_score
         unique_classes = np.unique(true_labels)
-        class_to_index = {cls: idx for idx, cls in enumerate(unique_classes)}
-        true_labels_encoded = np.array([class_to_index[cls] for cls in true_labels])
-
-        # Compute ROC AUC
-        roc_auc = roc_auc_score(
-            true_labels_encoded,
-            self.predictions.values,  # Use the predicted probabilities
-            multi_class="ovr",  # One-vs-Rest strategy
-            average="weighted",
-        )
 
         # Compile metrics
         metrics = {
@@ -581,7 +596,6 @@ class PredAnalyzer:
             "Weighted Recall": weighted_recall,
             "Recall (Per Class)": dict(zip(unique_classes, recall_per_class)),
             "Confusion Matrix": pd.DataFrame(cm, columns=list(unique_classes), index=list(unique_classes)),
-            "OVR ROC AUC (Weighted)": roc_auc,
         }
 
         return metrics
