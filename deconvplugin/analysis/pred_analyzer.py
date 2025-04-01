@@ -18,6 +18,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
 from sklearn.metrics import precision_score
 from sklearn.metrics import r2_score
 from sklearn.metrics import recall_score
@@ -452,7 +454,8 @@ class PredAnalyzer:
     @require_attributes("proportions", "spot_dict")
     def evaluate_spot_predictions(self, subset="all") -> Dict[str, float]:
         """
-        Evaluate spot-level predictions using various metrics.
+        Evaluate spot-level predictions using various metrics. With this function, you can compute a series of
+        metrics to compare, for each spot, true vs predicted proportions.
 
         Returns:
             Dict[str, float]: A dictionary of computed metrics.
@@ -536,6 +539,77 @@ class PredAnalyzer:
             "Weighted Precision": precision,
             "Weighted Recall": recall,
         }
+
+        return metrics
+
+    @require_attributes("proportions", "spot_dict")
+    def evaluate_spot_predictions_global(self, subset="all") -> Dict[str, float]:
+        """
+        Evaluate slide-level predictions using various metrics. With this function, you can compute a series of
+        metrics to compare, for each cell-type, true vs predicted proportions over the histological slide.
+
+        Returns:
+            Dict[str, float]: A dictionary of computed metrics.
+        """
+
+        self.predicted_proportions = self.get_predicted_proportions()
+
+        if subset == "train":
+            predicted_proportions = self.predicted_proportions.loc[self.train_spots]
+        elif subset == "no_train":
+            predicted_proportions = self.predicted_proportions.loc[self.no_train_spots]
+        elif subset == "all":
+            predicted_proportions = self.predicted_proportions.copy()
+        else:
+            raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
+
+        true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
+        metrics = {}
+
+        # Compute global metrics (Flattened approach)
+        true_values = true_proportions.values.flatten()
+        predicted_values = predicted_proportions.values.flatten()
+
+        metrics["Pearson Correlation global (flattened)"] = pearsonr(true_values, predicted_values)[0]
+        metrics["Spearman Correlation global (flattened)"] = spearmanr(true_values, predicted_values)[0]
+        metrics["MSE global (flattened)"] = mean_squared_error(true_values, predicted_values)
+        metrics["MAE global (flattened)"] = mean_absolute_error(true_values, predicted_values)
+
+        # Compute per-cell-type metrics
+        pearson_list = []
+        spearman_list = []
+        mse_list = []
+        mae_list = []
+
+        for cell_type in true_proportions.columns:
+            true_col = true_proportions[cell_type].values
+            pred_col = predicted_proportions[cell_type].values
+
+            if np.std(true_col) > 0 and np.std(pred_col) > 0:  # Ensure non-constant values
+                pearson_corr = pearsonr(true_col, pred_col)[0]
+                spearman_corr = spearmanr(true_col, pred_col)[0]
+            else:
+                pearson_corr = np.nan
+                spearman_corr = np.nan
+
+            mse_value = mean_squared_error(true_col, pred_col)
+            mae_value = mean_absolute_error(true_col, pred_col)
+
+            metrics[f"Pearson Correlation {cell_type}"] = pearson_corr
+            metrics[f"Spearman Correlation {cell_type}"] = spearman_corr
+            metrics[f"MSE {cell_type}"] = mse_value
+            metrics[f"MAE {cell_type}"] = mae_value
+
+            pearson_list.append(pearson_corr)
+            spearman_list.append(spearman_corr)
+            mse_list.append(mse_value)
+            mae_list.append(mae_value)
+
+        # Compute global metrics (Averaged approach)
+        metrics["Pearson Correlation global (averaged)"] = np.nanmean(pearson_list)
+        metrics["Spearman Correlation global (averaged)"] = np.nanmean(spearman_list)
+        metrics["MSE global (averaged)"] = np.mean(mse_list)
+        metrics["MAE global (averaged)"] = np.mean(mae_list)
 
         return metrics
 
