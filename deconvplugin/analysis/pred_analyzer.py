@@ -711,14 +711,16 @@ class PredAnalyzer:
             pd.DataFrame: DataFrame with predicted proportions per spot.
         """
 
-        cell_to_spot = {cell: spot for spot, cells in self.spot_dict.items() for cell in cells}
-        spot_series = pd.Series(cell_to_spot, name="spot")
+        spot_proportions = {}
 
-        pred_with_spot = self.predictions.join(spot_series, how="inner")
+        for spot_id, cell_ids in self.spot_dict.items():
+            spot_cells = self.predictions.loc[self.predictions.index.isin(cell_ids)]
+            spot_proportions[spot_id] = spot_cells.mean(axis=0)
 
-        proportion_df = pred_with_spot.groupby("spot").mean()
+        predicted_proportions_df = pd.DataFrame.from_dict(spot_proportions, orient="index")
+        predicted_proportions_df.index.name = "spot"
 
-        return proportion_df
+        return predicted_proportions_df
 
     def _get_labels_slide(self, data) -> Dict[str, Dict[str, Any]]:
         """

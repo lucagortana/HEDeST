@@ -244,7 +244,6 @@ def main_simulation(
         "Weighted F1 Score",
         "Weighted Precision",
         "Weighted Recall",
-        "OVR ROC AUC (Weighted)",
     ]
 
     combinations = list(itertools.product(models, alphas, learning_rates, weights_options, divergences))

@@ -184,7 +184,7 @@ def run_sec_deconv(
         "model_name": model_name,
         "hidden_dims": hidden_dims,
         "spot_dict": spot_dict,
-        "train_spot_dict": train_spot_dict,
+        "train_spot_dict": train_spot_dict,  # plus tard mettre que les clés
         "proportions": spot_prop_df,
         "history": {"train": trainer.history_train, "val": trainer.history_val},
         "preds": {
