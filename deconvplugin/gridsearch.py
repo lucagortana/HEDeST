@@ -216,24 +216,28 @@ def main_simulation(
     logger.info(f"Random seeds: {seeds}")
     logger.info(f"Output directory: {out_dir}\n")
 
-    results_spots_best = []
-    results_spots_best_train = []
-    results_spots_best_no_train = []
-    results_spots_best_adj = []
+    # results_spots_best = []
+    # results_spots_best_train = []
+    # results_spots_best_no_train = []
+    # results_spots_best_adj = []
     results_cells_best = []
     results_cells_best_train = []
     results_cells_best_no_train = []
     results_cells_best_adj = []
+    results_cells_best_adj_train = []
+    results_cells_best_adj_no_train = []
     results_slide_best = []
     results_slide_best_train = []
     results_slide_best_no_train = []
     results_slide_best_adj = []
-    results_spots_final = []
-    results_spots_final_adj = []
-    results_cells_final = []
-    results_cells_final_adj = []
-    results_slide_final = []
-    results_slide_final_adj = []
+    results_slide_best_adj_train = []
+    results_slide_best_adj_no_train = []
+    # results_spots_final = []
+    # results_spots_final_adj = []
+    # results_cells_final = []
+    # results_cells_final_adj = []
+    # results_slide_final = []
+    # results_slide_final_adj = []
 
     ground_truth = pd.read_csv(ground_truth_file, index_col=0)
     ground_truth.index = ground_truth.index.astype(str)
@@ -250,24 +254,28 @@ def main_simulation(
 
     for model_name, alpha, lr, weights, divergence in combinations:
 
-        metrics_spots_best_list = []
-        metrics_spots_best_train_list = []
-        metrics_spots_best_no_train_list = []
-        metrics_spots_best_adj_list = []
+        # metrics_spots_best_list = []
+        # metrics_spots_best_train_list = []
+        # metrics_spots_best_no_train_list = []
+        # metrics_spots_best_adj_list = []
         metrics_cells_best_list = []
         metrics_cells_best_train_list = []
         metrics_cells_best_no_train_list = []
         metrics_cells_best_adj_list = []
+        metrics_cells_best_adj_train_list = []
+        metrics_cells_best_adj_no_train_list = []
         metrics_slide_best_list = []
         metrics_slide_best_train_list = []
         metrics_slide_best_no_train_list = []
         metrics_slide_best_adj_list = []
-        metrics_spots_final_list = []
-        metrics_spots_final_adj_list = []
-        metrics_cells_final_list = []
-        metrics_cells_final_adj_list = []
-        metrics_slide_final_list = []
-        metrics_slide_final_adj_list = []
+        metrics_slide_best_adj_train_list = []
+        metrics_slide_best_adj_no_train_list = []
+        # metrics_spots_final_list = []
+        # metrics_spots_final_adj_list = []
+        # metrics_cells_final_list = []
+        # metrics_cells_final_adj_list = []
+        # metrics_slide_final_list = []
+        # metrics_slide_final_adj_list = []
 
         for seed in seeds:
 
@@ -303,22 +311,22 @@ def main_simulation(
                 model_info=model_info, model_state="best", adjusted=True, ground_truth=ground_truth
             )
 
-            is_final = True
-            try:
-                analyzer_final = PredAnalyzer(
-                    model_info=model_info, model_state="final", adjusted=False, ground_truth=ground_truth
-                )
-                analyzer_final_adj = PredAnalyzer(
-                    model_info=model_info, model_state="final", adjusted=True, ground_truth=ground_truth
-                )
-            except Exception:
-                is_final = False
+            # is_final = True
+            # try:
+            #     analyzer_final = PredAnalyzer(
+            #         model_info=model_info, model_state="final", adjusted=False, ground_truth=ground_truth
+            #     )
+            #     analyzer_final_adj = PredAnalyzer(
+            #         model_info=model_info, model_state="final", adjusted=True, ground_truth=ground_truth
+            #     )
+            # except Exception:
+            #     is_final = False
 
             # Evaluate the predictions
-            metrics_spots_best = analyzer_best.evaluate_spot_predictions()
-            metrics_spots_best_train = analyzer_best.evaluate_spot_predictions(subset="train")
-            metrics_spots_best_no_train = analyzer_best.evaluate_spot_predictions(subset="no_train")
-            metrics_spots_best_adj = analyzer_best_adj.evaluate_spot_predictions()
+            # metrics_spots_best = analyzer_best.evaluate_spot_predictions()
+            # metrics_spots_best_train = analyzer_best.evaluate_spot_predictions(subset="train")
+            # metrics_spots_best_no_train = analyzer_best.evaluate_spot_predictions(subset="no_train")
+            # metrics_spots_best_adj = analyzer_best_adj.evaluate_spot_predictions()
             metrics_cells_best = dict(
                 (key, analyzer_best.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
             )
@@ -331,106 +339,130 @@ def main_simulation(
             metrics_cells_best_adj = dict(
                 (key, analyzer_best_adj.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
             )
+            metrics_cells_best_adj_train = dict(
+                (key, analyzer_best_adj.evaluate_cell_predictions(subset="train")[key]) for key in keys_to_keep_cell
+            )
+            metrics_cells_best_adj_no_train = dict(
+                (key, analyzer_best_adj.evaluate_cell_predictions(subset="no_train")[key]) for key in keys_to_keep_cell
+            )
             metrics_slide_best = analyzer_best.evaluate_spot_predictions_global()
             metrics_slide_best_train = analyzer_best.evaluate_spot_predictions_global(subset="train")
             metrics_slide_best_no_train = analyzer_best.evaluate_spot_predictions_global(subset="no_train")
             metrics_slide_best_adj = analyzer_best_adj.evaluate_spot_predictions_global()
+            metrics_slide_best_adj_train = analyzer_best_adj.evaluate_spot_predictions_global(subset="train")
+            metrics_slide_best_adj_no_train = analyzer_best_adj.evaluate_spot_predictions_global(subset="no_train")
 
-            if is_final:
-                metrics_spots_final = analyzer_final.evaluate_spot_predictions()
-                metrics_spots_final_adj = analyzer_final_adj.evaluate_spot_predictions()
-                metrics_cells_final = dict(
-                    (key, analyzer_final.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
-                )
-                metrics_cells_final_adj = dict(
-                    (key, analyzer_final_adj.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
-                )
-                metrics_slide_final = analyzer_final.evaluate_spot_predictions_global()
-                metrics_slide_final_adj = analyzer_final_adj.evaluate_spot_predictions_global()
+            # if is_final:
+            #     metrics_spots_final = analyzer_final.evaluate_spot_predictions()
+            #     metrics_spots_final_adj = analyzer_final_adj.evaluate_spot_predictions()
+            #     metrics_cells_final = dict(
+            #         (key, analyzer_final.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
+            #     )
+            #     metrics_cells_final_adj = dict(
+            #         (key, analyzer_final_adj.evaluate_cell_predictions()[key]) for key in keys_to_keep_cell
+            #     )
+            #     metrics_slide_final = analyzer_final.evaluate_spot_predictions_global()
+            #     metrics_slide_final_adj = analyzer_final_adj.evaluate_spot_predictions_global()
 
-            metrics_spots_best_list.append(metrics_spots_best)
-            metrics_spots_best_train_list.append(metrics_spots_best_train)
-            metrics_spots_best_no_train_list.append(metrics_spots_best_no_train)
-            metrics_spots_best_adj_list.append(metrics_spots_best_adj)
+            # metrics_spots_best_list.append(metrics_spots_best)
+            # metrics_spots_best_train_list.append(metrics_spots_best_train)
+            # metrics_spots_best_no_train_list.append(metrics_spots_best_no_train)
+            # metrics_spots_best_adj_list.append(metrics_spots_best_adj)
             metrics_cells_best_list.append(metrics_cells_best)
             metrics_cells_best_train_list.append(metrics_cells_best_train)
             metrics_cells_best_no_train_list.append(metrics_cells_best_no_train)
             metrics_cells_best_adj_list.append(metrics_cells_best_adj)
+            metrics_cells_best_adj_train_list.append(metrics_cells_best_adj_train)
+            metrics_cells_best_adj_no_train_list.append(metrics_cells_best_adj_no_train)
             metrics_slide_best_list.append(metrics_slide_best)
             metrics_slide_best_train_list.append(metrics_slide_best_train)
             metrics_slide_best_no_train_list.append(metrics_slide_best_no_train)
             metrics_slide_best_adj_list.append(metrics_slide_best_adj)
+            metrics_slide_best_adj_train_list.append(metrics_slide_best_adj_train)
+            metrics_slide_best_adj_no_train_list.append(metrics_slide_best_adj_no_train)
 
-            if is_final:
-                metrics_spots_final_list.append(metrics_spots_final)
-                metrics_spots_final_adj_list.append(metrics_spots_final_adj)
-                metrics_cells_final_list.append(metrics_cells_final)
-                metrics_cells_final_adj_list.append(metrics_cells_final_adj)
-                metrics_slide_final_list.append(metrics_slide_final)
-                metrics_slide_final_adj_list.append(metrics_slide_final_adj)
+            # if is_final:
+            #     metrics_spots_final_list.append(metrics_spots_final)
+            #     metrics_spots_final_adj_list.append(metrics_spots_final_adj)
+            #     metrics_cells_final_list.append(metrics_cells_final)
+            #     metrics_cells_final_adj_list.append(metrics_cells_final_adj)
+            #     metrics_slide_final_list.append(metrics_slide_final)
+            #     metrics_slide_final_adj_list.append(metrics_slide_final_adj)
 
         # Calculate the mean metrics across seeds
-        mean_metrics_spots_best, ci_metrics_spots_best = compute_statistics(metrics_spots_best_list)
-        mean_metrics_spots_best_train, ci_metrics_spots_best_train = compute_statistics(metrics_spots_best_train_list)
-        mean_metrics_spots_best_no_train, ci_metrics_spots_best_no_train = compute_statistics(
-            metrics_spots_best_no_train_list
-        )
-        mean_metrics_spots_best_adj, ci_metrics_spots_best_adj = compute_statistics(metrics_spots_best_adj_list)
+        # mean_metrics_spots_best, ci_metrics_spots_best = compute_statistics(metrics_spots_best_list)
+        # mean_metrics_spots_best_train, ci_metrics_spots_best_train = compute_statistics(metrics_spots_best_train_list)
+        # mean_metrics_spots_best_no_train, ci_metrics_spots_best_no_train = compute_statistics(
+        #     metrics_spots_best_no_train_list
+        # )
+        # mean_metrics_spots_best_adj, ci_metrics_spots_best_adj = compute_statistics(metrics_spots_best_adj_list)
         mean_metrics_cells_best, ci_metrics_cells_best = compute_statistics(metrics_cells_best_list)
         mean_metrics_cells_best_train, ci_metrics_cells_best_train = compute_statistics(metrics_cells_best_train_list)
         mean_metrics_cells_best_no_train, ci_metrics_cells_best_no_train = compute_statistics(
             metrics_cells_best_no_train_list
         )
         mean_metrics_cells_best_adj, ci_metrics_cells_best_adj = compute_statistics(metrics_cells_best_adj_list)
+        mean_metrics_cells_best_adj_train, ci_metrics_cells_best_adj_train = compute_statistics(
+            metrics_cells_best_adj_train_list
+        )
+        mean_metrics_cells_best_adj_no_train, ci_metrics_cells_best_adj_no_train = compute_statistics(
+            metrics_cells_best_adj_no_train_list
+        )
         mean_metrics_slide_best, ci_metrics_slide_best = compute_statistics(metrics_slide_best_list)
         mean_metrics_slide_best_train, ci_metrics_slide_best_train = compute_statistics(metrics_slide_best_train_list)
         mean_metrics_slide_best_no_train, ci_metrics_slide_best_no_train = compute_statistics(
             metrics_slide_best_no_train_list
         )
         mean_metrics_slide_best_adj, ci_metrics_slide_best_adj = compute_statistics(metrics_slide_best_adj_list)
-        mean_metrics_spots_final, ci_metrics_spots_final = compute_statistics(metrics_spots_final_list)
-        mean_metrics_spots_final_adj, ci_metrics_spots_final_adj = compute_statistics(metrics_spots_final_adj_list)
-        mean_metrics_cells_final, ci_metrics_cells_final = compute_statistics(metrics_cells_final_list)
-        mean_metrics_cells_final_adj, ci_metrics_cells_final_adj = compute_statistics(metrics_cells_final_adj_list)
-        mean_metrics_slide_final, ci_metrics_slide_final = compute_statistics(metrics_slide_final_list)
-        mean_metrics_slide_final_adj, ci_metrics_slide_final_adj = compute_statistics(metrics_slide_final_adj_list)
+        mean_metrics_slide_best_adj_train, ci_metrics_slide_best_adj_train = compute_statistics(
+            metrics_slide_best_adj_train_list
+        )
+        mean_metrics_slide_best_adj_no_train, ci_metrics_slide_best_adj_no_train = compute_statistics(
+            metrics_slide_best_adj_no_train_list
+        )
+        # mean_metrics_spots_final, ci_metrics_spots_final = compute_statistics(metrics_spots_final_list)
+        # mean_metrics_spots_final_adj, ci_metrics_spots_final_adj = compute_statistics(metrics_spots_final_adj_list)
+        # mean_metrics_cells_final, ci_metrics_cells_final = compute_statistics(metrics_cells_final_list)
+        # mean_metrics_cells_final_adj, ci_metrics_cells_final_adj = compute_statistics(metrics_cells_final_adj_list)
+        # mean_metrics_slide_final, ci_metrics_slide_final = compute_statistics(metrics_slide_final_list)
+        # mean_metrics_slide_final_adj, ci_metrics_slide_final_adj = compute_statistics(metrics_slide_final_adj_list)
 
-        result_spots_best = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_spots_best,
-            **ci_metrics_spots_best,
-        }
-        result_spots_best_train = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_spots_best_train,
-            **ci_metrics_spots_best_train,
-        }
-        result_spots_best_no_train = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_spots_best_no_train,
-            **ci_metrics_spots_best_no_train,
-        }
-        result_spots_best_adj = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_spots_best_adj,
-            **ci_metrics_spots_best_adj,
-        }
+        # result_spots_best = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_best,
+        #     **ci_metrics_spots_best,
+        # }
+        # result_spots_best_train = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_best_train,
+        #     **ci_metrics_spots_best_train,
+        # }
+        # result_spots_best_no_train = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_best_no_train,
+        #     **ci_metrics_spots_best_no_train,
+        # }
+        # result_spots_best_adj = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_best_adj,
+        #     **ci_metrics_spots_best_adj,
+        # }
         result_cells_best = {
             "model": model_name,
             "alpha": str(alpha),
@@ -466,6 +498,24 @@ def main_simulation(
             "divergence": str(divergence),
             **mean_metrics_cells_best_adj,
             **ci_metrics_cells_best_adj,
+        }
+        result_cells_best_adj_train = {
+            "model": model_name,
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
+            **mean_metrics_cells_best_adj_train,
+            **ci_metrics_cells_best_adj_train,
+        }
+        result_cells_best_adj_no_train = {
+            "model": model_name,
+            "alpha": str(alpha),
+            "lr": str(lr),
+            "weights": str(weights),
+            "divergence": str(divergence),
+            **mean_metrics_cells_best_adj_no_train,
+            **ci_metrics_cells_best_adj_no_train,
         }
         result_slide_best = {
             "model": model_name,
@@ -503,122 +553,161 @@ def main_simulation(
             **mean_metrics_slide_best_adj,
             **ci_metrics_slide_best_adj,
         }
-        result_spots_final = {
+        result_slide_best_adj_train = {
             "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
             "divergence": str(divergence),
-            **mean_metrics_spots_final,
-            **ci_metrics_spots_final,
+            **mean_metrics_slide_best_adj_train,
+            **ci_metrics_slide_best_adj_train,
         }
-        result_spots_final_adj = {
+        result_slide_best_adj_no_train = {
             "model": model_name,
             "alpha": str(alpha),
             "lr": str(lr),
             "weights": str(weights),
             "divergence": str(divergence),
-            **mean_metrics_spots_final_adj,
-            **ci_metrics_spots_final_adj,
+            **mean_metrics_slide_best_adj_no_train,
+            **ci_metrics_slide_best_adj_no_train,
         }
-        result_cells_final = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_cells_final,
-            **ci_metrics_cells_final,
-        }
-        result_cells_final_adj = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_cells_final_adj,
-            **ci_metrics_cells_final_adj,
-        }
-        result_slide_final = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_slide_final,
-            **ci_metrics_slide_final,
-        }
-        result_slide_final_adj = {
-            "model": model_name,
-            "alpha": str(alpha),
-            "lr": str(lr),
-            "weights": str(weights),
-            "divergence": str(divergence),
-            **mean_metrics_slide_final_adj,
-            **ci_metrics_slide_final_adj,
-        }
+        # result_spots_final = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_final,
+        #     **ci_metrics_spots_final,
+        # }
+        # result_spots_final_adj = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_spots_final_adj,
+        #     **ci_metrics_spots_final_adj,
+        # }
+        # result_cells_final = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_cells_final,
+        #     **ci_metrics_cells_final,
+        # }
+        # result_cells_final_adj = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_cells_final_adj,
+        #     **ci_metrics_cells_final_adj,
+        # }
+        # result_slide_final = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_slide_final,
+        #     **ci_metrics_slide_final,
+        # }
+        # result_slide_final_adj = {
+        #     "model": model_name,
+        #     "alpha": str(alpha),
+        #     "lr": str(lr),
+        #     "weights": str(weights),
+        #     "divergence": str(divergence),
+        #     **mean_metrics_slide_final_adj,
+        #     **ci_metrics_slide_final_adj,
+        # }
 
-        results_spots_best.append(result_spots_best)
-        results_spots_best_train.append(result_spots_best_train)
-        results_spots_best_no_train.append(result_spots_best_no_train)
-        results_spots_best_adj.append(result_spots_best_adj)
+        # results_spots_best.append(result_spots_best)
+        # results_spots_best_train.append(result_spots_best_train)
+        # results_spots_best_no_train.append(result_spots_best_no_train)
+        # results_spots_best_adj.append(result_spots_best_adj)
         results_cells_best.append(result_cells_best)
         results_cells_best_train.append(result_cells_best_train)
         results_cells_best_no_train.append(result_cells_best_no_train)
         results_cells_best_adj.append(result_cells_best_adj)
+        results_cells_best_adj_train.append(result_cells_best_adj_train)
+        results_cells_best_adj_no_train.append(result_cells_best_adj_no_train)
         results_slide_best.append(result_slide_best)
         results_slide_best_train.append(result_slide_best_train)
         results_slide_best_no_train.append(result_slide_best_no_train)
         results_slide_best_adj.append(result_slide_best_adj)
-        results_spots_final.append(result_spots_final)
-        results_spots_final_adj.append(result_spots_final_adj)
-        results_cells_final.append(result_cells_final)
-        results_cells_final_adj.append(result_cells_final_adj)
-        results_slide_final.append(result_slide_final)
-        results_slide_final_adj.append(result_slide_final_adj)
+        results_slide_best_adj_train.append(result_slide_best_adj_train)
+        results_slide_best_adj_no_train.append(result_slide_best_adj_no_train)
+        # results_spots_final.append(result_spots_final)
+        # results_spots_final_adj.append(result_spots_final_adj)
+        # results_cells_final.append(result_cells_final)
+        # results_cells_final_adj.append(result_cells_final_adj)
+        # results_slide_final.append(result_slide_final)
+        # results_slide_final_adj.append(result_slide_final_adj)
 
         info1 = f"Completed configuration: model={model_name}, alpha={alpha}, "
         info2 = f"lr={lr}, weights={weights}, divergence={divergence}."
         logger.info(info1 + info2)
 
     # Save final results
-    results_df_spots_best = pd.DataFrame(results_spots_best)
-    results_df_spots_best_train = pd.DataFrame(results_spots_best_train)
-    results_df_spots_best_no_train = pd.DataFrame(results_spots_best_no_train)
-    results_df_spots_best_adj = pd.DataFrame(results_spots_best_adj)
+    # results_df_spots_best = pd.DataFrame(results_spots_best)
+    # results_df_spots_best_train = pd.DataFrame(results_spots_best_train)
+    # results_df_spots_best_no_train = pd.DataFrame(results_spots_best_no_train)
+    # results_df_spots_best_adj = pd.DataFrame(results_spots_best_adj)
     results_df_cells_best = pd.DataFrame(results_cells_best)
     results_df_cells_best_train = pd.DataFrame(results_cells_best_train)
     results_df_cells_best_no_train = pd.DataFrame(results_cells_best_no_train)
     results_df_cells_best_adj = pd.DataFrame(results_cells_best_adj)
+    results_df_cells_best_adj_train = pd.DataFrame(results_cells_best_adj_train)
+    results_df_cells_best_adj_no_train = pd.DataFrame(results_cells_best_adj_no_train)
     results_df_slide_best = pd.DataFrame(results_slide_best)
     results_df_slide_best_train = pd.DataFrame(results_slide_best_train)
     results_df_slide_best_no_train = pd.DataFrame(results_slide_best_no_train)
     results_df_slide_best_adj = pd.DataFrame(results_slide_best_adj)
-    results_df_spots_final = pd.DataFrame(results_spots_final)
-    results_df_spots_final_adj = pd.DataFrame(results_spots_final_adj)
-    results_df_cells_final = pd.DataFrame(results_cells_final)
-    results_df_cells_final_adj = pd.DataFrame(results_cells_final_adj)
-    results_df_slide_final = pd.DataFrame(results_slide_final)
-    results_df_slide_final_adj = pd.DataFrame(results_slide_final_adj)
+    results_df_slide_best_adj_train = pd.DataFrame(results_slide_best_adj_train)
+    results_df_slide_best_adj_no_train = pd.DataFrame(results_slide_best_adj_no_train)
+    # results_df_spots_final = pd.DataFrame(results_spots_final)
+    # results_df_spots_final_adj = pd.DataFrame(results_spots_final_adj)
+    # results_df_cells_final = pd.DataFrame(results_cells_final)
+    # results_df_cells_final_adj = pd.DataFrame(results_cells_final_adj)
+    # results_df_slide_final = pd.DataFrame(results_slide_final)
+    # results_df_slide_final_adj = pd.DataFrame(results_slide_final_adj)
 
-    results_df_spots_best.to_csv(os.path.join(out_dir, "summary_metrics_spots_best.csv"), index=False)
-    results_df_spots_best_train.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_train.csv"), index=False)
-    results_df_spots_best_no_train.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_no_train.csv"), index=False)
-    results_df_spots_best_adj.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_adj.csv"), index=False)
+    # results_df_spots_best.to_csv(os.path.join(out_dir, "summary_metrics_spots_best.csv"), index=False)
+    # results_df_spots_best_train.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_train.csv"), index=False)
+    # results_df_spots_best_no_train.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_no_train.csv"),
+    # index=False)
+    # results_df_spots_best_adj.to_csv(os.path.join(out_dir, "summary_metrics_spots_best_adj.csv"), index=False)
     results_df_cells_best.to_csv(os.path.join(out_dir, "summary_metrics_cells_best.csv"), index=False)
     results_df_cells_best_train.to_csv(os.path.join(out_dir, "summary_metrics_cells_best_train.csv"), index=False)
     results_df_cells_best_no_train.to_csv(os.path.join(out_dir, "summary_metrics_cells_best_no_train.csv"), index=False)
     results_df_cells_best_adj.to_csv(os.path.join(out_dir, "summary_metrics_cells_best_adj.csv"), index=False)
+    results_df_cells_best_adj_train.to_csv(
+        os.path.join(out_dir, "summary_metrics_cells_best_adj_train.csv"), index=False
+    )
+    results_df_cells_best_adj_no_train.to_csv(
+        os.path.join(out_dir, "summary_metrics_cells_best_adj_no_train.csv"), index=False
+    )
     results_df_slide_best.to_csv(os.path.join(out_dir, "summary_metrics_slide_best.csv"), index=False)
     results_df_slide_best_train.to_csv(os.path.join(out_dir, "summary_metrics_slide_best_train.csv"), index=False)
     results_df_slide_best_no_train.to_csv(os.path.join(out_dir, "summary_metrics_slide_best_no_train.csv"), index=False)
     results_df_slide_best_adj.to_csv(os.path.join(out_dir, "summary_metrics_slide_best_adj.csv"), index=False)
-    results_df_spots_final.to_csv(os.path.join(out_dir, "summary_metrics_spots_final.csv"), index=False)
-    results_df_spots_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_spots_final_adj.csv"), index=False)
-    results_df_cells_final.to_csv(os.path.join(out_dir, "summary_metrics_cells_final.csv"), index=False)
-    results_df_cells_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_cells_final_adj.csv"), index=False)
-    results_df_slide_final.to_csv(os.path.join(out_dir, "summary_metrics_slide_final.csv"), index=False)
-    results_df_slide_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_slide_final_adj.csv"), index=False)
+    results_df_slide_best_adj_train.to_csv(
+        os.path.join(out_dir, "summary_metrics_slide_best_adj_train.csv"), index=False
+    )
+    results_df_slide_best_adj_no_train.to_csv(
+        os.path.join(out_dir, "summary_metrics_slide_best_adj_no_train.csv"), index=False
+    )
+    # results_df_spots_final.to_csv(os.path.join(out_dir, "summary_metrics_spots_final.csv"), index=False)
+    # results_df_spots_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_spots_final_adj.csv"), index=False)
+    # results_df_cells_final.to_csv(os.path.join(out_dir, "summary_metrics_cells_final.csv"), index=False)
+    # results_df_cells_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_cells_final_adj.csv"), index=False)
+    # results_df_slide_final.to_csv(os.path.join(out_dir, "summary_metrics_slide_final.csv"), index=False)
+    # results_df_slide_final_adj.to_csv(os.path.join(out_dir, "summary_metrics_slide_final_adj.csv"), index=False)
 
     logger.info("Testing completed. Summary metrics saved.")
 

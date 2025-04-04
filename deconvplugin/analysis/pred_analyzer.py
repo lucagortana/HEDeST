@@ -636,8 +636,8 @@ class PredAnalyzer:
         else:
             raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
 
-        true_labels = pd.Series(self.true_labels).map(lambda x: x["cell_type"])
-        predicted_labels = pd.Series(self.predicted_labels).map(lambda x: x["cell_type"])
+        true_labels = pd.Series(true_labels).map(lambda x: x["cell_type"])
+        predicted_labels = pd.Series(predicted_labels).map(lambda x: x["cell_type"])
 
         # Global accuracy
         global_accuracy = accuracy_score(true_labels, predicted_labels)

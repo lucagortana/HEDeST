@@ -65,32 +65,65 @@ def weighted_kl_divergence(
     p: torch.Tensor, q: torch.Tensor, weights: torch.Tensor, reduction: str = "mean"
 ) -> torch.Tensor:
     """
-    Computes the weighted Kullback-Leibler divergence between two distributions.
+    Computes the weighted symmetric Kullback-Leibler divergence between two distributions
+    using torch.nn.functional.kl_div.
 
     Args:
-        p (torch.Tensor): The true probability distribution (must be positive).
-        q (torch.Tensor): The predicted probability distribution (must be positive).
+        p (torch.Tensor): The true probability distribution.
+        q (torch.Tensor): The predicted probability distribution.
         weights (torch.Tensor): Per-element weights for the divergence.
-        reduction (str): Specifies the reduction to apply to the output.
-                         Options are 'mean' (default) or 'sum'.
+        reduction (str): Specifies the reduction to apply to the output ('mean' or 'sum').
 
     Returns:
-        torch.Tensor: The computed weighted KL divergence. If `reduction` is 'mean', returns the mean loss;
-                      if 'sum', returns the sum of the losses.
+        torch.Tensor: The computed weighted symmetric KL divergence.
     """
+    loss_func = torch.nn.KLDivLoss()
 
     p = p.clamp(min=1e-10)
     q = q.clamp(min=1e-10)
 
-    loss = p * torch.log(p / q) - p + q
-    w_loss = weights * loss
+    kl_pq = loss_func(p.log(), q)
+    kl_qp = loss_func(q.log(), p)
+    symmetric_kl = kl_pq + kl_qp
 
     if reduction == "mean":
-        return w_loss.mean()
+        return symmetric_kl.mean()
     elif reduction == "sum":
-        return w_loss.sum()
+        return symmetric_kl.mean()
     else:
         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
+
+
+# def weighted_kl_divergence(
+#     p: torch.Tensor, q: torch.Tensor, weights: torch.Tensor, reduction: str = "mean"
+# ) -> torch.Tensor:
+#     """
+#     Computes the weighted Kullback-Leibler divergence between two distributions.
+
+#     Args:
+#         p (torch.Tensor): The true probability distribution (must be positive).
+#         q (torch.Tensor): The predicted probability distribution (must be positive).
+#         weights (torch.Tensor): Per-element weights for the divergence.
+#         reduction (str): Specifies the reduction to apply to the output.
+#                          Options are 'mean' (default) or 'sum'.
+
+#     Returns:
+#         torch.Tensor: The computed weighted KL divergence. If `reduction` is 'mean', returns the mean loss;
+#                       if 'sum', returns the sum of the losses.
+#     """
+
+#     p = p.clamp(min=1e-10)
+#     q = q.clamp(min=1e-10)
+
+#     loss = p * torch.log(p / q) - p + q
+#     w_loss = weights * loss
+
+#     if reduction == "mean":
+#         return w_loss.mean()
+#     elif reduction == "sum":
+#         return w_loss.sum()
+#     else:
+#         raise ValueError(f"Invalid reduction mode: {reduction}. Use 'mean' or 'sum'.")
 
 
 # def shannon_entropy(U: torch.Tensor) -> torch.Tensor:
