@@ -11,3 +11,5 @@ run*
 !run_deconv.sh
 !run_mask.sh
 !run_hovernet.sh
+!run_gridsearch.sh
+!run_extract_stats.sh

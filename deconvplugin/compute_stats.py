@@ -161,9 +161,11 @@ def extract_stats(
 
     for config, runs in config_to_seeds.items():
         model_name, alpha, lr, weights, divergence = config
+        logger.info(f"Model: {model_name}, alpha: {alpha}, lr: {lr}, weights: {weights}, divergence: {divergence}")
         metrics_lists = {key: [] for key in all_results}
 
         for folder_name, seed in runs:
+            logger.info(f"--> seed={seed}")
             info_path = os.path.join(sim_folder, folder_name, "info.pickle")
 
             if not os.path.exists(info_path):
