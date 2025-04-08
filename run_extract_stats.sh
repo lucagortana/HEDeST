@@ -16,4 +16,4 @@ export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib
 FOLDER=$1
 GT_CSV=$2
 
-python3 -u deconvplugin/compute_stats.py "$FOLDER" "$GT_CSV"
+python3 -u deconvplugin/compute_stats_processor.py "$FOLDER" "$GT_CSV"
