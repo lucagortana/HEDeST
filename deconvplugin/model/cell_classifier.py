@@ -94,6 +94,7 @@ class CellClassifier(BaseCellClassifier):
             for i, hidden_dim in enumerate(self.hidden_dims):
                 self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
                 self.backbone.add_module(f"relu_{i}", nn.ReLU())
+                # self.backbone.add_module(f"dropout_{i}", nn.Dropout(p=0.5))
                 input_dim = hidden_dim
 
             self.backbone.add_module("final", nn.Linear(input_dim, num_classes))

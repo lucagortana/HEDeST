@@ -38,7 +38,7 @@ def main(
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     spot_dict_global_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
-    hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
+    hidden_dims: str = typer.Option("1024,512,256,128", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(1, help="Batch size for model training."),
     lr: float = typer.Option(0.001, help="Learning rate."),
     weights: bool = typer.Option(False, help="If True, the model uses a weighted loss."),
