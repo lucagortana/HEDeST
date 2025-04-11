@@ -6,15 +6,19 @@ import os
 import pickle
 import re
 from collections import defaultdict
-from concurrent.futures import as_completed
-from concurrent.futures import ProcessPoolExecutor
 from typing import Dict
 from typing import List
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
+from joblib import delayed
+from joblib import Parallel
 from loguru import logger
+from pyinstrument import Profiler
+
+# from concurrent.futures import as_completed
+# from concurrent.futures import ProcessPoolExecutor
 
 
 def compute_statistics(metrics_list: List[Dict[str, float]]) -> Tuple[Dict[str, float], Dict[str, float]]:
@@ -38,23 +42,17 @@ def compute_statistics(metrics_list: List[Dict[str, float]]) -> Tuple[Dict[str, 
     return mean_values, ci_values
 
 
-def process_config(args):
+def process_config(config, runs, sim_folder, ground_truth):
     """
     Process a single configuration (all seeds) and return results for all metric keys.
     """
     from deconvplugin.analysis.pred_analyzer import PredAnalyzer
 
-    config, runs, sim_folder, ground_truth = args
+    profiler = Profiler()
+    profiler.start()
+
     model_name, alpha, lr, weights, divergence = config
     logger.info(f"[START] Model: {model_name}, alpha: {alpha}, lr: {lr}, weights: {weights}, divergence: {divergence}")
-
-    keys_to_keep_cell = [
-        "Global Accuracy",
-        "Balanced Accuracy",
-        "Weighted F1 Score",
-        "Weighted Precision",
-        "Weighted Recall",
-    ]
 
     metrics_lists = {
         key: []
@@ -92,24 +90,17 @@ def process_config(args):
 
         # Cell-level
         for subset in ["", "_train", "_no_train"]:
-            key = f"cells_best{subset}"
-            metrics_lists[key].append(
-                {
-                    k: analyzer_best.evaluate_cell_predictions(subset=subset[1:] if subset else "all")[k]
-                    for k in keys_to_keep_cell
-                }
+            sub = subset[1:] if subset else "all"
+
+            # Cell-level
+            metrics_lists[f"cells_best{subset}"].append(
+                analyzer_best.evaluate_cell_predictions(subset=sub, per_class=False)
             )
-            key_adj = f"cells_best_adj{subset}"
-            metrics_lists[key_adj].append(
-                {
-                    k: analyzer_best_adj.evaluate_cell_predictions(subset=subset[1:] if subset else "all")[k]
-                    for k in keys_to_keep_cell
-                }
+            metrics_lists[f"cells_best_adj{subset}"].append(
+                analyzer_best_adj.evaluate_cell_predictions(subset=sub, per_class=False)
             )
 
-        # Slide-level
-        for subset in ["", "_train", "_no_train"]:
-            sub = subset[1:] if subset else "all"
+            # Slide-level
             metrics_lists[f"slide_best{subset}"].append(analyzer_best.evaluate_spot_predictions_global(subset=sub))
             metrics_lists[f"slide_best_adj{subset}"].append(
                 analyzer_best_adj.evaluate_spot_predictions_global(subset=sub)
@@ -131,6 +122,10 @@ def process_config(args):
             **ci_vals,
         }
         results.append((key, row))
+
+    profiler.stop()
+    profiler.print()
+
     return config, results
 
 
@@ -172,21 +167,16 @@ def extract_stats(
             config_to_seeds[config].append((entry, match.group("seed")))
 
     num_workers = min(8, multiprocessing.cpu_count())
-    results = defaultdict(list)
     args_list = [(config, runs, sim_folder, ground_truth) for config, runs in config_to_seeds.items()]
 
     logger.info(f"Starting parallel processing with {num_workers} workers...")
 
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = [executor.submit(process_config, args) for args in args_list]
+    results = defaultdict(list)
+    processed = Parallel(n_jobs=num_workers)(delayed(process_config)(*args) for args in args_list)
 
-        for future in as_completed(futures):
-            try:
-                config, res = future.result()
-                for key, row in res:
-                    results[key].append(row)
-            except Exception as e:
-                logger.error(f"Failed to process a config: {e}")
+    for config, res in processed:
+        for key, row in res:
+            results[key].append(row)
 
     for key, rows in results.items():
         df = pd.DataFrame(rows).sort_values(by=["model", "alpha", "lr", "weights", "divergence"])

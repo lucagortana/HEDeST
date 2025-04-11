@@ -128,6 +128,7 @@ class PredAnalyzer:
 
         print("Loading predicted labels...")
         self.predicted_labels = self._get_labels_slide(self.predictions)
+        self.predicted_proportions = self.get_predicted_proportions()
 
         all_spots = set(self.spot_dict.keys())
         all_cells = {cell for cell_list in self.spot_dict.values() for cell in cell_list}
@@ -461,8 +462,6 @@ class PredAnalyzer:
             Dict[str, float]: A dictionary of computed metrics.
         """
 
-        self.predicted_proportions = self.get_predicted_proportions()
-
         if subset == "train":
             predicted_proportions = self.predicted_proportions.loc[self.train_spots]
         elif subset == "no_train":
@@ -552,8 +551,6 @@ class PredAnalyzer:
             Dict[str, float]: A dictionary of computed metrics.
         """
 
-        self.predicted_proportions = self.get_predicted_proportions()
-
         if subset == "train":
             predicted_proportions = self.predicted_proportions.loc[self.train_spots]
         elif subset == "no_train":
@@ -565,15 +562,6 @@ class PredAnalyzer:
 
         true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
         metrics = {}
-
-        # Compute global metrics (Flattened approach)
-        true_values = true_proportions.values.flatten()
-        predicted_values = predicted_proportions.values.flatten()
-
-        metrics["Pearson Correlation global (flattened)"] = pearsonr(true_values, predicted_values)[0]
-        metrics["Spearman Correlation global (flattened)"] = spearmanr(true_values, predicted_values)[0]
-        metrics["MSE global (flattened)"] = mean_squared_error(true_values, predicted_values)
-        metrics["MAE global (flattened)"] = mean_absolute_error(true_values, predicted_values)
 
         # Compute per-cell-type metrics
         pearson_list = []
@@ -606,14 +594,14 @@ class PredAnalyzer:
             mae_list.append(mae_value)
 
         # Compute global metrics (Averaged approach)
-        metrics["Pearson Correlation global (averaged)"] = np.nanmean(pearson_list)
-        metrics["Spearman Correlation global (averaged)"] = np.nanmean(spearman_list)
-        metrics["MSE global (averaged)"] = np.mean(mse_list)
-        metrics["MAE global (averaged)"] = np.mean(mae_list)
+        metrics["Pearson Correlation global"] = np.nanmean(pearson_list)
+        metrics["Spearman Correlation global"] = np.nanmean(spearman_list)
+        metrics["MSE global"] = np.mean(mse_list)
+        metrics["MAE global"] = np.mean(mae_list)
 
         return metrics
 
-    def evaluate_cell_predictions(self, subset="all") -> Dict[str, float]:
+    def evaluate_cell_predictions(self, subset="all", per_class=True) -> Dict[str, float]:
         """
         Evaluate cell-level predictions using various metrics.
 
@@ -636,8 +624,8 @@ class PredAnalyzer:
         else:
             raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
 
-        true_labels = pd.Series(true_labels).map(lambda x: x["cell_type"])
-        predicted_labels = pd.Series(predicted_labels).map(lambda x: x["cell_type"])
+        true_labels = pd.Series({k: v["cell_type"] for k, v in true_labels.items()})
+        predicted_labels = pd.Series({k: v["cell_type"] for k, v in predicted_labels.items()})
 
         # Global accuracy
         global_accuracy = accuracy_score(true_labels, predicted_labels)
@@ -650,27 +638,29 @@ class PredAnalyzer:
         weighted_precision = precision_score(true_labels, predicted_labels, average="weighted", zero_division=0)
         weighted_recall = recall_score(true_labels, predicted_labels, average="weighted", zero_division=0)
 
-        # Non-weighted metrics (per-class)
-        f1_per_class = f1_score(true_labels, predicted_labels, average=None, zero_division=0)
-        precision_per_class = precision_score(true_labels, predicted_labels, average=None, zero_division=0)
-        recall_per_class = recall_score(true_labels, predicted_labels, average=None, zero_division=0)
-
-        # Confusion matrix
-        cm = confusion_matrix(true_labels, predicted_labels)
-        unique_classes = np.unique(true_labels)
-
-        # Compile metrics
         metrics = {
             "Global Accuracy": global_accuracy,
             "Balanced Accuracy": balanced_acc,
             "Weighted F1 Score": weighted_f1,
-            "F1 Score (Per Class)": dict(zip(unique_classes, f1_per_class)),
             "Weighted Precision": weighted_precision,
-            "Precision (Per Class)": dict(zip(unique_classes, precision_per_class)),
             "Weighted Recall": weighted_recall,
-            "Recall (Per Class)": dict(zip(unique_classes, recall_per_class)),
-            "Confusion Matrix": pd.DataFrame(cm, columns=list(unique_classes), index=list(unique_classes)),
         }
+
+        if per_class:
+            unique_classes = np.unique(true_labels)
+            f1_per_class = f1_score(true_labels, predicted_labels, average=None, zero_division=0)
+            precision_per_class = precision_score(true_labels, predicted_labels, average=None, zero_division=0)
+            recall_per_class = recall_score(true_labels, predicted_labels, average=None, zero_division=0)
+            cm = confusion_matrix(true_labels, predicted_labels)
+
+            metrics.update(
+                {
+                    "F1 Score (Per Class)": dict(zip(unique_classes, f1_per_class)),
+                    "Precision (Per Class)": dict(zip(unique_classes, precision_per_class)),
+                    "Recall (Per Class)": dict(zip(unique_classes, recall_per_class)),
+                    "Confusion Matrix": pd.DataFrame(cm, columns=list(unique_classes), index=list(unique_classes)),
+                }
+            )
 
         return metrics
 
