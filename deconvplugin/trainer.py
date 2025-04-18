@@ -90,6 +90,8 @@ class ModelTrainer:
         self.ct_list = ct_list
         self.optimizer = optimizer
         self.train_loader = train_loader
+        self.p_c = self.train_loader.dataset.spot_prop_df.mean().values
+        self.p_c = torch.tensor(self.p_c, dtype=torch.float32, device=self.device)
         self.val_loader = val_loader
         self.test_loader = test_loader
         self.weights = weights
@@ -164,6 +166,7 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
+                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -361,3 +364,35 @@ class ModelTrainer:
             image_dict[str(len(image_dict))] = (global_dict[str(idx)] * 255).to(torch.uint8)
 
         return image_dict
+
+
+def bayesian_adjustment(
+    cell_probs: torch.Tensor,  # shape: (N_cells, N_classes)
+    bag_indices: torch.Tensor,  # shape: (N_cells,), each element is the index of the spot
+    proportions: torch.Tensor,  # shape: (N_spots, N_classes)
+    p_c: torch.Tensor,  # shape: (N_classes,)
+    eps: float = 1e-8,  # small constant to prevent division by zero
+) -> torch.Tensor:
+    """
+    Bayesian adjustment of cell probabilities using tensor inputs.
+
+    Args:
+        cell_probs: Tensor of predicted cell probabilities.
+        bag_indices: Tensor mapping each cell to its spot (index in proportions).
+        proportions: Spot-level cell type proportions (per spot).
+        p_c: Global cell type proportions.
+        eps: Small constant to avoid division by zero.
+
+    Returns:
+        Adjusted cell probability tensor.
+    """
+    # Fetch local proportions for each cell from bag_indices
+    p_tilde = proportions[bag_indices]  # shape: (N_cells, N_classes)
+
+    # Compute adjustment factors (alpha_x) per cell
+    adjustment_factors = 1.0 / (torch.sum(cell_probs * (p_tilde / p_c), dim=1) + eps)  # shape: (N_cells,)
+
+    # Compute adjusted probabilities
+    adjusted_probs = cell_probs * adjustment_factors.unsqueeze(1) * (p_tilde / p_c)
+
+    return adjusted_probs

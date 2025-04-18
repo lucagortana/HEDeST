@@ -113,19 +113,21 @@ class BayesianAdjustment:
         self.spot_prop_tensor = self.spot_prop_tensor.to(self.device)
         self.p_c = self.p_c.to(self.device)
 
-    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor) -> float:
+    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor, epsilon: float = 1e-8) -> float:
         """
         Computes the alpha adjustment factor for a cell.
 
         Args:
             p_c_x: Predicted probability vector for a single cell.
             p_tilde_c: Proportion vector for the local spot.
+            epsilon: Small value to avoid division by zero.
 
         Returns:
             Alpha adjustment factor.
         """
-
-        alpha_x = 1 / torch.sum(p_c_x * (p_tilde_c / self.p_c))
+        similarity = torch.sum(p_c_x * (p_tilde_c / self.p_c))
+        similarity = torch.clamp(similarity, min=epsilon)
+        alpha_x = 1 / similarity
         return alpha_x
 
     def forward(self) -> pd.DataFrame:
