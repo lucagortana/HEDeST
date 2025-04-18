@@ -5,7 +5,7 @@
 #SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/gridsearch_%j.err
 #SBATCH --gres=gpu:1
 #SBATCH -p cbio-gpu
-#SBATCH --exclude=node005,node009
+#SBATCH --exclude=node005,node006,node009
 #SBATCH --cpus-per-task=8
 
 echo "Found a place!"
