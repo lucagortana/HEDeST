@@ -91,7 +91,6 @@ class ModelTrainer:
         self.optimizer = optimizer
         self.train_loader = train_loader
         self.p_c = self.train_loader.dataset.spot_prop_df.mean().values
-        self.p_c = torch.tensor(self.p_c, dtype=torch.float32, device=self.device)
         self.val_loader = val_loader
         self.test_loader = test_loader
         self.weights = weights
@@ -133,6 +132,7 @@ class ModelTrainer:
 
         set_seed(self.rs)
         self._setup_device()
+        self.p_c = torch.tensor(self.p_c, dtype=torch.float32, device=self.device)
         self.init_model()
 
     def train(self) -> None:
@@ -166,7 +166,7 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c)
+                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, regularization=2)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -281,6 +281,7 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
+                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, regularization=2)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -368,31 +369,34 @@ class ModelTrainer:
 
 def bayesian_adjustment(
     cell_probs: torch.Tensor,  # shape: (N_cells, N_classes)
-    bag_indices: torch.Tensor,  # shape: (N_cells,), each element is the index of the spot
+    bag_indices: torch.Tensor,  # shape: (N_cells,), maps each cell to a spot
     proportions: torch.Tensor,  # shape: (N_spots, N_classes)
-    p_c: torch.Tensor,  # shape: (N_classes,)
-    eps: float = 1e-8,  # small constant to prevent division by zero
+    p_c: torch.Tensor,  # shape: (N_classes,), global class proportions
+    eps: float = 1e-6,  # avoid division by zero
+    regularization: int = 0,  # regularization level: 0 = none, >0 = recursive averaging
 ) -> torch.Tensor:
     """
-    Bayesian adjustment of cell probabilities using tensor inputs.
+    Bayesian adjustment of cell probabilities with optional recursive regularization.
 
     Args:
-        cell_probs: Tensor of predicted cell probabilities.
-        bag_indices: Tensor mapping each cell to its spot (index in proportions).
-        proportions: Spot-level cell type proportions (per spot).
-        p_c: Global cell type proportions.
+        cell_probs: Predicted cell probabilities.
+        bag_indices: Mapping of each cell to its corresponding spot.
+        proportions: Spot-level cell type proportions.
+        p_c: Global class proportions.
         eps: Small constant to avoid division by zero.
+        regularization: If >0, recursively averages adjusted_probs with original cell_probs.
 
     Returns:
-        Adjusted cell probability tensor.
+        Adjusted (and optionally regularized) cell probability tensor.
     """
-    # Fetch local proportions for each cell from bag_indices
-    p_tilde = proportions[bag_indices]  # shape: (N_cells, N_classes)
+    p_tilde_c = proportions[bag_indices]
+    p_c = p_c.clamp(min=eps)
 
-    # Compute adjustment factors (alpha_x) per cell
-    adjustment_factors = 1.0 / (torch.sum(cell_probs * (p_tilde / p_c), dim=1) + eps)  # shape: (N_cells,)
+    ratio = p_tilde_c / p_c
+    alpha_x = 1.0 / (torch.sum(cell_probs * ratio, dim=1) + eps)
+    adjusted_probs = cell_probs * alpha_x.unsqueeze(1) * ratio
 
-    # Compute adjusted probabilities
-    adjusted_probs = cell_probs * adjustment_factors.unsqueeze(1) * (p_tilde / p_c)
+    for _ in range(regularization):
+        adjusted_probs = 0.5 * (adjusted_probs + cell_probs)
 
     return adjusted_probs

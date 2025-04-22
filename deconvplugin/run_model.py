@@ -14,6 +14,7 @@ from torch import optim
 from deconvplugin.analysis.pred_analyzer import PredAnalyzer
 from deconvplugin.basics import format_time
 from deconvplugin.basics import set_seed
+from deconvplugin.bayes_adjust import BayesianAdjustment
 from deconvplugin.dataset import SpotDataset
 from deconvplugin.dataset import SpotEmbedDataset
 from deconvplugin.dataset_utils import custom_collate
@@ -22,8 +23,6 @@ from deconvplugin.dataset_utils import split_data
 from deconvplugin.model.cell_classifier import CellClassifier
 from deconvplugin.predict import predict_slide
 from deconvplugin.trainer import ModelTrainer
-
-# from deconvplugin.bayes_adjust import BayesianAdjustment
 
 # def run_pri_deconv()
 
@@ -169,16 +168,16 @@ def run_sec_deconv(
     except Exception:
         is_final = False
 
-    # # Bayesian adjustment
-    # logger.info("Starting Bayesian adjustment...")
-    # p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
-    # cell_prob_best_adjusted = BayesianAdjustment(
-    #     cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
-    # ).forward()
-    # if is_final:
-    #     cell_prob_final_adjusted = BayesianAdjustment(
-    #         cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
-    #     ).forward()
+    # Bayesian adjustment
+    logger.info("Starting Bayesian adjustment...")
+    p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
+    cell_prob_best_adjusted = BayesianAdjustment(
+        cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
+    ).forward()
+    if is_final:
+        cell_prob_final_adjusted = BayesianAdjustment(
+            cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
+        ).forward()
 
     # Save model infos
     model_info = {
@@ -190,9 +189,9 @@ def run_sec_deconv(
         "history": {"train": trainer.history_train, "val": trainer.history_val},
         "preds": {
             "pred_best": cell_prob_best,
-            "pred_best_adjusted": cell_prob_best,  # cell_prob_best_adjusted
+            "pred_best_adjusted": cell_prob_best_adjusted,  # cell_prob_best_adjusted
             **(
-                {"pred_final": cell_prob_final, "pred_final_adjusted": cell_prob_final} if is_final else {}
+                {"pred_final": cell_prob_final, "pred_final_adjusted": cell_prob_final_adjusted} if is_final else {}
             ),  # cell_prob_final_adjusted
         },
     }
