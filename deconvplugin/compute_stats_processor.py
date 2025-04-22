@@ -51,8 +51,11 @@ def process_config(config, runs, sim_folder, ground_truth):
     profiler = Profiler()
     profiler.start()
 
-    model_name, alpha, lr, weights, divergence = config
-    logger.info(f"[START] Model: {model_name}, alpha: {alpha}, lr: {lr}, weights: {weights}, divergence: {divergence}")
+    model_name, alpha, lr, weights, divergence, beta = config
+
+    text1 = f"[START] Model: {model_name}, alpha: {alpha}, lr: {lr},"
+    text2 = f"weights: {weights}, divergence: {divergence}, beta: {beta}"
+    logger.info(f"{text1} {text2}")
 
     metrics_lists = {
         key: []
@@ -118,6 +121,7 @@ def process_config(config, runs, sim_folder, ground_truth):
             "lr": lr,
             "weights": weights,
             "divergence": divergence,
+            "beta": beta,
             **mean_vals,
             **ci_vals,
         }
@@ -151,7 +155,7 @@ def extract_stats(
     config_to_seeds = defaultdict(list)
     pattern = re.compile(
         r"model_(?P<model>[^_]+)_alpha_(?P<alpha>[^_]+)_lr_(?P<lr>[^_]+)_weights_(?P<weights>[^_]+)_"
-        r"divergence_(?P<divergence>[^_]+)_seed_(?P<seed>\d+)"
+        r"divergence_(?P<divergence>[^_]+)_beta_(?P<beta>[^_]+)_seed_(?P<seed>\d+)"
     )
 
     for entry in os.listdir(sim_folder):
@@ -163,6 +167,7 @@ def extract_stats(
                 match.group("lr"),
                 match.group("weights"),
                 match.group("divergence"),
+                match.group("beta"),
             )
             config_to_seeds[config].append((entry, match.group("seed")))
 
@@ -179,7 +184,7 @@ def extract_stats(
             results[key].append(row)
 
     for key, rows in results.items():
-        df = pd.DataFrame(rows).sort_values(by=["model", "alpha", "lr", "weights", "divergence"])
+        df = pd.DataFrame(rows).sort_values(by=["model", "alpha", "lr", "weights", "divergence", "beta"])
         df.to_csv(os.path.join(sim_folder, f"summary_metrics_{key}.csv"), index=False)
 
     logger.info("All stats saved!")

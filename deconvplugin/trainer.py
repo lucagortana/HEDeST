@@ -61,6 +61,7 @@ class ModelTrainer:
         agg: str = "proba",
         divergence: str = "l1",
         alpha: float = 0.5,
+        beta: float = 0.0,
         num_epochs: int = 25,
         out_dir: str = "results",
         tb_dir: str = "runs",
@@ -80,6 +81,7 @@ class ModelTrainer:
             agg (str): Aggregation method for loss calculation.
             divergence (str): Type of divergence used in loss calculation.
             alpha (float): Weight parameter for loss components.
+            beta (float): Regularization parameter for Bayesian adjustment.
             num_epochs (int): Number of training epochs.
             out_dir (str): Directory to save model checkpoints and results.
             tb_dir (str): Directory for TensorBoard logs.
@@ -98,6 +100,7 @@ class ModelTrainer:
         self.divergence = divergence
         self.reduction = "mean"
         self.alpha = alpha
+        self.beta = beta
         self.num_epochs = num_epochs
         self.out_dir = out_dir
         self.tb_dir = tb_dir
@@ -166,7 +169,7 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, regularization=2)
+                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -281,7 +284,7 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, regularization=2)
+                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -373,7 +376,7 @@ def bayesian_adjustment(
     proportions: torch.Tensor,  # shape: (N_spots, N_classes)
     p_c: torch.Tensor,  # shape: (N_classes,), global class proportions
     eps: float = 1e-6,  # avoid division by zero
-    regularization: int = 0,  # regularization level: 0 = none, >0 = recursive averaging
+    beta: float = 0.0,  # regularization term: 0 = full adjustment, 1 = original probabilities
 ) -> torch.Tensor:
     """
     Bayesian adjustment of cell probabilities with optional recursive regularization.
@@ -396,7 +399,6 @@ def bayesian_adjustment(
     alpha_x = 1.0 / (torch.sum(cell_probs * ratio, dim=1) + eps)
     adjusted_probs = cell_probs * alpha_x.unsqueeze(1) * ratio
 
-    for _ in range(regularization):
-        adjusted_probs = 0.5 * (adjusted_probs + cell_probs)
+    adjusted_probs = (1 - beta) * adjusted_probs + beta * cell_probs
 
     return adjusted_probs

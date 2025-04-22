@@ -17,6 +17,7 @@ def run_experiment(
     model_name: str,
     batch_size: int,
     alpha: float,
+    beta: float,
     lr: float,
     weights: bool,
     divergence: str,
@@ -34,6 +35,7 @@ def run_experiment(
         model_name (str): Name of the model to use.
         batch_size (int): Batch size for training.
         alpha (float): Regularization parameter for the model.
+        beta (float): Regularization parameter for bayesian adjustment.
         lr (float): Learning rate for training.
         weights (bool): Whether to use weighted loss during training.
         divergence (str): Divergence metric to use.
@@ -41,7 +43,8 @@ def run_experiment(
     """
 
     config_out_dir = os.path.join(
-        out_dir, f"model_{model_name}_alpha_{alpha}_lr_{lr}_weights_{weights}_divergence_{divergence}_seed_{seed}"
+        out_dir,
+        f"model_{model_name}_alpha_{alpha}_lr_{lr}_weights_{weights}_divergence_{divergence}_beta_{beta}_seed_{seed}",
     )
     os.makedirs(config_out_dir, exist_ok=True)
 
@@ -67,6 +70,8 @@ def run_experiment(
         divergence,
         "--alpha",
         str(alpha),
+        "--beta",
+        str(beta),
         "--epochs",
         "80",
         "--out-dir",
@@ -90,6 +95,7 @@ def main_simulation(
     spot_dict_global_file: str,
     models: List[str],
     alphas: List[float],
+    betas: List[float],
     learning_rates: List[float],
     weights_options: List[bool],
     divergences: List[str],
@@ -107,6 +113,7 @@ def main_simulation(
         spot_dict_global_file (str): Path to the global spot dictionary file.
         models (List[str]): List of model names.
         alphas (List[float]): List of alpha values.
+        betas (List[float]): List of beta values.
         learning_rates (List[float]): List of learning rates.
         weights_options (List[bool]): List of weight options.
         divergences (List[str]): List of divergence metrics.
@@ -121,15 +128,16 @@ def main_simulation(
     logger.info(f"Global spot dictionary file path: {spot_dict_global_file}")
     logger.info(f"Models: {models}")
     logger.info(f"Alpha values: {alphas}")
+    logger.info(f"Beta values: {betas}")
     logger.info(f"Learning rates: {learning_rates}")
     logger.info(f"Weights options: {weights_options}")
     logger.info(f"Divergence metrics: {divergences}")
     logger.info(f"Random seeds: {seeds}")
     logger.info(f"Output directory: {out_dir}\n")
 
-    combinations = list(itertools.product(models, alphas, learning_rates, weights_options, divergences))
+    combinations = list(itertools.product(models, alphas, learning_rates, weights_options, divergences, betas))
 
-    for model_name, alpha, lr, weights, divergence in combinations:
+    for model_name, alpha, lr, weights, divergence, beta in combinations:
         for seed in seeds:
             run_experiment(
                 image_dict_path,
@@ -139,6 +147,7 @@ def main_simulation(
                 model_name,
                 batch_size,
                 alpha,
+                beta,
                 lr,
                 weights,
                 divergence,
@@ -159,6 +168,7 @@ if __name__ == "__main__":
     # List arguments
     parser.add_argument("--models", nargs="+", type=str, required=True, help="List of model names")
     parser.add_argument("--alphas", nargs="+", type=float, required=True, help="List of alpha values")
+    parser.add_argument("--betas", nargs="+", type=float, required=True, help="List of beta values")
     parser.add_argument("--learning_rates", nargs="+", type=float, required=True, help="List of learning rates")
     parser.add_argument(
         "--weights_options",
@@ -185,6 +195,7 @@ if __name__ == "__main__":
         args.spot_dict_global_file,
         args.models,
         args.alphas,
+        args.betas,
         args.learning_rates,
         weights_options,
         args.divergences,

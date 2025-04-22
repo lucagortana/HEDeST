@@ -81,6 +81,7 @@ class BayesianAdjustment:
         spot_dict: Dict[str, List[str]],
         spot_prop_df: pd.DataFrame,
         global_prop: pd.Series,
+        beta: float = 0.0,
         batch_size: int = 256,
         device: Optional[Union[str, torch.device]] = None,
     ):
@@ -92,6 +93,7 @@ class BayesianAdjustment:
             spot_dict: Dictionary mapping spot IDs to cell IDs.
             spot_prop_df: DataFrame of spot proportions.
             global_prop: Global proportions of cell types over the slide.
+            beta: Hyperparameter to regularize adjustment.
             batch_size: Batch size for processing.
             device: Device for computation.
         """
@@ -105,6 +107,8 @@ class BayesianAdjustment:
 
         spot_index_map = {spot_id: idx for idx, spot_id in enumerate(spot_prop_df.index)}
         self.spot_ids = [spot_index_map[self.inverse_spot_dict[cell_id]] for cell_id in cell_prob_df.index]
+
+        self.beta = beta
 
         self.batch_size = batch_size
         self.device = device if device else ("cuda" if torch.cuda.is_available() else "cpu")
@@ -155,7 +159,7 @@ class BayesianAdjustment:
                     adjusted_probs = cell_probs[i]
                 else:
                     adjusted_probs = cell_probs[i] * alphas[i] * (p_tilde_c_batch[i] / self.p_c)
-                p_tilde_c_x[idx[i]] = adjusted_probs
+                p_tilde_c_x[idx[i]] = (1 - self.beta) * adjusted_probs + self.beta * cell_probs[i]
 
         p_tilde_c_x_df = pd.DataFrame(
             p_tilde_c_x.cpu().numpy(), index=self.cell_prob_df.index, columns=self.cell_prob_df.columns

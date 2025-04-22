@@ -47,6 +47,7 @@ def main(
         "l1", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
     ),
     alpha: float = typer.Option(0.5, help="Alpha parameter for loss function."),
+    beta: float = typer.Option(0.0, help="Beta parameter for bayesian adjustment."),
     epochs: int = typer.Option(25, help="Number of training epochs."),
     train_size: float = typer.Option(0.5, help="Training set size as a fraction."),
     val_size: float = typer.Option(0.25, help="Validation set size as a fraction."),
@@ -176,6 +177,7 @@ def main(
     logger.info(f"Aggregation: {agg}")
     logger.info(f"Divergence: {divergence}")
     logger.info(f"Alpha: {alpha}")
+    logger.info(f"Beta: {beta}")
     logger.info(f"Number of epochs: {epochs}")
     logger.info(f"Train size: {train_size}")
     logger.info(f"Validation size: {val_size}")
@@ -197,6 +199,7 @@ def main(
         agg=agg,
         divergence=divergence,
         alpha=alpha,
+        beta=beta,
         epochs=epochs,
         train_size=train_size,
         val_size=val_size,

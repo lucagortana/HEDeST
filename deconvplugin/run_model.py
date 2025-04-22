@@ -40,6 +40,7 @@ def run_sec_deconv(
     agg: str = "proba",
     divergence: str = "l1",
     alpha: float = 0.5,
+    beta: float = 0.0,
     epochs: int = 25,
     train_size: float = 0.5,
     val_size: float = 0.25,
@@ -62,6 +63,7 @@ def run_sec_deconv(
         agg: Aggregation type for predictions ("proba" or "onehot").
         divergence: Type of divergence loss to use ("l1", "l2", "kl", "rot").
         alpha: Weighting factor for the loss function.
+        beta: Weighting factor for the Bayesian adjustment.
         epochs: Number of training epochs.
         train_size: Proportion of data used for training.
         val_size: Proportion of data used for validation.
@@ -137,6 +139,7 @@ def run_sec_deconv(
         agg=agg,
         divergence=divergence,
         alpha=alpha,
+        beta=beta,
         num_epochs=epochs,
         out_dir=out_dir,
         tb_dir=tb_dir,
@@ -172,11 +175,11 @@ def run_sec_deconv(
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
     cell_prob_best_adjusted = BayesianAdjustment(
-        cell_prob_best, spot_dict_global, spot_prop_df, p_c, device=device
+        cell_prob_best, spot_dict_global, spot_prop_df, p_c, beta, device=device
     ).forward()
     if is_final:
         cell_prob_final_adjusted = BayesianAdjustment(
-            cell_prob_final, spot_dict_global, spot_prop_df, p_c, device=device
+            cell_prob_final, spot_dict_global, spot_prop_df, p_c, beta, device=device
         ).forward()
 
     # Save model infos
