@@ -169,9 +169,9 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, self.beta)
+                adjusted_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, beta=self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
-                    cell_probs,
+                    adjusted_probs,
                     new_bag_indices,
                     proportions,
                     weights=self.weights,
@@ -284,9 +284,9 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                cell_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, self.beta)
+                adjusted_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, beta=self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
-                    cell_probs,
+                    adjusted_probs,
                     new_bag_indices,
                     proportions,
                     weights=self.weights,
