@@ -175,11 +175,11 @@ def run_sec_deconv(
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
     cell_prob_best_adjusted = BayesianAdjustment(
-        cell_prob_best, spot_dict_global, spot_prop_df, p_c, beta, device=device
+        cell_prob_best, spot_dict_global, spot_prop_df, p_c, beta=0.0, device=device
     ).forward()
     if is_final:
         cell_prob_final_adjusted = BayesianAdjustment(
-            cell_prob_final, spot_dict_global, spot_prop_df, p_c, beta, device=device
+            cell_prob_final, spot_dict_global, spot_prop_df, p_c, beta=0.0, device=device
         ).forward()
 
     # Save model infos
