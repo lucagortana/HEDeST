@@ -375,7 +375,7 @@ def bayesian_adjustment(
     bag_indices: torch.Tensor,  # shape: (N_cells,), maps each cell to a spot
     proportions: torch.Tensor,  # shape: (N_spots, N_classes)
     p_c: torch.Tensor,  # shape: (N_classes,), global class proportions
-    eps: float = 0.4,  # avoid division by zero
+    eps: float = 1e-6,  # avoid division by zero
     beta: float = 0.0,  # regularization term: 0 = full adjustment, 1 = original probabilities
 ) -> torch.Tensor:
     """

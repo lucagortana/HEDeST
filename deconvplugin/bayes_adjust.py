@@ -117,7 +117,7 @@ class BayesianAdjustment:
         self.spot_prop_tensor = self.spot_prop_tensor.to(self.device)
         self.p_c = self.p_c.to(self.device)
 
-    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor, epsilon: float = 0.4) -> float:
+    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor, epsilon: float = 1e-6) -> float:
         """
         Computes the alpha adjustment factor for a cell.
 
