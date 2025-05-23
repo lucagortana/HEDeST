@@ -22,7 +22,7 @@ python hovernet/run_infer.py \
     --model_mode=fast \
     --model_path=/cluster/CBIO/data1/lgortana/pretrained/seg_classif/hovernet_fast_pannuke_type_tf2pytorch.tar \
     wsi \
-    --input_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/tif/ \
-    --output_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/seg_json/ \
-    --input_mask_dir=/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/mask/lvl3/ \
+    --input_dir=/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/pyr_tif/ \
+    --output_dir=/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/seg_json/ \
+    --input_mask_dir=/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/mask/lvl3_pyr/ \
     --cache_path=/cluster/CBIO/data1/lgortana/cache
