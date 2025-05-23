@@ -16,6 +16,9 @@ from skimage.morphology import opening
 from skimage.morphology import square
 from skimage.transform import resize
 
+import PIL.Image
+PIL.Image.MAX_IMAGE_PIXELS = 933120000
+
 
 def make_auto_mask(slide: Union[OpenSlide, str],
                    mask_level: int, 
