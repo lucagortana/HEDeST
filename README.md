@@ -25,5 +25,5 @@ conda install -c conda-forge openslide=3.4.1
 During segmentation, you can get the ``OSError: [Errno 39] Directory not empty: 'cache'`` error. Make sure to delete everything you have in this repository and apply chmod 777. \
 Also, you can get the Openslide's error ``openslide.lowlevel.OpenSlideUnsupportedFormatError: Unsupported or missing image file``. In that case, we recommend to check the properties of your file with the command ``openslide-show-properties your_file.tif``. If your file is indeed incompatible with Openslide, then you can try :
 ```
-vips tiffsave Xenium_FFPE_Human_Breast_Cancer_Rep1_he_image.tif output-pyramidal.tif --tile --pyramid --bigtiff --compression jpeg --Q 90
+vips tiffsave your_file.tif output-pyramidal.tif --tile --pyramid --bigtiff --compression jpeg --Q 90
 ```
