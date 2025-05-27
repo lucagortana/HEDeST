@@ -83,6 +83,7 @@ class BayesianAdjustment:
         global_prop: pd.Series,
         beta: float = 0.0,
         batch_size: int = 256,
+        eps: float = 1e-6,
         device: Optional[Union[str, torch.device]] = None,
     ):
         """
@@ -95,42 +96,46 @@ class BayesianAdjustment:
             global_prop: Global proportions of cell types over the slide.
             beta: Hyperparameter to regularize adjustment.
             batch_size: Batch size for processing.
+            eps: Small value to avoid division by zero.
             device: Device for computation.
         """
 
         self.inverse_spot_dict = revert_dict(spot_dict)
 
         self.cell_prob_df = cell_prob_df
-        self.cell_prob_tensor = torch.tensor(self.cell_prob_df.values, dtype=torch.float32)
+        self.adjustable_cells = [cell_id for cell_id in cell_prob_df.index if cell_id in self.inverse_spot_dict]
+        self.unadjustable_cells = [cell_id for cell_id in cell_prob_df.index if cell_id not in self.inverse_spot_dict]
+
+        self.cell_prob_tensor = torch.tensor(cell_prob_df.loc[self.adjustable_cells].values, dtype=torch.float32)
         self.spot_prop_tensor = torch.tensor(spot_prop_df.values, dtype=torch.float32)
         self.p_c = torch.tensor(global_prop.values, dtype=torch.float32)
 
         spot_index_map = {spot_id: idx for idx, spot_id in enumerate(spot_prop_df.index)}
-        self.spot_ids = [spot_index_map[self.inverse_spot_dict[cell_id]] for cell_id in cell_prob_df.index]
+        self.spot_ids = [spot_index_map[self.inverse_spot_dict[cell_id]] for cell_id in self.adjustable_cells]
 
         self.beta = beta
-
         self.batch_size = batch_size
+        self.eps = eps
         self.device = device if device else ("cuda" if torch.cuda.is_available() else "cpu")
 
         self.cell_prob_tensor = self.cell_prob_tensor.to(self.device)
         self.spot_prop_tensor = self.spot_prop_tensor.to(self.device)
         self.p_c = self.p_c.to(self.device)
+        self.p_c = self.p_c.clamp(min=self.eps)
 
-    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor, epsilon: float = 1e-6) -> float:
+    def _alpha(self, p_c_x: torch.Tensor, p_tilde_c: torch.Tensor) -> float:
         """
         Computes the alpha adjustment factor for a cell.
 
         Args:
             p_c_x: Predicted probability vector for a single cell.
             p_tilde_c: Proportion vector for the local spot.
-            epsilon: Small value to avoid division by zero.
 
         Returns:
             Alpha adjustment factor.
         """
         similarity = torch.sum(p_c_x * (p_tilde_c / self.p_c))
-        similarity = torch.clamp(similarity, min=epsilon)
+        similarity = torch.clamp(similarity, min=self.eps)
         alpha_x = 1 / similarity
         return alpha_x
 
@@ -161,8 +166,15 @@ class BayesianAdjustment:
                     adjusted_probs = cell_probs[i] * alphas[i] * (p_tilde_c_batch[i] / self.p_c)
                 p_tilde_c_x[idx[i]] = (1 - self.beta) * adjusted_probs + self.beta * cell_probs[i]
 
-        p_tilde_c_x_df = pd.DataFrame(
-            p_tilde_c_x.cpu().numpy(), index=self.cell_prob_df.index, columns=self.cell_prob_df.columns
+        adjusted_df = pd.DataFrame(
+            p_tilde_c_x.cpu().numpy(),
+            index=self.adjustable_cells,
+            columns=self.cell_prob_df.columns,
         )
+
+        unadjusted_df = self.cell_prob_df.loc[self.unadjustable_cells]
+
+        p_tilde_c_x_df = pd.concat([adjusted_df, unadjusted_df])
+        p_tilde_c_x_df = p_tilde_c_x_df.loc[self.cell_prob_df.index]
 
         return p_tilde_c_x_df

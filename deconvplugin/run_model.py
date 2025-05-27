@@ -31,7 +31,7 @@ def run_sec_deconv(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
     spot_dict: Dict[str, List[str]],
-    spot_dict_global: Dict[str, List[str]],
+    spot_dict_adjust: Dict[str, List[str]],
     model_name: str = "resnet18",
     hidden_dims: List[int] = [512, 256],
     batch_size: int = 1,
@@ -55,7 +55,7 @@ def run_sec_deconv(
         image_dict: Dictionary mapping cell IDs to image tensors.
         spot_dict: Dictionary mapping cell IDs to their spot.
         spot_prop_df: DataFrame containing cell type proportions for each spot.
-        spot_dict_global: Dictionary mapping cell IDs to the closest spot.
+        spot_dict_adjust: Dictionary mapping cell IDs to the closest spot.
         model_name: Name of the model to use.
         batch_size: Batch size for data loaders.
         lr: Learning rate for the optimizer.
@@ -175,11 +175,11 @@ def run_sec_deconv(
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
     cell_prob_best_adjusted = BayesianAdjustment(
-        cell_prob_best, spot_dict_global, spot_prop_df, p_c, beta=0.0, device=device
+        cell_prob_best, spot_dict_adjust, spot_prop_df, p_c, beta=0.0, device=device
     ).forward()
     if is_final:
         cell_prob_final_adjusted = BayesianAdjustment(
-            cell_prob_final, spot_dict_global, spot_prop_df, p_c, beta=0.0, device=device
+            cell_prob_final, spot_dict_adjust, spot_prop_df, p_c, beta=0.0, device=device
         ).forward()
 
     # Save model infos
