@@ -13,7 +13,7 @@ def run_experiment(
     image_dict_path: str,
     spot_prop_df: str,
     spot_dict_file: str,
-    spot_dict_global_file: str,
+    spot_dict_adjust_file: str,
     model_name: str,
     batch_size: int,
     alpha: float,
@@ -31,7 +31,7 @@ def run_experiment(
         image_dict_path (str): Path to the image dictionary file.
         spot_prop_df (str): Path to the spot proportions DataFrame.
         spot_dict_file (str): Path to the spot dictionary file.
-        spot_dict_global_file (str): Path to the global spot dictionary file.
+        spot_dict_adjust_file (str): Path to the adjustment spot dictionary file.
         model_name (str): Name of the model to use.
         batch_size (int): Batch size for training.
         alpha (float): Regularization parameter for the model.
@@ -56,8 +56,8 @@ def run_experiment(
         spot_prop_df,
         "--spot-dict-file",
         spot_dict_file,
-        "--spot-dict-global-file",
-        spot_dict_global_file,
+        "--spot-dict-adjust-file",
+        spot_dict_adjust_file,
         "--model-name",
         model_name,
         "--batch-size",
@@ -92,7 +92,7 @@ def main_simulation(
     image_dict_path: str,
     spot_prop_df: str,
     spot_dict_file: str,
-    spot_dict_global_file: str,
+    spot_dict_adjust_file: str,
     models: List[str],
     alphas: List[float],
     betas: List[float],
@@ -110,7 +110,7 @@ def main_simulation(
         image_dict_path (str): Path to the image dictionary file.
         spot_prop_df (str): Path to the spot proportions DataFrame.
         spot_dict_file (str): Path to the spot dictionary file.
-        spot_dict_global_file (str): Path to the global spot dictionary file.
+        spot_dict_adjust_file (str): Path to the global spot dictionary file.
         models (List[str]): List of model names.
         alphas (List[float]): List of alpha values.
         betas (List[float]): List of beta values.
@@ -125,7 +125,7 @@ def main_simulation(
     logger.info(f"Image dictionary path: {image_dict_path}")
     logger.info(f"Spot proportions DataFrame path: {spot_prop_df}")
     logger.info(f"Spot dictionary file path: {spot_dict_file}")
-    logger.info(f"Global spot dictionary file path: {spot_dict_global_file}")
+    logger.info(f"Adjustment spot dictionary file path: {spot_dict_adjust_file}")
     logger.info(f"Models: {models}")
     logger.info(f"Alpha values: {alphas}")
     logger.info(f"Beta values: {betas}")
@@ -143,7 +143,7 @@ def main_simulation(
                 image_dict_path,
                 spot_prop_df,
                 spot_dict_file,
-                spot_dict_global_file,
+                spot_dict_adjust_file,
                 model_name,
                 batch_size,
                 alpha,
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     parser.add_argument("image_dict_path", type=str, help="Path to the image dictionary file")
     parser.add_argument("spot_prop_df", type=str, help="Path to the spot proportions DataFrame")
     parser.add_argument("spot_dict_file", type=str, help="Path to the spot dictionary file")
-    parser.add_argument("spot_dict_global_file", type=str, help="Path to the global spot dictionary file")
+    parser.add_argument("spot_dict_adjust_file", type=str, help="Path to the adjustment spot dictionary file")
 
     # List arguments
     parser.add_argument("--models", nargs="+", type=str, required=True, help="List of model names")
@@ -192,7 +192,7 @@ if __name__ == "__main__":
         args.image_dict_path,
         args.spot_prop_df,
         args.spot_dict_file,
-        args.spot_dict_global_file,
+        args.spot_dict_adjust_file,
         args.models,
         args.alphas,
         args.betas,
