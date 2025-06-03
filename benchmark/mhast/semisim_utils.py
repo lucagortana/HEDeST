@@ -87,16 +87,14 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
     cell_ids = sorted(set(ground_truth.index.astype(str)) & set(sum(spot_dict.values(), [])))
     cell_id_to_idx = {cid: i for i, cid in enumerate(cell_ids)}
     N = len(cell_ids)
-    print("Cell IDs ok")
 
     # 2. Sorted spot IDs
     spot_ids = sorted(spot_dict.keys())
     spot_id_to_idx = {sid: i for i, sid in enumerate(spot_ids)}
     M = len(spot_ids)
-    print("Spot IDs ok")
 
     # 3. Map one-hot labels to class indices
-    cell_type_names = ground_truth.columns.tolist()
+    # cell_type_names = ground_truth.columns.tolist()
     # L = len(cell_type_names)
     gt_labels = ground_truth.loc[ground_truth.index.astype(str).isin(cell_ids)]
     label_array = gt_labels.to_numpy()
@@ -104,7 +102,6 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
 
     # Map cell_id → class index
     cell_id_to_label = {str(cid): type_idx for cid, type_idx in zip(gt_labels.index.astype(str), type_indices)}
-    print("Cell type labels ok")
 
     # 4. B: Features per cell (N x K)
     K = len(next(iter(embeddings.values())))  # 2048
@@ -115,7 +112,6 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
             B[i] = embeddings[cid].detach().cpu().numpy()
         else:
             raise ValueError(f"Cell ID {cid} found in ground_truth or spot_dict but not in embeddings.")
-    print("Embeddings ok")
 
     # 5. A and X_sparse
     A = np.zeros((M, N), dtype=int)
@@ -128,15 +124,12 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
                 n = cell_id_to_idx[cid]
                 A[m, n] = 1
                 X_sparse[m, n] = cell_id_to_label[cid]
-    print("Adjacency matrix A and sparse matrix X_sparse ok")
 
     # 6. X: flat label vector (N,)
     X = np.zeros(N, dtype=int)
     for cid, n in cell_id_to_idx.items():
         if cid in cell_id_to_label:
             X[n] = cell_id_to_label[cid]
-
-    print("Flat label vector X ok")
 
     # 7. New organization of matrices
     new_order = []
@@ -155,7 +148,6 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
     X = X[new_order]
 
     X_perm, _ = generate_X_perm(X_sparse.copy())
-    print("New organization of matrices completed.")
 
     # 8. Divide matrices into batches
     A_batches = []
