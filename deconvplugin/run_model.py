@@ -204,38 +204,38 @@ def run_sec_deconv(
     with open(info_dir, "wb") as f:
         pickle.dump(model_info, f)
 
-    # Extract and save statistics
-    logger.info("Extracting and saving statistics...")
+    # # Extract and save statistics
+    # logger.info("Extracting and saving statistics...")
 
-    stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")
-    stats_best_all = PredAnalyzer(model_info=model_info).extract_stats(metric="all")
+    # stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")
+    # stats_best_all = PredAnalyzer(model_info=model_info).extract_stats(metric="all")
 
-    stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
-    stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
+    # stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
+    # stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
 
-    if is_final:
-        stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(
-            metric="predicted"
-        )
-        stats_final_all = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(metric="all")
+    # if is_final:
+    #     stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(
+    #         metric="predicted"
+    #     )
+    #     stats_final_all = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(metric="all")
 
-        stats_final_adj_predicted = PredAnalyzer(
-            model_info=model_info, model_state="final", adjusted=True
-        ).extract_stats(metric="predicted")
-        stats_final_adj_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True).extract_stats(
-            metric="all"
-        )
+    #     stats_final_adj_predicted = PredAnalyzer(
+    #         model_info=model_info, model_state="final", adjusted=True
+    #     ).extract_stats(metric="predicted")
+    #     stats_final_adj_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=True).extract_stats(
+    #         metric="all"
+    #     )
 
-    with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
-        stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
-        stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
-        stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
-        stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
-        if is_final:
-            stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
-            stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
-            stats_final_adj_predicted.to_excel(writer, sheet_name="final_adj_predicted", index=False)
-            stats_final_adj_all.to_excel(writer, sheet_name="final_adj_all", index=False)
+    # with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
+    #     stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
+    #     stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
+    #     stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
+    #     stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
+    #     if is_final:
+    #         stats_final_predicted.to_excel(writer, sheet_name="final_predicted", index=False)
+    #         stats_final_all.to_excel(writer, sheet_name="final_all", index=False)
+    #         stats_final_adj_predicted.to_excel(writer, sheet_name="final_adj_predicted", index=False)
+    #         stats_final_adj_all.to_excel(writer, sheet_name="final_adj_all", index=False)
 
     logger.info("Secondary deconvolution process completed successfully.")
     logger.info(f"Training time: {TRAIN_TIME}")

@@ -1,4 +1,5 @@
 cache
+benchmark/mhast/__pycache__
 deconvplugin/__pycache__
 deconvplugin/analysis/__pycache__
 deconvplugin/model/__pycache__
@@ -13,3 +14,5 @@ run*
 !run_hovernet.sh
 !run_gridsearch.sh
 !run_extract_stats.sh
+!benchmark/mhast/run_semisim.sh
+!benchmark/mhast/run_tangram.py
