@@ -37,11 +37,9 @@ def run_single_iteration(ground_truth, spot_dict, embeddings):
         while thread.is_alive():
             thread.join(timeout=5)
             elapsed = time.time() - start_time
-            if elapsed > 600:
-                print(f"Skipping batch {batch_idx} (timeout >10min)")
+            if elapsed > 300:
+                print(f"Skipping batch {batch_idx} (timeout >5min)")
                 break
-        else:
-            X_global_batch = result[0]
 
         if result[0] is not None:
             X_global_batches.append(result[0])
@@ -67,12 +65,23 @@ def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter
         spot_dict = json.load(file)
     print("-> Data loaded successfully")
 
-    num_workers = min(8, multiprocessing.cpu_count())
+    cell_ids = sorted(set(ground_truth.index.astype(str)) & set(sum(spot_dict.values(), [])))
+
+    num_workers = min(5, multiprocessing.cpu_count())
     results = Parallel(n_jobs=num_workers)(
         delayed(run_single_iteration)(ground_truth, spot_dict, embeddings) for _ in range(n_iter)
     )
 
+    print("-> All iterations completed")
+
     X_globals_all, X_perms_all, Xs_all = zip(*results)
+
+    np.save(os.path.join("X_globals_all.npy"), np.array(X_globals_all, dtype=object))
+    np.save(os.path.join("X_perms_all.npy"), np.array(X_perms_all, dtype=object))
+    np.save(os.path.join("Xs_all.npy"), np.array(Xs_all, dtype=object))
+
+    print("Global results saved.")
+
     X_globals_all = [np.array(x) for x in X_globals_all]
     X_perms_all = [np.array(x) for x in X_perms_all]
     Xs_all = [np.array(x) for x in Xs_all]
@@ -84,9 +93,16 @@ def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter
     X_perms_all = [Xp[valid_mask] for Xp in X_perms_all]
     Xs_all = [X[valid_mask] for X in Xs_all]
 
-    remaining_indices = np.where(valid_mask)[0]
-    remaining_cell_ids = list(ground_truth.index[remaining_indices])
-    pd.Series(remaining_cell_ids).to_csv("remaining_cell_ids.csv", index=False)
+    np.save(os.path.join("X_globals_filtered.npy"), np.array(X_globals_all))
+    np.save(os.path.join("X_perms_filtered.npy"), np.array(X_perms_all))
+    np.save(os.path.join("Xs_filtered.npy"), np.array(Xs_all))
+
+    print("Filtered results saved.")
+
+    remaining_indices = list(np.where(valid_mask)[0])
+    remaining_cell_ids = [cell_ids[i] for i in remaining_indices]
+    pd.Series(remaining_cell_ids).to_csv("remaining_cell_ids.csv", index=False, header=False)
+    print("Remaining cell IDs saved to 'remaining_cell_ids.csv'.")
 
     metrics_before_list = []
     metrics_after_list = []
