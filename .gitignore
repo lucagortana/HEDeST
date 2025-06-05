@@ -8,11 +8,7 @@ log
 models
 !hovernet/models
 debug.log
-run*
-!run_deconv.sh
-!run_mask.sh
-!run_hovernet.sh
-!run_gridsearch.sh
-!run_extract_stats.sh
+run_real.sh
+run_semi*
+run_sim*
 !benchmark/mhast/run_semisim.sh
-!benchmark/mhast/run_tangram.py
