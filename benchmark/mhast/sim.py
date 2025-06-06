@@ -127,7 +127,7 @@ def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter
         df_before_all.to_excel(writer, sheet_name="Metrics Before", index=False)
         df_after_all.to_excel(writer, sheet_name="Metrics After", index=False)
 
-    print(f"-> Results saved to {output_xlsx}.xlsx")
+    print(f"-> Results saved to {output_xlsx}")
 
 
 if __name__ == "__main__":

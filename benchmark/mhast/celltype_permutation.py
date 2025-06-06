@@ -6,7 +6,8 @@ from itertools import product
 import numpy as np
 from more_itertools import distinct_permutations
 from sklearn.metrics import calinski_harabasz_score
-from tqdm import tqdm
+
+# from tqdm import tqdm
 
 
 def local_permutations(A, X_perm, B):
@@ -29,9 +30,9 @@ def local_permutations(A, X_perm, B):
     best_permutations = []
     indices_order = []
 
-    print("--------------------------------------------------------------")
-    print("M_spot\t Perm_1\t \t Perm_2\t CHI")
-    print("--------------------------------------------------------------")
+    # print("--------------------------------------------------------------")
+    # print("M_spot\t Perm_1\t \t Perm_2\t CHI")
+    # print("--------------------------------------------------------------")
     for Xm_i, Xm in enumerate(X_sparse_perm):
         values = Xm[Xm > 0]
         indices = np.where(Xm > 0)[0]
@@ -57,8 +58,8 @@ def local_permutations(A, X_perm, B):
                         best_permutation = [perm]
         best_permutations.append(np.stack(best_permutation))
         indices_order.append(indices)
-        print(Xm_i, "\t", len(perms), "\t" "\t", np.stack(best_permutation).shape[0], "\t", highest_score)
-    print("--------------------------------------------------------------")
+    #     print(Xm_i, "\t", len(perms), "\t" "\t", np.stack(best_permutation).shape[0], "\t", highest_score)
+    # print("--------------------------------------------------------------")
 
     X_local = X_perm.copy()
     multiple_option_permutations = []
@@ -87,13 +88,13 @@ def global_permutations(B, X_local, multiple_option_permutations, multiple_optio
         X_global: rearranged cell type per cell according to global optimization
     """
 
-    total_tests = np.prod(np.array([len(perm) for perm in multiple_option_permutations]))
+    # total_tests = np.prod(np.array([len(perm) for perm in multiple_option_permutations]))
     X_global = X_local.copy()
     max_score = float("-inf")
     best_permutation = None
     new_inds = np.hstack(multiple_option_indices)
     # Iterate through the Cartesian product of multiple_option_permutations
-    for new_perms in tqdm(product(*multiple_option_permutations), total=total_tests):
+    for new_perms in product(*multiple_option_permutations):
         new_perms = np.hstack(new_perms)
         # Apply the new permutation to X_next
         X_global[new_inds] = new_perms

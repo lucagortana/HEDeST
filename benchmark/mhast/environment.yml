@@ -81,6 +81,7 @@ dependencies:
     - dask==2023.5.0
     - dask-image==2023.3.0
     - docrep==0.3.2
+    - et-xmlfile==2.0.0
     - fasteners==0.19
     - filelock==3.13.1
     - fonttools==4.47.0
@@ -123,6 +124,7 @@ dependencies:
     - nvidia-nvjitlink-cu12==12.3.101
     - nvidia-nvtx-cu12==12.1.105
     - omnipath==1.0.8
+    - openpyxl==3.1.5
     - pandas==2.0.3
     - partd==1.4.1
     - patsy==0.5.4
