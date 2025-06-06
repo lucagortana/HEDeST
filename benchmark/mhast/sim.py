@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("--spot_dict_filename", type=str, required=True, help="JSON file with spot dictionary.")
     parser.add_argument("--embeddings_filename", type=str, required=True, help="PT file with embeddings.")
     parser.add_argument("--n_iter", type=int, default=10, help="Number of repetitions")
-    parser.add_argument("--output_csv", type=str, default="results.csv", help="Path to output CSV")
+    parser.add_argument("--output_xlsx", type=str, default="results.csv", help="Path to output CSV")
 
     args = parser.parse_args()
     main(
@@ -148,5 +148,5 @@ if __name__ == "__main__":
         args.spot_dict_filename,
         args.embeddings_filename,
         args.n_iter,
-        args.output_csv,
+        args.output_xlsx,
     )
