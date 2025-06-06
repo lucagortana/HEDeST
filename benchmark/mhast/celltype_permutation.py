@@ -30,9 +30,9 @@ def local_permutations(A, X_perm, B):
     best_permutations = []
     indices_order = []
 
-    # print('--------------------------------------------------------------')
-    # print('M_spot\t Perm_1\t \t Perm_2\t CHI')
-    # print('--------------------------------------------------------------')
+    print("--------------------------------------------------------------")
+    print("M_spot\t Perm_1\t \t Perm_2\t CHI")
+    print("--------------------------------------------------------------")
     for Xm_i, Xm in enumerate(X_sparse_perm):
         values = Xm[Xm > 0]
         indices = np.where(Xm > 0)[0]
@@ -58,11 +58,8 @@ def local_permutations(A, X_perm, B):
                         best_permutation = [perm]
         best_permutations.append(np.stack(best_permutation))
         indices_order.append(indices)
-    #     print(Xm_i, '\t',
-    #             len(perms), '\t' '\t',
-    #             np.stack(best_permutation).shape[0], '\t',
-    #             highest_score)
-    # print('--------------------------------------------------------------')
+        print(Xm_i, "\t", len(perms), "\t" "\t", np.stack(best_permutation).shape[0], "\t", highest_score)
+    print("--------------------------------------------------------------")
 
     X_local = X_perm.copy()
     multiple_option_permutations = []
@@ -97,7 +94,7 @@ def global_permutations(B, X_local, multiple_option_permutations, multiple_optio
     best_permutation = None
     new_inds = np.hstack(multiple_option_indices)
     # Iterate through the Cartesian product of multiple_option_permutations
-    for new_perms in product(*multiple_option_permutations):  # remove tqdm
+    for new_perms in product(*multiple_option_permutations):
         new_perms = np.hstack(new_perms)
         # Apply the new permutation to X_next
         X_global[new_inds] = new_perms

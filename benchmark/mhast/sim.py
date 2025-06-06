@@ -2,60 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import multiprocessing
 import os
 
 import numpy as np
 import pandas as pd
 import torch
 from celltype_permutation import hierarchical_permutations
-from joblib import delayed
-from joblib import Parallel
 from utils import aggregate_stats
 from utils import compute_stats
 from utils import generate_X_perm
 
 
-def run_batch_with_timeout(A_batch, X_perm_batch, B_batch, timeout=300):
-    def target_fn(queue):
-        result = hierarchical_permutations(A_batch, X_perm_batch, B_batch)
-        queue.put(result)
-
-    queue = multiprocessing.Queue()
-    process = multiprocessing.Process(target=target_fn, args=(queue,))
-    process.start()
-    process.join(timeout)
-
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        print("-> Skipping batch (timeout >5min)")
-        return None
-
-    return queue.get()
-
-
-def run_single_iteration(ground_truth, spot_dict, embeddings):
-    A_batches, B_batches, X_perm_batches, X_perm, X = prepare_data(ground_truth, spot_dict, embeddings)
-
-    X_global_batches = []
-
-    for batch_idx, (A_batch, X_perm_batch, B_batch) in enumerate(zip(A_batches, X_perm_batches, B_batches)):
-        print(f"Processing batch {batch_idx + 1}/{len(A_batches)}")
-
-        X_global_batch = run_batch_with_timeout(A_batch, X_perm_batch, B_batch)
-
-        if X_global_batch is not None:
-            X_global_batches.append(X_global_batch)
-        else:
-            print(f"-> Padding skipped batch {batch_idx} with zeros")
-            X_global_batches.append(np.zeros_like(X_perm_batch))
-
-    X_global = np.concatenate(X_global_batches)
-    return X_global, X_perm, X
-
-
-def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
+def prepare_data(ground_truth, spot_dict, embeddings):
     # 1. Unique sorted cell IDs across both spot_dict and ground_truth
     cell_ids = sorted(set(ground_truth.index.astype(str)) & set(sum(spot_dict.values(), [])))
     cell_id_to_idx = {cid: i for i, cid in enumerate(cell_ids)}
@@ -122,33 +80,10 @@ def prepare_data(ground_truth, spot_dict, embeddings, batch_size=30):
 
     X_perm, _ = generate_X_perm(X_sparse.copy())
 
-    # 8. Divide matrices into batches
-    A_batches = []
-    B_batches = []
-    X_perm_batches = []
-
-    num_spots = A.shape[0]
-
-    for start in range(0, num_spots, batch_size):
-        end = min(start + batch_size, num_spots)
-
-        A_batch = A[start:end]
-        used_cell_indices = np.where(A_batch.sum(axis=0) > 0)[0]
-
-        A_batch = A_batch[:, used_cell_indices]
-        B_batch = B[used_cell_indices]
-        X_perm_batch = X_perm[used_cell_indices]
-
-        A_batches.append(A_batch)
-        B_batches.append(B_batch)
-        X_perm_batches.append(X_perm_batch)
-
-    print("->Data preparation completed.")
-
-    return A_batches, B_batches, X_perm_batches, X_perm, X
+    return A, B, X_perm, X
 
 
-def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter, output_csv):
+def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter, output_xlsx):
 
     ground_truth_path = os.path.join(data_path, gt_filename)
     spot_dict_path = os.path.join(data_path, spot_dict_filename)
@@ -162,35 +97,13 @@ def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter
         spot_dict = json.load(file)
     print("-> Data loaded successfully")
 
-    cell_ids = sorted(set(ground_truth.index.astype(str)) & set(sum(spot_dict.values(), [])))
-
-    num_workers = min(5, multiprocessing.cpu_count())
-    results = Parallel(n_jobs=num_workers)(
-        delayed(run_single_iteration)(ground_truth, spot_dict, embeddings) for _ in range(n_iter)
-    )
-
-    print("-> All iterations completed")
-
-    X_globals_all, X_perms_all, Xs_all = zip(*results)
-
-    X_globals_all = [np.array(x) for x in X_globals_all]
-    X_perms_all = [np.array(x) for x in X_perms_all]
-    Xs_all = [np.array(x) for x in Xs_all]
-
-    X_globals_stack = np.stack(X_globals_all)  # shape: (n_iter, n_cells)
-    valid_mask = ~np.any(X_globals_stack == 0, axis=0)
-
-    X_globals_all = [Xg[valid_mask] for Xg in X_globals_all]
-    X_perms_all = [Xp[valid_mask] for Xp in X_perms_all]
-    Xs_all = [X[valid_mask] for X in Xs_all]
-
-    remaining_indices = list(np.where(valid_mask)[0])
-    remaining_cell_ids = [cell_ids[i] for i in remaining_indices]
-    pd.Series(remaining_cell_ids).to_csv("remaining_cell_ids.csv", index=False, header=False)
-
     metrics_before_list = []
     metrics_after_list = []
-    for X, X_perm, X_global in zip(Xs_all, X_perms_all, X_globals_all):
+
+    for i in range(n_iter):
+        print(f"-> Iteration {i + 1}/{n_iter}")
+        A, B, X_perm, X = prepare_data(ground_truth, spot_dict, embeddings)
+        X_global = hierarchical_permutations(A, X_perm, B)
         metrics_before = compute_stats(X, X_perm, per_class=False)
         metrics_after = compute_stats(X, X_global, per_class=False)
         metrics_before_list.append(metrics_before)
@@ -199,14 +112,22 @@ def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter
     mean_values_before, ci_values_before = aggregate_stats(metrics_before_list)
     mean_values_after, ci_values_after = aggregate_stats(metrics_after_list)
 
-    result_df = pd.DataFrame(
+    df_summary = pd.DataFrame(
         [
             {"state": "before", **mean_values_before, **ci_values_before},
             {"state": "after", **mean_values_after, **ci_values_after},
         ]
     )
-    result_df.to_csv(output_csv, index=False)
-    print(f"-> Results saved to {output_csv}")
+
+    df_before_all = pd.DataFrame(metrics_before_list)
+    df_after_all = pd.DataFrame(metrics_after_list)
+
+    with pd.ExcelWriter(output_xlsx) as writer:
+        df_summary.to_excel(writer, sheet_name="Summary", index=False)
+        df_before_all.to_excel(writer, sheet_name="Metrics Before", index=False)
+        df_after_all.to_excel(writer, sheet_name="Metrics After", index=False)
+
+    print(f"-> Results saved to {output_xlsx}.xlsx")
 
 
 if __name__ == "__main__":

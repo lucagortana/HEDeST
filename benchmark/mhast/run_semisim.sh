@@ -18,5 +18,5 @@ python3 semisim.py \
     --gt_filename sim_Xenium_FFPE_Human_Breast_Cancer_Rep1_gt.csv \
     --spot_dict_filename spot_dict_small.json \
     --embeddings_filename moco_embed_moco-XENHBrep1-rn50.pt \
-    --n_iter 8 \
-    --output_csv mhast_results.csv
+    --n_iter 5 \
+    --output_csv ../results/mhast/mhast_results.csv

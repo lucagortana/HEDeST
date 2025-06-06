@@ -1,5 +1,6 @@
 cache
 benchmark/mhast/__pycache__
+benchmark/results
 deconvplugin/__pycache__
 deconvplugin/analysis/__pycache__
 deconvplugin/model/__pycache__
@@ -12,3 +13,4 @@ run_real.sh
 run_semi*
 run_sim*
 !benchmark/mhast/run_semisim.sh
+!benchmark/mhast/run_sim.sh
