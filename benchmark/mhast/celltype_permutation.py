@@ -6,8 +6,7 @@ from itertools import product
 import numpy as np
 from more_itertools import distinct_permutations
 from sklearn.metrics import calinski_harabasz_score
-
-# from tqdm import tqdm
+from tqdm import tqdm
 
 
 def local_permutations(A, X_perm, B):
@@ -88,13 +87,13 @@ def global_permutations(B, X_local, multiple_option_permutations, multiple_optio
         X_global: rearranged cell type per cell according to global optimization
     """
 
-    # total_tests = np.prod(np.array([len(perm) for perm in multiple_option_permutations]))
+    total_tests = np.prod(np.array([len(perm) for perm in multiple_option_permutations]))
     X_global = X_local.copy()
     max_score = float("-inf")
     best_permutation = None
     new_inds = np.hstack(multiple_option_indices)
     # Iterate through the Cartesian product of multiple_option_permutations
-    for new_perms in product(*multiple_option_permutations):
+    for new_perms in tqdm(product(*multiple_option_permutations), total=total_tests):
         new_perms = np.hstack(new_perms)
         # Apply the new permutation to X_next
         X_global[new_inds] = new_perms
