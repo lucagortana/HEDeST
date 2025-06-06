@@ -13,7 +13,7 @@ conda activate mhast
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/mhast/lib:$LD_LIBRARY_PATH
 
-python3 semisim.py \
+python3 -u semisim.py \
     --data_path /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/sim \
     --gt_filename sim_Xenium_FFPE_Human_Breast_Cancer_Rep1_gt.csv \
     --spot_dict_filename spot_dict_small.json \

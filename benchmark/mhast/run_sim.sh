@@ -13,7 +13,7 @@ conda activate mhast
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/mhast/lib:$LD_LIBRARY_PATH
 
-python3 sim.py \
+python3 -u sim.py \
     --data_path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/sim \
     --gt_filename 4_moco_clusters_30spots_balanced_5mean_5var_gt.csv \
     --spot_dict_filename 4_moco_clusters_30spots_balanced_5mean_5var_spot_dict.json \
