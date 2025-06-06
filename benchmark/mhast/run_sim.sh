@@ -18,5 +18,5 @@ python3 -u sim.py \
     --gt_filename 4_moco_clusters_30spots_balanced_5mean_5var_gt.csv \
     --spot_dict_filename 4_moco_clusters_30spots_balanced_5mean_5var_spot_dict.json \
     --embeddings_filename 4_moco_clusters_30spots_balanced_5mean_5var_emb_dict.pt \
-    --n_iter 2 \
+    --n_iter 150 \
     --output_xlsx ../results/mhast/4_moco_clusters_30spots_balanced_5mean_5var_mhast.xlsx
