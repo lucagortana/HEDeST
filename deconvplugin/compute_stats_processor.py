@@ -130,7 +130,7 @@ def process_config(config, runs, sim_folder, ground_truth):
     profiler.stop()
     profiler.print()
 
-    return config, results
+    return config, results, metrics_lists
 
 
 def extract_stats(
@@ -176,18 +176,45 @@ def extract_stats(
 
     logger.info(f"Starting parallel processing with {num_workers} workers...")
 
-    results = defaultdict(list)
     processed = Parallel(n_jobs=num_workers)(delayed(process_config)(*args) for args in args_list)
 
-    for config, res in processed:
-        for key, row in res:
-            results[key].append(row)
+    summary_by_key = defaultdict(list)
+    per_run_by_key = defaultdict(list)
 
-    for key, rows in results.items():
-        df = pd.DataFrame(rows).sort_values(by=["model", "alpha", "lr", "weights", "divergence", "beta"])
-        df.to_csv(os.path.join(sim_folder, f"summary_metrics_{key}.csv"), index=False)
+    for config, summary_rows, metrics_lists in processed:
+        model, alpha, lr, weights, divergence, beta = config
 
-    logger.info("All stats saved!")
+        for key, row in summary_rows:
+            summary_by_key[key].append(row)
+
+        for key, metric_dicts in metrics_lists.items():
+            for metric in metric_dicts:
+                row = {
+                    "model": model,
+                    "alpha": alpha,
+                    "lr": lr,
+                    "weights": weights,
+                    "divergence": divergence,
+                    "beta": beta,
+                    **metric,
+                }
+                per_run_by_key[key].append(row)
+
+    # Write one Excel file per metric key
+    for key in summary_by_key:
+        summary_df = pd.DataFrame(summary_by_key[key]).sort_values(
+            by=["model", "alpha", "lr", "weights", "divergence", "beta"]
+        )
+        per_run_df = pd.DataFrame(per_run_by_key[key]).sort_values(
+            by=["model", "alpha", "lr", "weights", "divergence", "beta"]
+        )
+
+        output_path = os.path.join(sim_folder, f"metrics_{key}.xlsx")
+        with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+            summary_df.to_excel(writer, sheet_name="summary", index=False)
+            per_run_df.to_excel(writer, sheet_name="per_run", index=False)
+
+    logger.info("All stats saved to Excel files!")
 
 
 if __name__ == "__main__":
