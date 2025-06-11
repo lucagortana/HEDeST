@@ -10,5 +10,6 @@ debug.log
 run_real.sh
 run_semi*
 run_sim*
+run_hovernet_tiles.sh
 !benchmark/mhast/run_semisim.sh
 !benchmark/mhast/run_sim.sh
