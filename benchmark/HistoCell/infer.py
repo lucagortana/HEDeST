@@ -20,8 +20,12 @@ def _get_config(tissue_type, deconv, subtype, k_class, tissue_dir):
     config.data.deconv = deconv
     config.data.save_model = f"./train_log/{tissue_type}/models"
     config.data.ckpt = f"./train_log/{tissue_type}/ckpts"
-    config.data.tile_dir = f"./demo/data/{tissue_type}/tiles"
-    config.data.mask_dir = f"./demo/data/{tissue_type}/seg"
+    config.data.tile_dir = (
+        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"
+    )
+    config.data.mask_dir = (
+        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/seg"
+    )
     config.data.batch_size = 16
     config.data.tissue_dir = tissue_dir
     config.data.max_cell_num = 256

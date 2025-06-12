@@ -76,10 +76,12 @@ class TileBatchDataset(Dataset):
                     cell_df = pd.read_csv(cell_prop, sep="\t", index_col=0)
                     for cell_index, row in tqdm(cell_df.iterrows()):
                         cell_index = str(cell_index)
-                        x, y, barcode = cell_index.split("_")
+                        barcode = cell_index.split("_")[0]
                         cell_num = np.array(row)
                         cell_propotion = cell_num / np.sum(cell_num)
-                        abs_path = glob(os.path.join(tile_dir, sample_name, f"*_{x}x{y}.jpg"))
+                        abs_path = glob(
+                            os.path.join(tile_dir, sample_name, f"{barcode}.jpg")
+                        )  # ADAPTED TO MY NOMENCLATURE
                         if len(abs_path) <= 0:
                             continue
                         img_name = abs_path[0].split("/")[-1].split(".")[0]

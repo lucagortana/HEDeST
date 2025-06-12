@@ -151,7 +151,7 @@ class PredAnalyzer:
             print("Use `add_attributes(history=your_history)` to add one.")
 
         if self.seg_dict is not None:
-            self._generate_dicts_viz_pred()
+            self._generate_dicts_viz_pred(self.seg_dict)
 
         else:
             print("Warning : No segmentation provided. You won't be able to plot the segmentation.")

@@ -428,13 +428,17 @@ class IntVisualizer(SlideVisualizer):
                 color_rgb = self.color_dict[label][1]
                 color = f"rgb({color_rgb[0]}, {color_rgb[1]}, {color_rgb[2]})"
 
+                cell_id = self.id_list_wsi[idx]
+                cell_type_name = self.color_dict[label][0]
+
                 fig.add_trace(
                     go.Scatter(
                         x=cnt_adj[:, 0],
                         y=[self.region.shape[0] - y for y in cnt_adj[:, 1]],
                         mode="lines",
-                        name=self.color_dict[label][0],
-                        hoverinfo="name",
+                        name=f"{cell_id}",
+                        hoverinfo="text",
+                        text=[f"cell_id: {cell_id}<br>type: {cell_type_name}"] * len(cnt_adj),
                         line=dict(color=color, width=line_width),
                     )
                 )
