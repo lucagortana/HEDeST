@@ -5,7 +5,7 @@ import json
 from yacs.config import CfgNode as CN
 
 
-def _get_config(tissue_type, deconv, subtype, k_class, tissue_dir):
+def _get_config(seed, tissue_type, deconv, prefix, k_class, tissue_dir):
     config = CN()
     config.train = CN()
     config.train.lr = 0.0005
@@ -15,8 +15,8 @@ def _get_config(tissue_type, deconv, subtype, k_class, tissue_dir):
 
     config.data = CN()
     config.data.deconv = deconv
-    config.data.save_model = f"./train_log/{tissue_type}/models"  # model saved
-    config.data.ckpt = f"./train_log/{tissue_type}/ckpts"  # eval results saved
+    config.data.save_model = f"../results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/models"
+    config.data.ckpt = f"../results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/preds"
     config.data.tile_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"  # path to tiles (CHANGED TO MY PATHS)
     config.data.mask_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/seg"  # path to json segmentation file
     config.data.batch_size = 32

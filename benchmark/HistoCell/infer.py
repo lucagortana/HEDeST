@@ -13,13 +13,13 @@ from utils.utils import *
 from yacs.config import CfgNode as CN
 
 
-def _get_config(tissue_type, deconv, subtype, k_class, tissue_dir):
+def _get_config(seed, tissue_type, deconv, prefix, origin, k_class, tissue_dir):
     config = CN()
 
     config.data = CN()
     config.data.deconv = deconv
-    config.data.save_model = f"./train_log/{tissue_type}/models"
-    config.data.ckpt = f"./train_log/{tissue_type}/ckpts"
+    config.data.save_model = f"../results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{origin}/seed_{seed}/models"
+    config.data.ckpt = f"../results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/preds"
     config.data.tile_dir = (
         f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"
     )
@@ -45,11 +45,11 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     parser = argparse.ArgumentParser(description="Prediction with Spots Images")
     parser.add_argument("--seed", default=47, type=int)
-    parser.add_argument("--model", default="Baseline", type=str, help="model description")
     parser.add_argument("--epoch", default=-1, type=int)
     parser.add_argument("--tissue", default="BRCA", type=str)
     parser.add_argument("--deconv", default="CARD", type=str)
     parser.add_argument("--subtype", action="store_true")
+    parser.add_argument("--origin", default="H1", type=str)
     parser.add_argument("--prefix", required=False, nargs="+")
     parser.add_argument("--k_class", default=8, type=int)
     parser.add_argument("--tissue_compartment", type=str, required=True)
@@ -57,15 +57,12 @@ def main():
     parser.add_argument("--val_panuke", default=None, type=str)
 
     args = parser.parse_args()
-    config = _get_config(args.tissue, args.deconv, args.subtype, args.k_class, args.tissue_compartment)
-
-    print(f"Model details: {args.model}")
+    data_prefix = args.prefix if isinstance(args.prefix, list) else [args.prefix]
+    config = _get_config(
+        args.seed, args.tissue, args.deconv, data_prefix, args.origin, args.k_class, args.tissue_compartment
+    )  # assume there is only one prefix
 
     print("Load Dataset...")
-
-    data_prefix = args.prefix if isinstance(args.prefix, list) else [args.prefix]
-
-    print(data_prefix)
 
     val_data = TileBatchDataset(
         config.data.tile_dir,
@@ -93,7 +90,7 @@ def main():
     else:
         print("Using cpu")
 
-    model_dir, ckpt_dir = os.path.join(config.data.save_model, args.model), os.path.join(config.data.ckpt, args.model)
+    model_dir, ckpt_dir = config.data.save_model, config.data.ckpt
     os.makedirs(model_dir, exist_ok=True), os.makedirs(ckpt_dir, exist_ok=True)
 
     ckpt_file = find_ckpt(model_dir)
@@ -119,7 +116,7 @@ def main():
         pkl.dump(val_results, file)
 
     print("Val Finished!")
-    print(f"Results saved in {os.path.join(config.data.ckpt, args.model)}")
+    print(f"Results saved in {ckpt_dir}")
 
 
 def val_loop(epoch, model, val_loader, device):

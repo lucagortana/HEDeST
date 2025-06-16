@@ -17,7 +17,6 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     parser = argparse.ArgumentParser(description="Prediction with Spots Images")
     parser.add_argument("--seed", default=47, type=int)
-    parser.add_argument("--model", default="Baseline", type=str, help="model description")
     parser.add_argument("--tissue", default="BRCA", type=str)
     parser.add_argument("--deconv", default="CARD", type=str)
     parser.add_argument("--subtype", action="store_true")
@@ -27,16 +26,16 @@ def main():
     parser.add_argument("--ratio", type=float, required=False, default=1.0)
 
     args = parser.parse_args()
-    config = _get_config(args.tissue, args.deconv, args.subtype, args.k_class, args.tissue_compartment)
-
-    setup_seed(args.seed)
-    print(f"Model details: {args.model}")
-
-    print("Load Dataset...")
-
     data_prefix = args.prefix if isinstance(args.prefix, list) else [args.prefix]
 
-    print(data_prefix)
+    config = _get_config(
+        args.seed, args.tissue, args.deconv, data_prefix, args.k_class, args.tissue_compartment
+    )  # assume there is one prefix only
+
+    setup_seed(args.seed)
+    print(f"Using seed: {args.seed}")
+
+    print("Load Dataset...")
     train_data = TileBatchDataset(
         config.data.tile_dir,
         config.data.mask_dir,
@@ -63,7 +62,7 @@ def main():
     else:
         print("Using cpu")
 
-    model_dir, ckpt_dir = os.path.join(config.data.save_model, args.model), os.path.join(config.data.ckpt, args.model)
+    model_dir, ckpt_dir = config.data.save_model, config.data.ckpt
     os.makedirs(model_dir, exist_ok=True), os.makedirs(ckpt_dir, exist_ok=True)
 
     ckpt_file = find_ckpt(model_dir)
@@ -85,7 +84,7 @@ def main():
             save_checkpoint(model, optimizer, os.path.join(model_dir, f"epoch_{iter}.ckpt"))
 
     print("Training finished!")
-    print(f"Results saved in {os.path.join(config.data.ckpt, args.model)}")
+    print(f"Results saved in {ckpt_dir}")
 
 
 def train_loop(epoch, model, train_loader, loss_func, aux_loss, opt, device):

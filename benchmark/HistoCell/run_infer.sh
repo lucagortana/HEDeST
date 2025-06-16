@@ -15,12 +15,15 @@ conda activate histocell
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/histocell/lib:$LD_LIBRARY_PATH
 
-python infer.py \
-    --model HistoCell_Xenium_Breast_Cancer \
+for seed in {0..9}; do
+  python3 -u infer.py \
+    --seed $seed \
     --epoch 40 \
     --tissue BRCA \
     --deconv Xenium \
-    --prefix Xenium_FFPE_Human_Breast_Cancer_Rep1 \
+    --origin Rep1_256 \
+    --prefix Rep1_256 \
     --k_class 7 \
     --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/BRCA/tissue_compartment_BRCA.json \
     --omit_gt
+done
