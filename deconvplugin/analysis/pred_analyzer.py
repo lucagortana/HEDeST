@@ -561,6 +561,9 @@ class PredAnalyzer:
             raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
 
         true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
+        predicted_proportions = predicted_proportions.dropna()  # can be removed
+        true_proportions = true_proportions.loc[predicted_proportions.index]
+
         metrics = {}
 
         # Compute per-cell-type metrics
