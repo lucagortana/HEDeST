@@ -4,7 +4,6 @@ import os
 import random
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Tuple
 
 import torch
@@ -32,8 +31,6 @@ class ModelTrainer:
         train_loader (DataLoader): DataLoader for the training dataset.
         val_loader (DataLoader): DataLoader for the validation dataset.
         test_loader (DataLoader): DataLoader for the test dataset.
-        weights (torch.Tensor, optional): Class weights for loss calculation, if applicable.
-        agg (str): Aggregation method for loss calculation ('proba', 'onehot').
         divergence (str): Type of divergence used in loss calculation ('l1', 'l2', 'kl', 'rot').
         alpha (float): Weight parameter for loss components.
         num_epochs (int): Number of training epochs.
@@ -57,8 +54,6 @@ class ModelTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         test_loader: DataLoader,
-        weights: Optional[torch.Tensor] = None,
-        agg: str = "proba",
         divergence: str = "l1",
         alpha: float = 0.5,
         beta: float = 0.0,
@@ -77,8 +72,6 @@ class ModelTrainer:
             train_loader (DataLoader): DataLoader for the training dataset.
             val_loader (DataLoader): DataLoader for the validation dataset.
             test_loader (DataLoader): DataLoader for the test dataset.
-            weights (torch.Tensor, optional): Class weights for loss calculation.
-            agg (str): Aggregation method for loss calculation.
             divergence (str): Type of divergence used in loss calculation.
             alpha (float): Weight parameter for loss components.
             beta (float): Regularization parameter for Bayesian adjustment.
@@ -95,10 +88,7 @@ class ModelTrainer:
         self.p_c = self.train_loader.dataset.spot_prop_df.mean().values
         self.val_loader = val_loader
         self.test_loader = test_loader
-        self.weights = weights
-        self.agg = agg
         self.divergence = divergence
-        self.reduction = "mean"
         self.alpha = alpha
         self.beta = beta
         self.num_epochs = num_epochs
@@ -145,8 +135,6 @@ class ModelTrainer:
 
         # Prepare for training
         self.prepare_training()
-        if self.weights is not None:
-            self.weights = self.weights.to(self.device)
 
         tb_file = os.path.join(self.tb_dir, os.path.basename(self.out_dir))
         writer = SummaryWriter(tb_file)
@@ -174,10 +162,7 @@ class ModelTrainer:
                     adjusted_probs,
                     new_bag_indices,
                     proportions,
-                    weights=self.weights,
-                    agg=self.agg,
                     divergence=self.divergence,
-                    reduction=self.reduction,
                     alpha=self.alpha,
                 )
                 loss.backward()
@@ -289,10 +274,7 @@ class ModelTrainer:
                     adjusted_probs,
                     new_bag_indices,
                     proportions,
-                    weights=self.weights,
-                    agg=self.agg,
                     divergence=self.divergence,
-                    reduction=self.reduction,
                     alpha=self.alpha,
                 )
                 running_loss += loss.item() / len(dataloader)

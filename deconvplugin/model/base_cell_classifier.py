@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import ABC
 from abc import abstractmethod
-from typing import Optional
 from typing import Tuple
 
 import torch
@@ -10,9 +9,9 @@ from torch import nn
 from torch import Tensor
 from torch_scatter import scatter_mean
 
-from deconvplugin.loss import weighted_kl_divergence
-from deconvplugin.loss import weighted_l1_loss
-from deconvplugin.loss import weighted_l2_loss
+from deconvplugin.loss import kl_divergence
+from deconvplugin.loss import l1_loss
+from deconvplugin.loss import l2_loss
 
 
 class BaseCellClassifier(nn.Module, ABC):
@@ -40,10 +39,7 @@ class BaseCellClassifier(nn.Module, ABC):
         outputs: Tensor,
         bag_indices: Tensor,
         true_proportions: Tensor,
-        weights: Optional[torch.Tensor] = None,
-        agg: str = "proba",
         divergence: str = "l1",
-        reduction: str = "mean",
         alpha: float = 0.5,
     ) -> Tuple[Tensor, Tensor, Tensor]:
         """
@@ -52,12 +48,9 @@ class BaseCellClassifier(nn.Module, ABC):
 
         Args:
             outputs (torch.Tensor): The output probabilities from the model (num_cells x num_classes).
+            bag_indices (torch.Tensor): Indices indicating which bag each cell belongs to (num_cells).
             true_proportions (torch.Tensor): The ground-truth class proportions (num_classes).
-            weights (torch.Tensor, optional): Weights for each class. Default is uniform weights.
-            agg (str): Method to aggregate cell predictions into spot proportions.
-                    Options are "proba" (mean probabilities) or "onehot" (one-hot encoded class predictions).
-            divergence (str): Type of divergence loss to use. Options are "l1", "l2", "kl", or "rot".
-            reduction (str): Reduction method for the divergence loss. Options are "mean" or "sum".
+            divergence (str): Type of divergence loss to use. Options are "l1", "l2", or "kl".
             alpha (float): Weight for the max probability loss. Should be in the range [0, 1].
 
         Returns:
@@ -67,30 +60,19 @@ class BaseCellClassifier(nn.Module, ABC):
                 - Divergence loss.
         """
 
-        if weights is None:
-            weights = torch.ones_like(true_proportions)[0].to(self.device)
+        max_probs, _ = outputs.max(dim=1)
+        max_prob_loss = -torch.mean(torch.log(max_probs))
 
-        max_probs, max_indices = outputs.max(dim=1)
-        max_weights = weights[max_indices]
-        max_prob_loss = -torch.mean(max_weights * torch.log(max_probs))
-
-        if agg == "proba":
-            pred_proportions = scatter_mean(outputs, bag_indices, dim=0)
-        elif agg == "onehot":
-            predicted_classes = torch.argmax(outputs, dim=1)
-            one_hot_preds = torch.nn.functional.one_hot(predicted_classes, num_classes=outputs.size(1))
-            pred_proportions = one_hot_preds.float().sum(dim=0) / outputs.size(0)
-        else:
-            raise ValueError(f"Invalid aggregation method: {agg}. Use 'proba' or 'onehot'.")
+        pred_proportions = scatter_mean(outputs, bag_indices, dim=0)
 
         if divergence == "l1":
-            divergence_loss = weighted_l1_loss(pred_proportions, true_proportions, weights, reduction=reduction)
+            divergence_loss = l1_loss(pred_proportions, true_proportions)
         elif divergence == "l2":
-            divergence_loss = weighted_l2_loss(pred_proportions, true_proportions, weights, reduction=reduction)
+            divergence_loss = l2_loss(pred_proportions, true_proportions)
         elif divergence == "kl":
-            divergence_loss = weighted_kl_divergence(pred_proportions, true_proportions, weights, reduction=reduction)
+            divergence_loss = kl_divergence(pred_proportions, true_proportions)
         else:
-            raise ValueError(f"Invalid divergence type: {divergence}. Use 'l1', 'l2', 'kl', or 'rot'.")
+            raise ValueError(f"Invalid divergence type: {divergence}. Use 'l1', 'l2', or 'kl'.")
 
         loss = alpha * max_prob_loss + (1 - alpha) * divergence_loss
         return loss, max_prob_loss, divergence_loss

@@ -41,12 +41,10 @@ def main(
     ),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
     hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
-    batch_size: int = typer.Option(1, help="Batch size for model training."),
-    lr: float = typer.Option(0.001, help="Learning rate."),
-    weights: bool = typer.Option(False, help="If True, the model uses a weighted loss."),
-    agg: str = typer.Option("proba", help="Aggregation of the probability vectors. Can be 'proba' or 'onehot'."),
+    batch_size: int = typer.Option(64, help="Batch size for model training."),
+    lr: float = typer.Option(0.0001, help="Learning rate."),
     divergence: str = typer.Option(
-        "l1", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
+        "l2", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
     ),
     alpha: float = typer.Option(0.5, help="Alpha parameter for loss function."),
     beta: float = typer.Option(0.0, help="Beta parameter for bayesian adjustment."),
@@ -67,12 +65,9 @@ def main(
     hidden_dims = parse_hidden_dims(hidden_dims)
 
     # Validate inputs
-    valid_agg = {"proba", "onehot"}
-    valid_divergence = {"l1", "l2", "kl", "rot"}
+    valid_divergence = {"l1", "l2", "kl"}
     valid_model_name = {"convnet", "resnet18", "resnet50", "quick"}
 
-    if agg not in valid_agg:
-        raise ValueError(f"Invalid value for 'agg': {agg}. Must be one of {valid_agg}.")
     if divergence not in valid_divergence:
         raise ValueError(f"Invalid value for 'divergence': {divergence}. Must be one of {valid_divergence}.")
     if model_name not in valid_model_name:
@@ -177,8 +172,6 @@ def main(
     logger.info(f"Hidden dims: {hidden_dims}")
     logger.info(f"Batch size (#spots): {batch_size}")
     logger.info(f"Learning rate: {lr}")
-    logger.info(f"Weighted loss: {weights}")
-    logger.info(f"Aggregation: {agg}")
     logger.info(f"Divergence: {divergence}")
     logger.info(f"Alpha: {alpha}")
     logger.info(f"Beta: {beta}")
@@ -199,8 +192,6 @@ def main(
         hidden_dims=hidden_dims,
         batch_size=batch_size,
         lr=lr,
-        weights=weights,
-        agg=agg,
         divergence=divergence,
         alpha=alpha,
         beta=beta,

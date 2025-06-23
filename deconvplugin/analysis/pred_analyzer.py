@@ -21,7 +21,6 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import precision_score
-from sklearn.metrics import r2_score
 from sklearn.metrics import recall_score
 
 from deconvplugin.analysis.plots import plot_grid_celltype
@@ -453,96 +452,7 @@ class PredAnalyzer:
         plt.show()
 
     @require_attributes("proportions", "spot_dict")
-    def evaluate_spot_predictions(self, subset="all") -> Dict[str, float]:
-        """
-        Evaluate spot-level predictions using various metrics. With this function, you can compute a series of
-        metrics to compare, for each spot, true vs predicted proportions.
-
-        Returns:
-            Dict[str, float]: A dictionary of computed metrics.
-        """
-
-        if subset == "train":
-            predicted_proportions = self.predicted_proportions.loc[self.train_spots]
-        elif subset == "no_train":
-            predicted_proportions = self.predicted_proportions.loc[self.no_train_spots]
-        elif subset == "all":
-            predicted_proportions = self.predicted_proportions.copy()
-        else:
-            raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
-
-        # Align dataframes and extracting labels
-        true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
-        true_labels = true_proportions.idxmax(axis=1)
-        predicted_labels = predicted_proportions.idxmax(axis=1)
-
-        # Computing weights
-        class_frequencies = true_proportions.mean(axis=0)
-        class_weights = 1 / class_frequencies
-        class_weights /= class_weights.sum()
-        weights = np.array([class_weights[col] for col in true_proportions.columns])
-
-        # mse
-        squared_errors = (true_proportions - predicted_proportions) ** 2
-        weighted_mse = (squared_errors * weights).mean().mean()
-        mse = squared_errors.mean().mean()
-
-        # mae
-        absolute_errors = (true_proportions - predicted_proportions).abs()
-        weighted_mae = (absolute_errors * weights).mean().mean()
-        mae = absolute_errors.mean().mean()
-
-        # R^2 score
-        r2 = r2_score(true_proportions, predicted_proportions)
-
-        # Pearson and Spearman correlation
-        spearman_corrs = []
-        pearson_corrs = []
-        for spot in true_proportions.index:
-            true_values = true_proportions.loc[spot]
-            pred_values = predicted_proportions.loc[spot]
-
-            spearman_corr, _ = spearmanr(true_values, pred_values)
-            spearman_corrs.append(spearman_corr)
-
-            pearson_corr, _ = pearsonr(true_values, pred_values)
-            pearson_corrs.append(pearson_corr)
-
-        avg_spearman_corr = np.nanmean(spearman_corrs)
-        avg_pearson_corr = np.nanmean(pearson_corrs)
-
-        # balanced accuracy
-        balanced_acc = balanced_accuracy_score(
-            true_labels, predicted_labels
-        )  # -> sometimes warnings : classes in y_pred not in y_true
-
-        # F1 score
-        f1 = f1_score(true_labels, predicted_labels, average="weighted", zero_division=0)
-
-        # Precision
-        precision = precision_score(true_labels, predicted_labels, average="weighted", zero_division=0)
-
-        # Recall
-        recall = recall_score(true_labels, predicted_labels, average="weighted", zero_division=0)
-
-        metrics = {
-            "Spearman Correlation": avg_spearman_corr,
-            "Pearson Correlation": avg_pearson_corr,
-            "Weighted MSE": weighted_mse,
-            "MSE": mse,
-            "Weighted MAE": weighted_mae,
-            "MAE": mae,
-            "R^2 Score": r2,
-            "Balanced Accuracy": balanced_acc,
-            "Weighted F1 Score": f1,
-            "Weighted Precision": precision,
-            "Weighted Recall": recall,
-        }
-
-        return metrics
-
-    @require_attributes("proportions", "spot_dict")
-    def evaluate_spot_predictions_global(self, subset="all") -> Dict[str, float]:
+    def evaluate_prop_predictions(self, subset="all") -> Dict[str, float]:
         """
         Evaluate slide-level predictions using various metrics. With this function, you can compute a series of
         metrics to compare, for each cell-type, true vs predicted proportions over the histological slide.
@@ -561,8 +471,10 @@ class PredAnalyzer:
             raise ValueError("Invalid subset. Choose 'train', 'no_train', or 'all'.")
 
         true_proportions, predicted_proportions = self.proportions.align(predicted_proportions, join="inner", axis=0)
-        predicted_proportions = predicted_proportions.dropna()  # can be removed
-        true_proportions = true_proportions.loc[predicted_proportions.index]
+
+        if predicted_proportions.isna().any().any():
+            predicted_proportions = predicted_proportions.dropna()
+            true_proportions = true_proportions.loc[predicted_proportions.index]
 
         metrics = {}
 
@@ -752,21 +664,3 @@ class PredAnalyzer:
                 if key in self.predicted_labels
             }
         }
-
-        # self.seg_dict_w_class = {
-        #     "nuc": {
-        #         key: {
-        #             **value,
-        #             "type": self.predicted_labels[key]["class"]
-        #             if key in self.predicted_labels
-        #             else value.get("type", None),
-        #         }
-        #         for i, (key, value) in enumerate(seg_dict["nuc"].items())
-        #     }
-        # }
-        # change because when original seg_dict is provided the key is str(i):
-        # predicted_labels[str(i)]['class']
-        # if str(i)...
-        # for i, (key, value) in enumerate...
-        # otherwise use key
-        # CONVERT SEG_DICT_W_CLASS INTO A INPUT OF THE USER AND REMOVE THIS METHOD

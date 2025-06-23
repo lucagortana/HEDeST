@@ -33,7 +33,7 @@ from deconvplugin.basics import check_json_classification
 from deconvplugin.basics import remove_empty_keys
 from deconvplugin.basics import seg_colors_compatible
 from deconvplugin.config import TqdmToLogger
-from hovernet.misc.wsi_handler import get_file_handler
+from external.hovernet.misc.wsi_handler import get_file_handler
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 
@@ -137,50 +137,6 @@ class SlideVisualizer(ABC):
         self.original_size = self.wsi_obj.file_ptr.level_dimensions[-1]
         self.overlaid_output = None
 
-    def plot_slide(
-        self,
-        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
-        show_visium: bool = False,
-        title: Optional[str] = None,
-        display: bool = True,
-        figsize: Tuple[int, int] = (18, 15),
-    ) -> Optional[plt.Figure]:
-        """
-        Plots the histological slide with an optional overlay of Visium spots.
-
-        Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
-                    "full" for the entire slide.
-            show_visium (bool): Whether to overlay Visium spots.
-            title (str, optional): Optional title for the plot.
-            display (bool): Whether to display the plot or return the figure.
-            figsize (Tuple[int, int]): Size of the plot.
-        Returns:
-            Optional[plt.Figure]: The plotted figure if display is False.
-        """
-
-        self._set_window(window)
-
-        if show_visium and (self.spots_center is None or self.spots_diameter is None):
-            print("Warning : You cannot plot Visium spots without Visium data.")
-            show_visium = False
-
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.imshow(self.region)
-
-        if show_visium:
-            self._add_visium()
-
-        ax.axis("off")
-        ax.set_title([f"Slide - {self.adata_name}", title][title is not None])
-
-        if display:
-            plt.show()
-            return None
-        else:
-            plt.close(fig)
-            return fig
-
     def plot_specific_spot(
         self,
         spot_id: Optional[str] = None,
@@ -230,17 +186,70 @@ class SlideVisualizer(ABC):
         self.region = self.wsi_obj.read_region(self.window[0], self.window[1])
 
     @abstractmethod
+    def plot_slide(self) -> None:
+        """Abstract method to plot histological slide."""
+        pass
+
+    @abstractmethod
     def plot_seg(self) -> None:
         """Abstract method to plot segmentation overlays."""
         pass
 
-    @abstractmethod
-    def _add_visium(self) -> None:
-        """Abstract method to add Visium overlays."""
-        pass
-
 
 class StdVisualizer(SlideVisualizer):
+    def plot_slide(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        spot_prop_df: Optional[pd.DataFrame] = None,
+        show_visium: bool = False,
+        title: Optional[str] = None,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[plt.Figure]:
+        """
+        Plots the histological slide with an optional overlay of Visium spots.
+
+        Args:
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
+                    "full" for the entire slide.
+            spot_prop_df (pd.DataFrame, optional): DataFrame containing proportions for each Visium spot.
+            show_visium (bool): Whether to overlay Visium spots.
+            title (str, optional): Optional title for the plot.
+            display (bool): Whether to display the plot or return the figure.
+            figsize (Tuple[int, int]): Size of the plot.
+        Returns:
+            Optional[plt.Figure]: The plotted figure if display is False.
+        """
+
+        self._set_window(window)
+
+        if show_visium and spot_prop_df is not None:
+            if self.w != self.h:
+                print("Warning: The selected window is not square. Pie chart placement may be inaccurate.")
+
+        if not show_visium and spot_prop_df is not None:
+            print(
+                "Warning: You provided a spot_prop_df but did not enable Visium spot drawing (show_visium=False).",
+                "No pie charts will be plotted.",
+            )
+            spot_prop_df = None  # Prevent drawing if not allowed
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.imshow(self.region)
+
+        if show_visium:
+            self._add_visium(ax=ax, spot_prop_df=spot_prop_df)
+
+        ax.axis("off")
+        ax.set_title([f"Slide - {self.adata_name}", title][title is not None])
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
     def plot_seg(
         self,
         window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
@@ -311,18 +320,48 @@ class StdVisualizer(SlideVisualizer):
             plt.close(fig)
             return fig
 
-    def _add_visium(self) -> None:
-        """
-        Adds Visium spots to the slide.
-        """
+    def _add_visium(self, ax: Optional[plt.Axes] = None, spot_prop_df: Optional[pd.DataFrame] = None) -> None:
+        if ax is None:
+            ax = plt.gca()
 
         ext_vis = self.spots_diameter / 2
-        for spot in self.spots_center:
+        spot_ids = self.adata.obs.index
+
+        if spot_prop_df is not None:
+            colors = [value[1] for value in self.color_dict.values() if value[0] in spot_prop_df.columns]
+            colors = [tuple(channel / 255 for channel in rgba) for rgba in colors]
+
+        for i, spot in enumerate(self.spots_center):
+            spot_id = spot_ids[i]
             spot_x = spot[0] - self.x
             spot_y = spot[1] - self.y
-            if -ext_vis <= spot_x <= self.w + ext_vis and -ext_vis <= spot_y <= self.h + ext_vis:
-                circle = plt.Circle((spot_x, spot_y), self.spots_diameter / 2, color="black", fill=False, linewidth=3)
-                plt.gca().add_patch(circle)
+
+            if spot_prop_df is not None and spot_id in spot_prop_df.index:
+                if ext_vis <= spot_x <= self.w - ext_vis and ext_vis <= spot_y <= self.h - ext_vis:
+                    proportions = spot_prop_df.loc[spot_id].values
+
+                    # Convert center to display coordinates
+                    center_disp = ax.transData.transform((spot_x, spot_y))
+                    radius_disp = ax.transData.transform((spot_x + ext_vis, spot_y))[0] - center_disp[0]
+
+                    # Normalize to figure coords
+                    fig = ax.figure
+                    fig_width, fig_height = fig.bbox.width, fig.bbox.height
+
+                    x0 = (center_disp[0] - radius_disp) / fig_width
+                    y0 = (center_disp[1] - radius_disp) / fig_height
+                    width = (2 * radius_disp) / fig_width
+                    height = (2 * radius_disp) / fig_height
+
+                    pie_ax = fig.add_axes([x0, y0, width, height])
+                    pie_ax.pie(proportions, startangle=90, colors=colors)
+                    pie_ax.set_aspect("equal")
+                    pie_ax.axis("off")
+            else:
+                # Draw black circle (existing rule)
+                if -ext_vis <= spot_x <= self.w + ext_vis and -ext_vis <= spot_y <= self.h + ext_vis:
+                    circle = plt.Circle((spot_x, spot_y), ext_vis, color="black", fill=False, linewidth=3)
+                    ax.add_patch(circle)
 
     def _visualize_instances_dict(
         self,
@@ -361,6 +400,50 @@ class StdVisualizer(SlideVisualizer):
 
 
 class IntVisualizer(SlideVisualizer):
+    def plot_slide(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        show_visium: bool = False,
+        title: Optional[str] = None,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[plt.Figure]:
+        """
+        Plots the histological slide with an optional overlay of Visium spots.
+
+        Args:
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
+                    "full" for the entire slide.
+            show_visium (bool): Whether to overlay Visium spots.
+            title (str, optional): Optional title for the plot.
+            display (bool): Whether to display the plot or return the figure.
+            figsize (Tuple[int, int]): Size of the plot.
+        Returns:
+            Optional[plt.Figure]: The plotted figure if display is False.
+        """
+
+        self._set_window(window)
+
+        if show_visium and (self.spots_center is None or self.spots_diameter is None):
+            print("Warning : You cannot plot Visium spots without Visium data.")
+            show_visium = False
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.imshow(self.region)
+
+        if show_visium:
+            self._add_visium()
+
+        ax.axis("off")
+        ax.set_title([f"Slide - {self.adata_name}", title][title is not None])
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
     def plot_seg(
         self,
         window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
@@ -681,8 +764,9 @@ def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in:
             for idx in indices:
                 dict_cells_spots[spots_ids[idx]].append(str(i))
         else:
-            # "not only in" method: find the closest spot regardless of distance
-            idx = tree.query(cell)[1]
-            dict_cells_spots[spots_ids[idx]].append(str(i))
+            # "not only in" method: find the closest spot within the diameter
+            dist, idx = tree.query(cell)
+            if dist <= diameter:
+                dict_cells_spots[spots_ids[idx]].append(str(i))
 
     return remove_empty_keys(dict_cells_spots)

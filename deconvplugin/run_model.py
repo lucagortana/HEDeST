@@ -24,8 +24,6 @@ from deconvplugin.model.cell_classifier import CellClassifier
 from deconvplugin.predict import predict_slide
 from deconvplugin.trainer import ModelTrainer
 
-# def run_pri_deconv()
-
 
 def run_sec_deconv(
     image_dict: Dict[str, torch.Tensor],
@@ -34,11 +32,9 @@ def run_sec_deconv(
     spot_dict_adjust: Dict[str, List[str]],
     model_name: str = "resnet18",
     hidden_dims: List[int] = [512, 256],
-    batch_size: int = 1,
-    lr: float = 0.001,
-    weights: bool = False,
-    agg: str = "proba",
-    divergence: str = "l1",
+    batch_size: int = 64,
+    lr: float = 0.0001,
+    divergence: str = "l2",
     alpha: float = 0.5,
     beta: float = 0.0,
     epochs: int = 25,
@@ -59,8 +55,6 @@ def run_sec_deconv(
         model_name: Name of the model to use.
         batch_size: Batch size for data loaders.
         lr: Learning rate for the optimizer.
-        weights: Whether to use class weights based on global proportions.
-        agg: Aggregation type for predictions ("proba" or "onehot").
         divergence: Type of divergence loss to use ("l1", "l2", "kl", "rot").
         alpha: Weighting factor for the loss function.
         beta: Weighting factor for the Bayesian adjustment.
@@ -111,15 +105,6 @@ def run_sec_deconv(
     num_classes = spot_prop_df.shape[1]
     ct_list = list(spot_prop_df.columns)
 
-    # weights construction
-    if weights:
-        global_proportions = spot_prop_df.mean(axis=0).values
-        weights = 1.0 / global_proportions
-        weights /= weights.sum()
-        weights = torch.tensor(weights)
-    else:
-        weights = None
-
     # Model initialization
     model = CellClassifier(model_name=model_name, num_classes=num_classes, hidden_dims=hidden_dims, device=device)
     model = model.to(device)
@@ -135,8 +120,6 @@ def run_sec_deconv(
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        weights=weights,
-        agg=agg,
         divergence=divergence,
         alpha=alpha,
         beta=beta,
