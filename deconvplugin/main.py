@@ -11,11 +11,11 @@ import torch
 import typer
 from loguru import logger
 
-from deconvplugin.analysis.postseg import extract_tiles_hovernet
 from deconvplugin.analysis.postseg import map_cells_to_spots
 from deconvplugin.basics import format_time
 from deconvplugin.dataset_utils import pp_prop
 from deconvplugin.run_model import run_sec_deconv
+from external.hovernet.extract_cell_images import extract_images_hn
 
 app = typer.Typer()
 
@@ -101,7 +101,7 @@ def main(
         else:
             raise ValueError("save_images must be one of None, 'jpg', 'dict', or 'both'")
         try:
-            image_dict = extract_tiles_hovernet(
+            image_dict = extract_images_hn(
                 image_path=image_path,
                 json_path=json_path,
                 level=level,
@@ -114,10 +114,11 @@ def main(
 
         except Exception as e:
             raise ValueError(
-                "Failed to extract images. Please check the image format and file paths.\n"
-                "If it's an image dictionary, it must be in .pt format.\n"
-                "If it's a Whole-Slide Image, it must be in one of the following formats:\n"
-                ".tif, .tiff, .svs, .dcm, or .ndpi."
+                "Failed to extract images. Please check the image format.\n"
+                "It must be in one of the following formats:\n"
+                ".tif, .tiff, .svs, .dcm, or .ndpi.\n"
+                "Also, ensure that the json_path is correct and contains "
+                "valid segmentation data."
             ) from e
 
     example_img = image_dict[list(image_dict.keys())[0]]
