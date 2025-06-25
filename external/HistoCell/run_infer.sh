@@ -21,9 +21,9 @@ for seed in {0..9}; do
     --epoch 40 \
     --tissue BRCA \
     --deconv Xenium \
-    --origin Rep1_256 \
-    --prefix Rep1_256 \
-    --k_class 7 \
-    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/BRCA/tissue_compartment_BRCA.json \
+    --origin Rep1_256_3types \
+    --prefix Rep1_256_3types \
+    --k_class 3 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/BRCA/tissue_compartment_BRCA_3types.json \
     --omit_gt
 done

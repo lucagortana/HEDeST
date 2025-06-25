@@ -92,7 +92,7 @@ def run_moco_script(
         "-b",
         "2048",
         "--epochs",
-        "5",
+        "150",
         "--workers",
         str(n_gpus * n_cpus_per_gpu),
         "--dist-url",
