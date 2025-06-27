@@ -42,9 +42,73 @@ def box_plot_perf(file_infos, level="cells", title="", savefig=None):
     sns.boxplot(data=melted_df, x="Metric", y="Value", hue="Model")
     plt.title(title)
     plt.xlabel("")
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=0)
     plt.tight_layout()
     plt.grid(True)
+
+    if savefig:
+        plt.savefig(savefig, dpi=300)
+        print(f"Figure saved to {savefig}")
+
+    plt.show()
+
+
+def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=None):
+    """
+    Creates a bar plot with error bars for performance metrics across models.
+
+    Parameters:
+    - file_infos: List of tuples in the form (file_path, sheet_name, model_name)
+    - level: 'cells' or 'slide', determines which metrics to plot
+    - title: Plot title
+    - savefig: Path to save figure, if desired
+    """
+    if level == "cells":
+        metrics = ["Global Accuracy", "Balanced Accuracy", "Weighted F1 Score", "Weighted Precision", "Weighted Recall"]
+    elif level == "slide":
+        metrics = ["Pearson Correlation global", "Spearman Correlation global"]
+    else:
+        raise ValueError("Level must be either 'cells' or 'slide'.")
+
+    df_rows = []
+
+    for file_path, sheet_name, model_name in file_infos:
+        df = pd.read_excel(file_path, sheet_name=sheet_name).iloc[0]
+        row_data = {"Model": model_name}
+        for metric in metrics:
+            row_data["Metric"] = metric
+            row_data["Value"] = df[metric]
+            row_data["CI"] = df.get(f"{metric} ci", 0)
+            df_rows.append(row_data.copy())
+
+    plot_df = pd.DataFrame(df_rows)
+
+    plt.figure(figsize=figsize)
+    ax = sns.barplot(
+        data=plot_df,
+        x="Metric",
+        y="Value",
+        hue="Model",
+        errorbar=None,
+        capsize=0.1,
+        err_kws={"linewidth": 1.5},
+        palette="Paired",
+    )
+
+    # Add error bars manually
+    for patch, (_, row) in zip(ax.patches, plot_df.iterrows()):
+        x = patch.get_x() + patch.get_width() / 2
+        y = row["Value"]
+        ci = row["CI"]
+        ax.errorbar(x=x, y=y, yerr=ci, fmt="none", c="black", capsize=5, lw=1.5)
+
+    plt.title(title)
+    plt.legend(loc="lower right", frameon=True, title="")
+    plt.ylabel("Performance")
+    plt.xlabel("")
+    plt.xticks(rotation=0)
+    plt.grid(False)
+    plt.tight_layout()
 
     if savefig:
         plt.savefig(savefig, dpi=300)

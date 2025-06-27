@@ -170,7 +170,7 @@ def extract_stats(
     # Group folders by config (excluding seed)
     config_to_seeds = defaultdict(list)
     pattern = re.compile(
-        r"model_(?P<model>[^_]+)_alpha_(?P<alpha>[^_]+)_lr_(?P<lr>[^_]+)_"
+        r"model_(?P<model>[^_]+)_alpha_(?P<alpha>[^_]+)_lr_(?P<lr>[^_]+)_weights_(?P<weights>[^_]+)_"
         r"divergence_(?P<divergence>[^_]+)_beta_(?P<beta>[^_]+)_seed_(?P<seed>\d+)"
     )
 

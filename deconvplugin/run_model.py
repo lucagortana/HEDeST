@@ -87,6 +87,7 @@ def run_sec_deconv(
 
     else:
         transform = get_transform(model_name)
+        print(f"Using transform: {transform}")
         train_dataset = SpotDataset(train_spot_dict, train_proportions, image_dict, transform)
         val_dataset = SpotDataset(val_spot_dict, val_proportions, image_dict, transform)
         test_dataset = SpotDataset(test_spot_dict, test_proportions, image_dict, transform)

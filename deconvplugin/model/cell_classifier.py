@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch import Tensor
+from torchvision.models import resnet18
 
 from deconvplugin.model.base_cell_classifier import BaseCellClassifier
 
@@ -91,6 +92,19 @@ class CellClassifier(BaseCellClassifier):
         elif self.model_name == "quick":
             self.backbone = nn.Sequential()
             input_dim = 2048
+            for i, hidden_dim in enumerate(self.hidden_dims):
+                self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
+                self.backbone.add_module(f"relu_{i}", nn.ReLU())
+                # self.backbone.add_module(f"dropout_{i}", nn.Dropout(p=0.5))
+                input_dim = hidden_dim
+
+            self.backbone.add_module("final", nn.Linear(input_dim, num_classes))
+
+        elif self.model_name == "resnet18":
+
+            resnet = resnet18(pretrained=True)
+            self.backbone = nn.Sequential(*list(resnet.children())[:-1])
+            input_dim = 512
             for i, hidden_dim in enumerate(self.hidden_dims):
                 self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
                 self.backbone.add_module(f"relu_{i}", nn.ReLU())
