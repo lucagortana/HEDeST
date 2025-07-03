@@ -35,4 +35,4 @@ repos:
                --disable-error-code=union-attr]
         additional_dependencies: [types-pyyaml]
         exclude: ^testing/resources/
-exclude: 'hovernet/.*|deconvplugin/__init__.py'
+exclude: 'hovernet/.*|hedest/__init__.py'
