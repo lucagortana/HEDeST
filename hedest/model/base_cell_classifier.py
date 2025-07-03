@@ -5,13 +5,12 @@ from abc import abstractmethod
 from typing import Tuple
 
 import torch
-from torch import nn
-from torch import Tensor
-from torch_scatter import scatter_mean
-
 from deconvplugin.loss import kl_divergence
 from deconvplugin.loss import l1_loss
 from deconvplugin.loss import l2_loss
+from torch import nn
+from torch import Tensor
+from torch_scatter import scatter_mean
 
 
 class BaseCellClassifier(nn.Module, ABC):

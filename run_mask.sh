@@ -13,7 +13,7 @@ conda activate hovernet
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/hovernet/lib:$LD_LIBRARY_PATH
 
-python3 -u hovernet/run_mask.py \
+python3 -u external/hovernet/run_mask.py \
         /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/pyr_tif/Xenium_FFPE_Human_Breast_Cancer_Rep1_he_image.tif \
         /cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/mask/lvl3_pyr/Xenium_FFPE_Human_Breast_Cancer_Rep1_he_image.png \
         --mask-level 3 \

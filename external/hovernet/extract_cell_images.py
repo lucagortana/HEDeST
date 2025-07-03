@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from loguru import logger
 from tqdm import tqdm
-from deconvplugin.config import TqdmToLogger
+from hedest.config import TqdmToLogger
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 

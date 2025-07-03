@@ -11,11 +11,11 @@ import torch
 import typer
 from loguru import logger
 
-from deconvplugin.analysis.postseg import map_cells_to_spots
-from deconvplugin.basics import format_time
-from deconvplugin.dataset_utils import pp_prop
-from deconvplugin.run_model import run_sec_deconv
 from external.hovernet.extract_cell_images import extract_images_hn
+from hedest.analysis.postseg import map_cells_to_spots
+from hedest.basics import format_time
+from hedest.dataset_utils import pp_prop
+from hedest.run_model import run_sec_deconv
 
 app = typer.Typer()
 

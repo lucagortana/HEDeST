@@ -27,11 +27,11 @@ from plotly.subplots import make_subplots
 from scipy.spatial import KDTree
 from tqdm import tqdm
 
-from deconvplugin.basics import check_json_classification
-from deconvplugin.basics import remove_empty_keys
-from deconvplugin.basics import seg_colors_compatible
-from deconvplugin.config import TqdmToLogger
 from external.hovernet.misc.wsi_handler import get_file_handler
+from hedest.basics import check_json_classification
+from hedest.basics import remove_empty_keys
+from hedest.basics import seg_colors_compatible
+from hedest.config import TqdmToLogger
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 

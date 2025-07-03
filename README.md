@@ -1,4 +1,4 @@
-# Plugin tool
+# HEDeST
 
 ![figure](references/method.png)
 

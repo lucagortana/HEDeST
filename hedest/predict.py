@@ -8,11 +8,11 @@ import torch
 from loguru import logger
 from tqdm import tqdm
 
-from deconvplugin.config import TqdmToLogger
-from deconvplugin.dataset import EmbedDataset
-from deconvplugin.dataset import ImageDataset
-from deconvplugin.dataset_utils import get_transform
-from deconvplugin.model.cell_classifier import CellClassifier
+from hedest.config import TqdmToLogger
+from hedest.dataset import EmbedDataset
+from hedest.dataset import ImageDataset
+from hedest.dataset_utils import get_transform
+from hedest.model.cell_classifier import CellClassifier
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 

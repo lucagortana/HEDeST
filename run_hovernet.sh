@@ -14,7 +14,7 @@ conda activate hovernet
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/hovernet/lib:$LD_LIBRARY_PATH
 
-python hovernet/run_infer.py \
+python external/hovernet/run_infer.py \
     --gpu='0,1' \
     --nr_types=6 \
     --type_info_path=hovernet/type_info.json \

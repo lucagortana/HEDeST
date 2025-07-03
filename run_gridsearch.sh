@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=plugin
+#SBATCH --job-name=HEDeST
 #SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/gridsearch_%j.log
 #SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/gridsearch_%j.err
 #SBATCH --gres=gpu:1
@@ -27,7 +27,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-python3 -u deconvplugin/gridsearch.py \
+python3 -u hedest/gridsearch.py \
     "$IMAGE_DICT" \
     "$SIM_CSV" \
     "$SPOT_DICT" \

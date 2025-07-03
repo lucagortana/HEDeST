@@ -1,3 +1,3 @@
 from __future__ import annotations
 
-from deconvplugin import config
+from hedest import config

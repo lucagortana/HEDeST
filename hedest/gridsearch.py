@@ -49,7 +49,7 @@ def run_experiment(
     args = [
         "python3",
         "-u",
-        "deconvplugin/main.py",
+        "hedest/main.py",
         image_dict_path,
         spot_prop_df,
         "--spot-dict-file",

@@ -3,11 +3,10 @@ from __future__ import annotations
 import timm
 import torch
 import torch.nn.functional as F
+from deconvplugin.model.base_cell_classifier import BaseCellClassifier
 from torch import nn
 from torch import Tensor
 from torchvision.models import resnet18
-
-from deconvplugin.model.base_cell_classifier import BaseCellClassifier
 
 
 class ConvNet(nn.Module):

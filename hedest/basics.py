@@ -17,7 +17,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PIL import Image
 
-from deconvplugin.model.cell_classifier import CellClassifier
+from hedest.model.cell_classifier import CellClassifier
 
 
 def set_seed(seed: int) -> None:

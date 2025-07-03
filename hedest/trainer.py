@@ -12,12 +12,12 @@ from loguru import logger
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from deconvplugin.analysis.plots import plot_history
-from deconvplugin.basics import set_seed
-from deconvplugin.model.cell_classifier import CellClassifier
+from hedest.analysis.plots import plot_history
+from hedest.basics import set_seed
+from hedest.model.cell_classifier import CellClassifier
 
-# from deconvplugin.analysis.plots import plot_grid_celltype
-# from deconvplugin.predict import predict_slide
+# from hedest.analysis.plots import plot_grid_celltype
+# from hedest.predict import predict_slide
 
 
 class ModelTrainer:

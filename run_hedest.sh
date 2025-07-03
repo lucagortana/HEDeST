@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=plugin
+#SBATCH --job-name=HEDeST
 #SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/classif_%j.log
 #SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/classif_%j.err
 #SBATCH --mem 80000
@@ -25,7 +25,7 @@ for divergence in "${divergence_options[@]}"; do
 
       out_dir="../models/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
 
-      python3 -u deconvplugin/run.py \
+      python3 -u hedest/run.py \
         /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/image_dict_64.pt \
         /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/sim/4clusters_500spots_balanced_prop.csv \
         --json-path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \

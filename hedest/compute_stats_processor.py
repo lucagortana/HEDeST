@@ -22,7 +22,7 @@ def process_config(config, runs, sim_folder, ground_truth, cell_list=None):
     """
     Process a single configuration (all seeds) and return results for all metric keys.
     """
-    from deconvplugin.analysis.pred_analyzer import PredAnalyzer
+    from hedest.analysis.pred_analyzer import PredAnalyzer
 
     profiler = Profiler()
     profiler.start()

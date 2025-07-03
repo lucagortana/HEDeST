@@ -13,8 +13,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from deconvplugin.basics import revert_dict
-from deconvplugin.config import TqdmToLogger
+from hedest.basics import revert_dict
+from hedest.config import TqdmToLogger
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 

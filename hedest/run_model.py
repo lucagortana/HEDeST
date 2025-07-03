@@ -11,18 +11,18 @@ import torch
 from loguru import logger
 from torch import optim
 
-from deconvplugin.analysis.pred_analyzer import PredAnalyzer
-from deconvplugin.basics import format_time
-from deconvplugin.basics import set_seed
-from deconvplugin.bayes_adjust import BayesianAdjustment
-from deconvplugin.dataset import SpotDataset
-from deconvplugin.dataset import SpotEmbedDataset
-from deconvplugin.dataset_utils import custom_collate
-from deconvplugin.dataset_utils import get_transform
-from deconvplugin.dataset_utils import split_data
-from deconvplugin.model.cell_classifier import CellClassifier
-from deconvplugin.predict import predict_slide
-from deconvplugin.trainer import ModelTrainer
+from hedest.analysis.pred_analyzer import PredAnalyzer
+from hedest.basics import format_time
+from hedest.basics import set_seed
+from hedest.bayes_adjust import BayesianAdjustment
+from hedest.dataset import SpotDataset
+from hedest.dataset import SpotEmbedDataset
+from hedest.dataset_utils import custom_collate
+from hedest.dataset_utils import get_transform
+from hedest.dataset_utils import split_data
+from hedest.model.cell_classifier import CellClassifier
+from hedest.predict import predict_slide
+from hedest.trainer import ModelTrainer
 
 
 def run_sec_deconv(
