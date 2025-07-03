@@ -86,9 +86,7 @@ def get_transform(model_name) -> transforms.Compose:
     """
 
     if "resnet" in model_name:
-        transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
-        )
+        transform = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     elif model_name == "convnet":
         transform = None

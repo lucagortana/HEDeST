@@ -104,6 +104,8 @@ class CellClassifier(BaseCellClassifier):
 
             resnet = resnet18(pretrained=True)
             self.backbone = nn.Sequential(*list(resnet.children())[:-1])
+            self.backbone.add_module("flatten", nn.Flatten())
+
             input_dim = 512
             for i, hidden_dim in enumerate(self.hidden_dims):
                 self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
