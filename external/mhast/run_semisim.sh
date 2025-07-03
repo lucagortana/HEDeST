@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=mhast_classif
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/mhast_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/mhast_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/mhast_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/mhast_%j.err
 #SBATCH -p cbio-cpu
 #SBATCH --cpus-per-task=8
 

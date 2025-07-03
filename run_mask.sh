@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=create_mask
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/mask_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/mask_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/mask_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/mask_%j.err
 #SBATCH -p cbio-cpu
 #SBATCH --cpus-per-task=4
 

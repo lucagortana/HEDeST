@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=HEDeST
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/gridsearch_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/gridsearch_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/gridsearch_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/gridsearch_%j.err
 #SBATCH --gres=gpu:1
 #SBATCH -p cbio-gpu
 #SBATCH --exclude=node005,node006,node009

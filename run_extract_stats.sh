@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=extract_stats
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/extract_stats_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/extract_stats_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/extract_stats_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/extract_stats_%j.err
 #SBATCH -p cbio-cpu
 #SBATCH --cpus-per-task=8
 

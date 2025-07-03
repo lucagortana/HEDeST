@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=hovernet
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/segment_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/segment_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/segment_%j.err
 #SBATCH --gres=gpu:1
 #SBATCH -p cbio-gpu
 #SBATCH --cpus-per-task=4

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=moco-v3
-#SBATCH --output=/cluster/CBIO/home/lgortana/deconv-plugin/log/ssl_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/deconv-plugin/log/ssl_%j.err
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/ssl_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/ssl_%j.err
 #SBATCH --gres=gpu:P100:1
 #SBATCH -p cbio-gpu
 #SBATCH --exclude=node005,node009
