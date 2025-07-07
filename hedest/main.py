@@ -40,7 +40,7 @@ def main(
         None, help="Path to the spot-to-cell json file with only cells concerned by bayesian adjustment."
     ),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
-    hidden_dims: str = typer.Option("256,128", help="Hidden dimensions for the model (comma-separated)."),
+    hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(64, help="Batch size for model training."),
     lr: float = typer.Option(0.0001, help="Learning rate."),
     divergence: str = typer.Option(
