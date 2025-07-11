@@ -16,17 +16,17 @@ def _get_config(seed, tissue_type, deconv, prefix, k_class, tissue_dir):
     config.data = CN()
     config.data.deconv = deconv
     config.data.save_model = (
-        f"../../benchmark/results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/models"
+        f"../../benchmark/results/HistoCell/Xenium_V1_humanLung_Cancer_FFPE/{prefix[0]}/seed_{seed}/models"
     )
     config.data.ckpt = (
-        f"../../benchmark/results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/preds"
+        f"../../benchmark/results/HistoCell/Xenium_V1_humanLung_Cancer_FFPE/{prefix[0]}/seed_{seed}/preds"
     )
-    config.data.tile_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"  # path to tiles (CHANGED TO MY PATHS)
-    config.data.mask_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/seg"  # path to json segmentation file
+    config.data.tile_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/tiles"  # path to tiles (CHANGED TO MY PATHS)
+    config.data.mask_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/seg"  # path to json segmentation file
     config.data.batch_size = 32
     config.data.tissue_dir = tissue_dir  # tissue compartment directory
     config.data.max_cell_num = 256  # max cell number in a single tile for batch learning
-    config.data.cell_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/cell_proportion/type/{config.data.deconv}"  # path to cell proportion label
+    config.data.cell_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/cell_proportion/type/{config.data.deconv}"  # path to cell proportion label
 
     config.model = CN()
     config.model.tissue_class = 3
@@ -50,20 +50,16 @@ def _get_cell_state_config(tissue_type, deconv, subtype, tissue_dir):
     config.data.deconv = deconv
     config.data.save_model = f"./train_log/{tissue_type}/models"
     config.data.ckpt = f"./train_log/{tissue_type}/ckpts"
-    config.data.tile_dir = (
-        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"
-    )
-    config.data.mask_dir = (
-        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/seg"
-    )
+    config.data.tile_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/tiles"
+    config.data.mask_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/seg"
     config.data.batch_size = 32
     config.data.tissue_dir = tissue_dir
     config.data.max_cell_num = 256
     with open(tissue_dir, "r") as tissue_file:
         tc = json.load(tissue_file)
 
-    config.data.cell_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/cell_proportion/type/{config.data.deconv}"
-    config.data.state_dir = f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/cell_proportion/state/{config.data.deconv}"  # path to cell state directory
+    config.data.cell_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/cell_proportion/type/{config.data.deconv}"
+    config.data.state_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/cell_proportion/state/{config.data.deconv}"  # path to cell state directory
 
     config.model = CN()
     config.model.tissue_class = len(tc["list"])

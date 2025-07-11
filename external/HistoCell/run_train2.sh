@@ -20,7 +20,7 @@ for seed in {0..9}; do
     --seed $seed \
     --tissue LCA \
     --deconv Xenium \
-    --prefix LCA_256 \
-    --k_class 7 \
-    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA.json
+    --prefix LCA_256_3types \
+    --k_class 3 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA_3types.json
 done

@@ -19,17 +19,13 @@ def _get_config(seed, tissue_type, deconv, prefix, origin, k_class, tissue_dir):
     config.data = CN()
     config.data.deconv = deconv
     config.data.save_model = (
-        f"../../benchmark/results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{origin}/seed_{seed}/models"
+        f"../../benchmark/results/HistoCell/Xenium_V1_humanLung_Cancer_FFPE/{origin}/seed_{seed}/models"
     )
     config.data.ckpt = (
-        f"../../benchmark/results/HistoCell/Xenium_FFPE_Human_Breast_Cancer_Rep1/{prefix[0]}/seed_{seed}/preds"
+        f"../../benchmark/results/HistoCell/Xenium_V1_humanLung_Cancer_FFPE/{prefix[0]}/seed_{seed}/preds"
     )
-    config.data.tile_dir = (
-        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/tiles"
-    )
-    config.data.mask_dir = (
-        f"/cluster/CBIO/data1/lgortana/Xenium_FFPE_Human_Breast_Cancer_Rep1/histocell/{tissue_type}/seg"
-    )
+    config.data.tile_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/tiles"
+    config.data.mask_dir = f"/cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/{tissue_type}/seg"
     config.data.batch_size = 16
     config.data.tissue_dir = tissue_dir
     config.data.max_cell_num = 256
