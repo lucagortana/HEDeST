@@ -146,23 +146,23 @@ def main(
 
     logger.info("-> Mapping cells to the closest spot...")
 
-    try:
-        spot_dict_adjust = map_cells_to_spots(
-            adata, adata_name, json_path, only_in=False
-        )  # change the function so it keeps only cells closed to spots
-    except Exception:
-        logger.warning(
-            "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
-        )
-        if spot_dict_adjust_file is not None and os.path.splitext(spot_dict_adjust_file)[1] == ".json":
-            logger.info(f"Loading spot-to-cell dictionary from {spot_dict_adjust_file}...")
-            with open(spot_dict_adjust_file) as json_file:
-                spot_dict_adjust = json.load(
-                    json_file
-                )  # maybe put an assert here to be sure that spot_dict and spot_dict_adjust are ok
-        else:
-            logger.info("spot_dict_adjust will be the same as spot_dict.")
-            spot_dict_adjust = spot_dict.copy()
+    # try:
+    #     spot_dict_adjust = map_cells_to_spots(
+    #         adata, adata_name, json_path, only_in=False
+    #     )  # change the function so it keeps only cells closed to spots
+    # except Exception:
+    #     logger.warning(
+    #         "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
+    #     )
+    #     if spot_dict_adjust_file is not None and os.path.splitext(spot_dict_adjust_file)[1] == ".json":
+    #         logger.info(f"Loading spot-to-cell dictionary from {spot_dict_adjust_file}...")
+    #         with open(spot_dict_adjust_file) as json_file:
+    #             spot_dict_adjust = json.load(
+    #                 json_file
+    #             )  # maybe put an assert here to be sure that spot_dict and spot_dict_adjust are ok
+    #     else:
+    #         logger.info("spot_dict_adjust will be the same as spot_dict.")
+    #         spot_dict_adjust = spot_dict.copy()
 
     # Recap variables
     logger.info("=" * 50)
@@ -183,12 +183,19 @@ def main(
     logger.info(f"Random state: {rs}")
     logger.info("=" * 50)
 
+    # TEMPORARY
+    with open(json_path) as json_file:
+        seg_dict = json.load(json_file)
+
     # Run secondary deconvolution
     run_sec_deconv(
         image_dict=image_dict,
         spot_prop_df=spot_prop_df,
+        seg_dict=seg_dict,
+        adata=adata,
+        adata_name=adata_name,
         spot_dict=spot_dict,
-        spot_dict_adjust=spot_dict_adjust,
+        # spot_dict_adjust=spot_dict_adjust,
         model_name=model_name,
         hidden_dims=hidden_dims,
         batch_size=batch_size,

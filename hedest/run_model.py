@@ -15,6 +15,7 @@ from hedest.analysis.pred_analyzer import PredAnalyzer
 from hedest.basics import format_time
 from hedest.basics import set_seed
 from hedest.bayes_adjust import BayesianAdjustment
+from hedest.bayes_adjust_spatial import BayesianAdjustmentSpatial
 from hedest.dataset import SpotDataset
 from hedest.dataset import SpotEmbedDataset
 from hedest.dataset_utils import custom_collate
@@ -28,8 +29,11 @@ from hedest.trainer import ModelTrainer
 def run_sec_deconv(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
+    seg_dict,
+    adata,
+    adata_name,
     spot_dict: Dict[str, List[str]],
-    spot_dict_adjust: Dict[str, List[str]],
+    # spot_dict_adjust: Dict[str, List[str]],
     model_name: str = "resnet18",
     hidden_dims: List[int] = [512, 256],
     batch_size: int = 64,
@@ -157,13 +161,37 @@ def run_sec_deconv(
     # Bayesian adjustment
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
-    cell_prob_best_adjusted = BayesianAdjustment(
-        cell_prob_best, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
-    ).forward()
+    # cell_prob_best_adjusted = BayesianAdjustment(
+    #     cell_prob_best, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
+    # ).forward()
+    # if is_final:
+    #     cell_prob_final_adjusted = BayesianAdjustment(
+    #         cell_prob_final, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
+    #     ).forward()
+
+    cell_prob_best_adjusted = BayesianAdjustmentSpatial(
+        cell_prob_best,
+        spot_dict,
+        spot_prop_df,
+        p_c,
+        adata=adata,
+        adata_name=adata_name,
+        seg_dict=seg_dict,
+        beta=beta,
+        device=device,
+    ).adjust()
     if is_final:
-        cell_prob_final_adjusted = BayesianAdjustment(
-            cell_prob_final, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
-        ).forward()
+        cell_prob_final_adjusted = BayesianAdjustmentSpatial(
+            cell_prob_final,
+            spot_dict,
+            spot_prop_df,
+            p_c,
+            adata=adata,
+            adata_name=adata_name,
+            seg_dict=seg_dict,
+            beta=beta,
+            device=device,
+        ).adjust()
 
     # Save model infos
     model_info = {
