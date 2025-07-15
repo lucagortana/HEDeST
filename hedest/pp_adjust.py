@@ -104,21 +104,22 @@ class BayesianAdjustmentSpatial:
         self.eps = eps
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Store dataframes --------------------------------------------------
-        self.cell_prob_df = cell_prob_df.copy()
-        self.spot_prop_df = spot_prop_df.copy()
-        self.global_prop = global_prop.copy()
-
         # Index maps --------------------------------------------------------
-        self.spot_to_cells = {k: [str(c) for c in v] for k, v in spot_dict.items()}
-        self.cell_to_spot = revert_dict(self.spot_to_cells)
+        self.cell_to_spot = revert_dict(spot_dict)
 
         self.spot_coords = adata.obsm["spatial"].astype("float64")  # (n_spots, 2)
         self.spot_ids_order = adata.obs_names.to_numpy()
         self.spot_id_to_idx = {sid: i for i, sid in enumerate(self.spot_ids_order)}
 
+        # Store dataframes --------------------------------------------------
+        self.cell_prob_df = cell_prob_df.copy()
+        self.spot_prop_df = spot_prop_df.copy()
+        self.spot_prop_df = self.spot_prop_df.reindex(adata.obs_names, copy=False)
+        self.global_prop = global_prop.copy()
+
         # Geometry parameters ----------------------------------------------
         self.spot_diameter = float(adata.uns["spatial"][adata_name]["scalefactors"]["spot_diameter_fullres"])
+        self.spot_radius = self.spot_diameter / 2.0  # ---
         self.R = 2.0 * self.spot_diameter
         self.kdtree = cKDTree(self.spot_coords)
 
@@ -188,8 +189,13 @@ class BayesianAdjustmentSpatial:
 
             # ------- exactly one neighbour (distance‑aware β) ------
             if len(neighbours) == 1:
-                idx0, d0 = neighbours[0]
-                w = max((self.R - d0) / self.R, 0.0)  # 0‥1
+                # idx0, d0 = neighbours[0]
+                # w = max((self.R - d0) / self.R, 0.0)  # 0‥1
+
+                idx0, d0_raw = neighbours[0]
+                d0 = max(d0_raw - self.spot_radius, 0.0)  # distance to circle
+                w = max((self.R - d0) / self.R, 0.0)
+
                 local_vecs.append(svec(idx0))
                 beta_list.append(1.0 - w)  # far ⇒ β≈1, close ⇒ β≈0
                 adjustable.append(cell)
@@ -197,7 +203,8 @@ class BayesianAdjustmentSpatial:
 
             # ------- two or three neighbours -----------------------
             R = self.R
-            weights = np.array([(R - d) / R for _, d in neighbours], dtype=np.float64)
+            # weights = np.array([(R - d) / R for _, d in neighbours], dtype=np.float64)
+            weights = np.array([(R - max(d - self.spot_radius, 0.0)) / R for _, d in neighbours], dtype=np.float64)
             weights = np.clip(weights, 0.0, 1.0)
             vecs = np.stack([svec(i) for i, _ in neighbours], axis=0)
             weighted = (weights[:, None] * vecs).sum(axis=0)

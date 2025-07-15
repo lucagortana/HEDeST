@@ -18,8 +18,7 @@ export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib
 IMAGE_DICT=$1
 SIM_CSV=$2
 SPOT_DICT=$3
-SPOT_DICT_GLOBAL=$4
-shift 4
+shift 3
 
 EXTRA_ARGS=()
 while [[ "$#" -gt 0 ]]; do
@@ -31,5 +30,4 @@ python3 -u hedest/gridsearch.py \
     "$IMAGE_DICT" \
     "$SIM_CSV" \
     "$SPOT_DICT" \
-    "$SPOT_DICT_GLOBAL" \
     "${EXTRA_ARGS[@]}"

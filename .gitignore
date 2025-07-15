@@ -3,6 +3,7 @@ __pycache*
 *.svg
 
 benchmark/results
+hedest/pp_adjust_naive.py
 log
 models
 debug.log
