@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import random
 from datetime import timedelta
 from typing import Callable
@@ -12,6 +13,7 @@ from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scanpy as sc
 import torch
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -65,6 +67,31 @@ def load_model(model_path: str, model_name: str, num_classes: int, hidden_dims: 
         model = model.to(device)
 
     return model
+
+
+def load_spatial_adata(path: str):
+    """
+    Load spatial transcriptomics data with Scanpy.
+
+    Parameters:
+        path (str): Path to an `.h5ad` file **or** a Visium directory.
+
+    Returns:
+        adata (AnnData): The loaded AnnData object.
+    """
+
+    try:
+        if os.path.isfile(path):
+            return sc.read_h5ad(path)
+        else:
+            raise FileNotFoundError(f"'{path}' is not a valid file path.")
+    except Exception as h5ad_error:
+        try:
+            return sc.read_visium(path)
+        except Exception as visium_error:
+            raise RuntimeError("Failed to load data with either sc.read_h5ad or sc.read_visium") from (
+                h5ad_error or visium_error
+            )
 
 
 def fig_to_array(fig: Figure) -> np.ndarray:

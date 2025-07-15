@@ -28,10 +28,10 @@ from scipy.spatial import KDTree
 from tqdm import tqdm
 
 from external.hovernet.misc.wsi_handler import get_file_handler
-from hedest.basics import check_json_classification
-from hedest.basics import remove_empty_keys
-from hedest.basics import seg_colors_compatible
 from hedest.config import TqdmToLogger
+from hedest.utils import check_json_classification
+from hedest.utils import remove_empty_keys
+from hedest.utils import seg_colors_compatible
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 

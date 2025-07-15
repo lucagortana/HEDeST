@@ -30,9 +30,9 @@ from hedest.analysis.plots import plot_mosaic_cells
 from hedest.analysis.plots import plot_pie_chart
 from hedest.analysis.plots import plot_predicted_cell_labels_in_spot
 from hedest.analysis.postseg import StdVisualizer
-from hedest.basics import fig_to_array
-from hedest.basics import generate_color_dict
-from hedest.basics import require_attributes
+from hedest.utils import fig_to_array
+from hedest.utils import generate_color_dict
+from hedest.utils import require_attributes
 
 
 class PredAnalyzer:

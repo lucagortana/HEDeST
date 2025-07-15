@@ -8,14 +8,10 @@ from typing import List
 
 import pandas as pd
 import torch
+from anndata import AnnData
 from loguru import logger
 from torch import optim
 
-from hedest.analysis.pred_analyzer import PredAnalyzer
-from hedest.basics import format_time
-from hedest.basics import set_seed
-from hedest.bayes_adjust import BayesianAdjustment
-from hedest.bayes_adjust_spatial import BayesianAdjustmentSpatial
 from hedest.dataset import SpotDataset
 from hedest.dataset import SpotEmbedDataset
 from hedest.dataset_utils import custom_collate
@@ -23,17 +19,21 @@ from hedest.dataset_utils import get_transform
 from hedest.dataset_utils import split_data
 from hedest.model.cell_classifier import CellClassifier
 from hedest.predict import predict_slide
+from hedest.prob_adjust import PPSAdjustment
 from hedest.trainer import ModelTrainer
+from hedest.utils import format_time
+from hedest.utils import set_seed
+
+# from hedest.analysis.pred_analyzer import PredAnalyzer
 
 
 def run_sec_deconv(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
-    seg_dict,
-    adata,
-    adata_name,
+    json_path: str,
+    adata: AnnData,
+    adata_name: str,
     spot_dict: Dict[str, List[str]],
-    # spot_dict_adjust: Dict[str, List[str]],
     model_name: str = "resnet18",
     hidden_dims: List[int] = [512, 256],
     batch_size: int = 64,
@@ -55,7 +55,6 @@ def run_sec_deconv(
         image_dict: Dictionary mapping cell IDs to image tensors.
         spot_dict: Dictionary mapping cell IDs to their spot.
         spot_prop_df: DataFrame containing cell type proportions for each spot.
-        spot_dict_adjust: Dictionary mapping cell IDs to the closest spot.
         model_name: Name of the model to use.
         batch_size: Batch size for data loaders.
         lr: Learning rate for the optimizer.
@@ -161,34 +160,27 @@ def run_sec_deconv(
     # Bayesian adjustment
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
-    # cell_prob_best_adjusted = BayesianAdjustment(
-    #     cell_prob_best, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
-    # ).forward()
-    # if is_final:
-    #     cell_prob_final_adjusted = BayesianAdjustment(
-    #         cell_prob_final, spot_dict_adjust, spot_prop_df, p_c, beta=beta, device=device
-    #     ).forward()
 
-    cell_prob_best_adjusted = BayesianAdjustmentSpatial(
+    cell_prob_best_adjusted = PPSAdjustment(
         cell_prob_best,
         spot_dict,
         spot_prop_df,
         p_c,
         adata=adata,
         adata_name=adata_name,
-        seg_dict=seg_dict,
+        json_path=json_path,
         beta=beta,
         device=device,
     ).adjust()
     if is_final:
-        cell_prob_final_adjusted = BayesianAdjustmentSpatial(
+        cell_prob_final_adjusted = PPSAdjustment(
             cell_prob_final,
             spot_dict,
             spot_prop_df,
             p_c,
             adata=adata,
             adata_name=adata_name,
-            seg_dict=seg_dict,
+            json_path=json_path,
             beta=beta,
             device=device,
         ).adjust()
@@ -204,9 +196,7 @@ def run_sec_deconv(
         "preds": {
             "pred_best": cell_prob_best,
             "pred_best_adjusted": cell_prob_best_adjusted,  # cell_prob_best_adjusted
-            **(
-                {"pred_final": cell_prob_final, "pred_final_adjusted": cell_prob_final_adjusted} if is_final else {}
-            ),  # cell_prob_final_adjusted
+            **({"pred_final": cell_prob_final, "pred_final_adjusted": cell_prob_final_adjusted} if is_final else {}),
         },
     }
 

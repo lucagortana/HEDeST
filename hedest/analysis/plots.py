@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 
 from hedest.analysis.postseg import StdVisualizer
-from hedest.basics import fig_to_array
+from hedest.utils import fig_to_array
 
 
 def plot_pie_chart(

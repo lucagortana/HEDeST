@@ -6,16 +6,16 @@ import time
 from typing import List
 from typing import Optional
 
-import scanpy as sc
 import torch
 import typer
 from loguru import logger
 
 from external.hovernet.extract_cell_images import extract_images_hn
 from hedest.analysis.postseg import map_cells_to_spots
-from hedest.basics import format_time
 from hedest.dataset_utils import pp_prop
 from hedest.run_model import run_sec_deconv
+from hedest.utils import format_time
+from hedest.utils import load_spatial_adata
 
 app = typer.Typer()
 
@@ -32,13 +32,10 @@ def parse_hidden_dims(hidden_dims: str) -> List[int]:
 def main(
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
     spot_prop_file: str = typer.Argument(..., help="Path to the proportions file."),
-    json_path: Optional[str] = typer.Option(None, help="Path to the post-segmentation file."),
-    path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
-    adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
+    json_path: str = typer.Argument(..., help="Path to the post-segmentation file."),
+    path_st_adata: str = typer.Argument(..., help="Path to the ST anndata object."),
+    adata_name: str = typer.Argument(..., help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
-    spot_dict_adjust_file: Optional[str] = typer.Option(
-        None, help="Path to the spot-to-cell json file with only cells concerned by bayesian adjustment."
-    ),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
     hidden_dims: str = typer.Option("256,128", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(64, help="Batch size for model training."),
@@ -81,6 +78,7 @@ def main(
         os.makedirs(out_dir)
         logger.info(f"-> Created output directory: {out_dir}")
 
+    # Image data loading
     if image_path.endswith(".pt"):
         if save_images is not None:
             logger.warning("save_images is ignored when loading an image dictionary.")
@@ -127,13 +125,12 @@ def main(
     except Exception:
         size = example_img.shape[0]
 
-    logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
-
-    if path_st_adata is not None:
-        adata = sc.read_h5ad(path_st_adata)  # read_visium, we need to enable both
-
+    # Load spot information
     logger.info(f"Loading proportions from {spot_prop_file}...")
     spot_prop_df = pp_prop(spot_prop_file)
+
+    logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
+    adata = load_spatial_adata(path_st_adata)
 
     logger.info("Cell Mapping...")
     if spot_dict_file is not None and os.path.splitext(spot_dict_file)[1] == ".json":
@@ -142,27 +139,7 @@ def main(
             spot_dict = json.load(json_file)
     else:
         logger.info("Mapping cells to the spot in which they are located...")
-        spot_dict = map_cells_to_spots(adata, adata_name, json_path, only_in=True)
-
-    logger.info("-> Mapping cells to the closest spot...")
-
-    # try:
-    #     spot_dict_adjust = map_cells_to_spots(
-    #         adata, adata_name, json_path, only_in=False
-    #     )  # change the function so it keeps only cells closed to spots
-    # except Exception:
-    #     logger.warning(
-    #         "Failed to map cells to the closest spot. " "Have you provided adata, adata_name, and json_path?"
-    #     )
-    #     if spot_dict_adjust_file is not None and os.path.splitext(spot_dict_adjust_file)[1] == ".json":
-    #         logger.info(f"Loading spot-to-cell dictionary from {spot_dict_adjust_file}...")
-    #         with open(spot_dict_adjust_file) as json_file:
-    #             spot_dict_adjust = json.load(
-    #                 json_file
-    #             )  # maybe put an assert here to be sure that spot_dict and spot_dict_adjust are ok
-    #     else:
-    #         logger.info("spot_dict_adjust will be the same as spot_dict.")
-    #         spot_dict_adjust = spot_dict.copy()
+        spot_dict = map_cells_to_spots(adata, adata_name, json_path)
 
     # Recap variables
     logger.info("=" * 50)
@@ -183,19 +160,14 @@ def main(
     logger.info(f"Random state: {rs}")
     logger.info("=" * 50)
 
-    # TEMPORARY
-    with open(json_path) as json_file:
-        seg_dict = json.load(json_file)
-
     # Run secondary deconvolution
     run_sec_deconv(
         image_dict=image_dict,
         spot_prop_df=spot_prop_df,
-        seg_dict=seg_dict,
+        json_path=json_path,
         adata=adata,
         adata_name=adata_name,
         spot_dict=spot_dict,
-        # spot_dict_adjust=spot_dict_adjust,
         model_name=model_name,
         hidden_dims=hidden_dims,
         batch_size=batch_size,

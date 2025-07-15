@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import pickle
 from typing import Dict
@@ -18,8 +19,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from hedest.basics import revert_dict
 from hedest.config import TqdmToLogger
+from hedest.utils import revert_dict
 
 tqdm_out = TqdmToLogger(logger, level="INFO")
 
@@ -37,9 +38,9 @@ class CellProbDataset(Dataset):
         return self.p_cell[idx], self.p_local[idx], self.beta[idx], idx
 
 
-class BayesianAdjustmentSpatial:
+class PPSAdjustment:
     r"""
-    Bayesian adjustment of per‑cell type probabilities that leverages both
+    Prior Probability Shift adjustment of per‑cell type probabilities that leverages both
     **local spot‑level composition** and **global (slide‑level) priors**.
 
     This implementation extends the original *BayesianAdjustment* by also
@@ -68,9 +69,8 @@ class BayesianAdjustmentSpatial:
         Visium AnnData object (full‑resolution coordinates required).
     adata_name : str
         Key under ``adata.uns['spatial']`` holding the scalefactors.
-    seg_dict : Dict
-        Cell segmentation dict – nuclei centroids accessed via
-        ``seg_dict['nuc'][str(cell_id)]['centroid']``.
+    json_path : str
+        Path to the JSON file with segmentation data.
     beta : float, default 0
         Interpolation between adjusted (0 → full adj., 1 → keep original).
     batch_size : int, default 256
@@ -89,7 +89,7 @@ class BayesianAdjustmentSpatial:
         global_prop: pd.Series,
         adata: AnnData,
         adata_name: str,
-        seg_dict: Dict,
+        json_path: str,
         beta: float = 0.0,
         batch_size: int = 256,
         eps: float = 1e-6,
@@ -127,6 +127,8 @@ class BayesianAdjustmentSpatial:
         self.p_c = torch.tensor(global_prop.values, dtype=torch.float32, device=self.device).clamp(min=self.eps)
 
         # Build tensors needed for adjustment ------------------------------
+        with open(json_path) as json_file:
+            seg_dict = json.load(json_file)
         self.adjustable_cells, self.unadjustable_cells, p_local_np, beta_np = self._prepare_local_vectors(seg_dict)
 
         self.p_cell = torch.tensor(

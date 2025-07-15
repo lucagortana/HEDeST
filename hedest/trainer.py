@@ -13,8 +13,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from hedest.analysis.plots import plot_history
-from hedest.basics import set_seed
 from hedest.model.cell_classifier import CellClassifier
+from hedest.utils import set_seed
 
 # from hedest.analysis.plots import plot_grid_celltype
 # from hedest.predict import predict_slide
