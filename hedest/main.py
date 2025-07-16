@@ -13,7 +13,7 @@ from loguru import logger
 from external.hovernet.extract_cell_images import extract_images_hn
 from hedest.analysis.postseg import map_cells_to_spots
 from hedest.dataset_utils import pp_prop
-from hedest.run_model import run_sec_deconv
+from hedest.run_model import run_hedest
 from hedest.utils import format_time
 from hedest.utils import load_spatial_adata
 
@@ -37,7 +37,7 @@ def main(
     adata_name: str = typer.Argument(..., help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
-    hidden_dims: str = typer.Option("256,128", help="Hidden dimensions for the model (comma-separated)."),
+    hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(64, help="Batch size for model training."),
     lr: float = typer.Option(0.0001, help="Learning rate."),
     divergence: str = typer.Option(
@@ -160,8 +160,8 @@ def main(
     logger.info(f"Random state: {rs}")
     logger.info("=" * 50)
 
-    # Run secondary deconvolution
-    run_sec_deconv(
+    # Run HEDeST
+    run_hedest(
         image_dict=image_dict,
         spot_prop_df=spot_prop_df,
         json_path=json_path,

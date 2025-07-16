@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import math
-import pickle
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -119,7 +118,6 @@ class PPSAdjustment:
 
         # Geometry parameters ----------------------------------------------
         self.spot_diameter = float(adata.uns["spatial"][adata_name]["scalefactors"]["spot_diameter_fullres"])
-        self.spot_radius = self.spot_diameter / 2.0  # ---
         self.R = 2.0 * self.spot_diameter
         self.kdtree = cKDTree(self.spot_coords)
 
@@ -136,16 +134,6 @@ class PPSAdjustment:
         )
         self.p_local = torch.tensor(p_local_np, dtype=torch.float32, device=self.device)
         self.beta_cell = torch.tensor(beta_np, dtype=torch.float32, device=self.device)
-
-        # Save tensors to .pt files
-        torch.save(self.p_local, "p_local.pt")
-        torch.save(self.beta_cell, "beta_cell.pt")
-
-        with open("adjus.pkl", "wb") as f:
-            pickle.dump(self.adjustable_cells, f)
-
-        with open("non_adjust.pkl", "wb") as f:
-            pickle.dump(self.unadjustable_cells, f)
 
     def _prepare_local_vectors(self, seg_dict: Dict) -> Tuple[List[str], List[str], np.ndarray, np.ndarray]:
         _ = self.spot_prop_df.shape[1]
@@ -191,12 +179,8 @@ class PPSAdjustment:
 
             # ------- exactly one neighbour (distance‑aware β) ------
             if len(neighbours) == 1:
-                # idx0, d0 = neighbours[0]
-                # w = max((self.R - d0) / self.R, 0.0)  # 0‥1
-
-                idx0, d0_raw = neighbours[0]
-                d0 = max(d0_raw - self.spot_radius, 0.0)  # distance to circle
-                w = max((self.R - d0) / self.R, 0.0)
+                idx0, d0 = neighbours[0]
+                w = max((self.R - d0) / self.R, 0.0)  # 0‥1
 
                 local_vecs.append(svec(idx0))
                 beta_list.append(1.0 - w)  # far ⇒ β≈1, close ⇒ β≈0
@@ -205,8 +189,7 @@ class PPSAdjustment:
 
             # ------- two or three neighbours -----------------------
             R = self.R
-            # weights = np.array([(R - d) / R for _, d in neighbours], dtype=np.float64)
-            weights = np.array([(R - max(d - self.spot_radius, 0.0)) / R for _, d in neighbours], dtype=np.float64)
+            weights = np.array([(R - d) / R for _, d in neighbours], dtype=np.float64)
             weights = np.clip(weights, 0.0, 1.0)
             vecs = np.stack([svec(i) for i, _ in neighbours], axis=0)
             weighted = (weights[:, None] * vecs).sum(axis=0)

@@ -27,7 +27,7 @@ from hedest.utils import set_seed
 # from hedest.analysis.pred_analyzer import PredAnalyzer
 
 
-def run_sec_deconv(
+def run_hedest(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
     json_path: str,
@@ -157,7 +157,7 @@ def run_sec_deconv(
     except Exception:
         is_final = False
 
-    # Bayesian adjustment
+    # Prior Probability Shift adjustment
     logger.info("Starting Bayesian adjustment...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
 
