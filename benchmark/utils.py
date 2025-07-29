@@ -59,16 +59,16 @@ def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=
 
     Parameters:
     - file_infos: List of tuples in the form (file_path, sheet_name, model_name)
-    - level: 'cells' or 'slide', determines which metrics to plot
+    - level: 'cells' or 'spots', determines which metrics to plot
     - title: Plot title
     - savefig: Path to save figure, if desired
     """
     if level == "cells":
         metrics = ["Global Accuracy", "Balanced Accuracy", "Weighted F1 Score", "Weighted Precision", "Weighted Recall"]
-    elif level == "slide":
+    elif level == "spots":
         metrics = ["Pearson Correlation global", "Spearman Correlation global"]
     else:
-        raise ValueError("Level must be either 'cells' or 'slide'.")
+        raise ValueError("Level must be either 'cells' or 'spots'.")
 
     df_rows = []
 
