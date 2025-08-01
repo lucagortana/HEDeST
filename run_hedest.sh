@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH --job-name=HEDeST
-#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/classif_%j.log
-#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/classif_%j.err
-#SBATCH --mem 80000
-#SBATCH --gres=gpu:1
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/hedest_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/hedest_%j.err
+#SBATCH --gres=gpu:P100:1
 #SBATCH -p cbio-gpu
+#SBATCH --exclude=node005,node009
 #SBATCH --cpus-per-task=8
 
 echo 'Found a place!'
@@ -15,31 +15,24 @@ conda activate plugin-env
 
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib:$LD_LIBRARY_PATH
 
-divergence_options=("rot" "kl" "l2" "l1")
-reduction_options=("sum" "mean")
-alpha_values=(0 0.25 0.5)
-
-for divergence in "${divergence_options[@]}"; do
-  for reduction in "${reduction_options[@]}"; do
-    for alpha in "${alpha_values[@]}"; do
-
-      out_dir="../models/new/model_probas_div${divergence}_red${reduction}_alpha${alpha}_lr1e-5_weighted"
-
-      python3 -u hedest/run.py \
-        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/image_dict_64.pt \
-        /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/sim/4clusters_500spots_balanced_prop.csv \
-        --json-path /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/seg_json/pannuke_fast_mask_lvl3.json \
-        --path-st-adata /cluster/CBIO/data1/lgortana/CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma/ST/ \
-        --adata-name CytAssist_11mm_FFPE_Human_Ovarian_Carcinoma \
-        --lr 1e-5 \
-        --weights \
-        --agg "proba" \
-        --divergence "$divergence" \
-        --reduction "$reduction" \
-        --alpha "$alpha" \
-        --epochs 80 \
-        --out_dir "$out_dir" \
-
-    done
-  done
+for seed in 42 43 44 45 46; do
+  python3 -u hedest/main.py \
+    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/moco_embed_moco-TENXHB-rn50.pt \
+    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/C2L_Visium_FFPE_Human_Breast_Cancer_prop.csv \
+    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json/pannuke_fast_mask_lvl3.json \
+    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/ST/ \
+    Visium_FFPE_Human_Breast_Cancer \
+    --spot-dict-file /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/spot_dict.json \
+    --model-name quick \
+    --batch-size 64 \
+    --lr 3e-4 \
+    --divergence l2 \
+    --alpha 0 \
+    --beta 0.0 \
+    --epochs 100 \
+    --train-size 0.8 \
+    --val-size 0.1 \
+    --out-dir models/Breast_cancer/model_quick_alpha_0.0_lr_0.0003_divergence_l2_beta_0.0_seed_${seed} \
+    --tb-dir models/TBruns \
+    --rs $seed
 done
