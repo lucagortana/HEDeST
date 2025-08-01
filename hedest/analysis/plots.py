@@ -365,3 +365,12 @@ def plot_predicted_cell_labels_in_spot(
     else:
         plt.close(combined_fig)
         return combined_fig
+
+
+def polygon_area(contour):
+    """
+    Compute the area of a polygon given its contour points using the shoelace formula.
+    """
+    x = [p[0] for p in contour]
+    y = [p[1] for p in contour]
+    return 0.5 * abs(sum(x[i] * y[i + 1] - x[i + 1] * y[i] for i in range(-1, len(contour) - 1)))

@@ -4,6 +4,7 @@ import pickle
 import random
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Set
 from typing import Union
@@ -12,6 +13,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score
@@ -29,6 +31,7 @@ from hedest.analysis.plots import plot_legend
 from hedest.analysis.plots import plot_mosaic_cells
 from hedest.analysis.plots import plot_pie_chart
 from hedest.analysis.plots import plot_predicted_cell_labels_in_spot
+from hedest.analysis.plots import polygon_area
 from hedest.analysis.postseg import StdVisualizer
 from hedest.utils import fig_to_array
 from hedest.utils import generate_color_dict
@@ -57,7 +60,7 @@ class PredAnalyzer:
     }
 
     def __init__(
-        self, model_state: str = "best", adjusted: bool = False, model_info: Optional[Union[dict, str]] = None, **kwargs
+        self, model_state: str = "best", adjusted: bool = True, model_info: Optional[Union[dict, str]] = None, **kwargs
     ):
         """
         Initialize PredAnalyzer with variables from a dictionary or a pickle file containing model informations
@@ -127,7 +130,7 @@ class PredAnalyzer:
 
         print("Loading predicted labels...")
         self.predicted_labels = self._get_labels_slide(self.predictions)
-        self.predicted_proportions = self.get_predicted_proportions()
+        self.predicted_proportions = self._get_predicted_proportions()
 
         all_spots = set(self.spot_dict.keys())
         all_cells = {cell for cell_list in self.spot_dict.values() for cell in cell_list}
@@ -392,7 +395,7 @@ class PredAnalyzer:
 
         if draw_seg:
             if self.seg_dict_w_class is None:
-                raise ValueError("You must run `generate_dicts_viz_pred` before to be able to plot segmentation.")
+                raise ValueError("You must run `_generate_dicts_viz_pred` before to be able to plot segmentation.")
 
         if spot_id is None:
             spot_id = random.choice(list(self.spot_dict.keys()))
@@ -607,8 +610,51 @@ class PredAnalyzer:
             display=display,
         )
 
+    def compare_area(self, cell_types: List[str]) -> None:
+        """
+        Compare the area of predicted cells for specific cell types using box plots.
+
+        Args:
+            cell_types (List[str]): List of cell types to compare. Must be in self.ct_list.
+        """
+        # Check validity
+        invalid_ct = [ct for ct in cell_types if ct not in self.ct_list]
+        if invalid_ct:
+            raise ValueError(f"Invalid cell types: {invalid_ct}. Available types: {self.ct_list}")
+
+        if self.seg_dict_w_class is None:
+            raise ValueError(
+                "No segmentation with predicted classes found. Please run `_generate_dicts_viz_pred` first."
+            )
+
+        # Collect areas
+        areas_by_type = {ct: [] for ct in cell_types}
+
+        for cell_id, info in self.seg_dict_w_class["nuc"].items():
+            cell_label = self.predicted_labels.get(cell_id, {}).get("cell_type", None)
+            if cell_label in cell_types:
+                contour = info.get("contour")
+                if contour and len(contour) >= 3:  # At least 3 points to form a polygon
+                    area = polygon_area(contour)
+                    areas_by_type[cell_label].append(area)
+
+        # Convert to DataFrame for seaborn
+        data = [{"Cell Type": ct, "Area": area} for ct, areas in areas_by_type.items() for area in areas]
+        df = pd.DataFrame(data)
+
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        sns.boxplot(data=df, x="Cell Type", y="Area", hue="Cell Type", palette="Set2", legend=False)
+        plt.title("Cell Area Distribution by Predicted Cell Type")
+        plt.ylabel("Area (log scale)")
+        plt.yscale("log")
+        plt.xlabel("Predicted Cell Type")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
     @require_attributes("spot_dict")
-    def get_predicted_proportions(self) -> pd.DataFrame:
+    def _get_predicted_proportions(self) -> pd.DataFrame:
         """
         Compute predicted proportions of cell types for each spot.
 
