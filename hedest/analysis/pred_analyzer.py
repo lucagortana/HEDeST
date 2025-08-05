@@ -310,25 +310,6 @@ class PredAnalyzer:
 
         return plot_history(self.history_train, self.history_val, show=show, savefig=savefig)
 
-    def find_cell_max_cell_type(self, cell_type: str) -> str:
-        """
-        Find the cell ID with the highest probability for a given cell type.
-
-        Args:
-            cell_type (str): Name of a cell type.
-
-        Returns:
-            str: Cell ID with the highest probability for the corresponding cell type.
-
-        Raises:
-            ValueError: If the cell type is not found in the predictions.
-        """
-
-        if cell_type not in self.ct_list:
-            raise ValueError(f"Cell type '{cell_type}' not found in the prediction DataFrame.")
-        max_cell_id = self.predictions[cell_type].idxmax()
-        return max_cell_id
-
     @require_attributes("spot_dict", "image_dict")
     def plot_mosaic_cells(
         self, spot_id: Optional[str] = None, num_cols: int = 8, display: bool = True

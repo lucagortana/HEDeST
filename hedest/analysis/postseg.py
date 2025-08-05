@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import math
 import os
 import pathlib
 from abc import ABC
@@ -310,6 +311,97 @@ class StdVisualizer(SlideVisualizer):
 
         ax.axis("off")
         ax.set_title([f"Segmentation overlay - {self.adata_name}", title][title is not None])
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
+    def plot_seg_mosaic(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
+        draw_dot: bool = False,
+        figsize: Tuple[int, int] = (20, 12),
+        max_cols: int = 4,
+        display: bool = True,
+    ) -> plt.Figure:
+        """
+        Plots a mosaic of segmentation overlays, one for each cell type.
+
+        Each subplot highlights a specific cell type in color, with all other types in grey.
+
+        Args:
+            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Viewing window for all plots.
+            draw_dot (bool): Whether to draw centroids as dots.
+            figsize (Tuple[int, int]): Size of the entire figure.
+            max_cols (int): Maximum number of columns in the grid.
+            display (bool): Whether to display the plot or return the figure.
+
+        Returns:
+            plt.Figure: The complete figure containing the mosaic.
+        """
+
+        self._set_window(window)
+
+        if self.data is None:
+            raise ValueError("Segmentation data not found.")
+
+        # Build the instance dict for this window
+        tile_info_dict = {}
+        for idx, cnt in enumerate(self.contour_list_wsi):
+            cnt_tmp = np.array(cnt)
+            cnt_tmp = cnt_tmp[
+                (cnt_tmp[:, 0] >= self.x)
+                & (cnt_tmp[:, 0] <= self.x + self.w)
+                & (cnt_tmp[:, 1] >= self.y)
+                & (cnt_tmp[:, 1] <= self.y + self.h)
+            ]
+            label = str(self.type_list_wsi[idx])
+            centroid_x = self.centroid_list_wsi[idx][0] - self.x
+            centroid_y = self.centroid_list_wsi[idx][1] - self.y
+            if cnt_tmp.shape[0] > 0:
+                cnt_adj = np.round(cnt_tmp - np.array([self.x, self.y])).astype("int")
+                tile_info_dict[idx] = {"contour": cnt_adj, "type": label, "centroid": [centroid_x, centroid_y]}
+
+        # Collect unique cell types
+        unique_types = sorted({inst["type"] for inst in tile_info_dict.values()})
+        n_types = len(unique_types)
+        n_cols = min(n_types, max_cols)
+        n_rows = math.ceil(n_types / n_cols)
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+        axes = axes.flatten()
+
+        for i, cell_type in enumerate(unique_types):
+            ax = axes[i]
+
+            # Modify the color dict: highlight current type, grey for others
+            custom_color_dict = {}
+            for k, v in self.color_dict.items():
+                if k == cell_type:
+                    custom_color_dict[k] = v
+                else:
+                    custom_color_dict[k] = ("Other", (160, 160, 160))  # light grey
+
+            overlay = self._visualize_instances_dict(
+                input_image=np.ones_like(self.region) * 255,  # white background
+                inst_dict=tile_info_dict,
+                draw_dot=draw_dot,
+                color_dict=custom_color_dict,
+                line_thickness=2,
+            )
+
+            ax.imshow(overlay)
+            ax.set_title(self.color_dict[cell_type][0])
+            ax.axis("off")
+
+        # Hide unused subplots
+        for j in range(i + 1, len(axes)):
+            axes[j].axis("off")
+
+        fig.tight_layout()
 
         if display:
             plt.show()
