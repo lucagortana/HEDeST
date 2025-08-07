@@ -445,6 +445,49 @@ class PredAnalyzer:
         plt.show()
 
     @require_attributes("proportions", "spot_dict")
+    def plot_colocalization_matrix(
+        self, display: bool = True, figsize: tuple = (8, 6), cmap: str = "coolwarm"
+    ) -> Optional[plt.Figure]:
+        """
+        Plot the Pearson correlation matrix of cell type proportions across spots.
+
+        This visualizes cell type colocalization: how often cell types co-occur
+        across spots based on proportion similarity.
+
+        Args:
+            display (bool): Whether to display the plot immediately.
+            figsize (tuple): Size of the figure.
+            cmap (str): Colormap for heatmap.
+
+        Returns:
+            Optional[plt.Figure]: The matplotlib figure (if display is False).
+        """
+
+        correlation_matrix = self.proportions.corr(method="pearson")
+
+        fig, ax = plt.subplots(figsize=figsize)
+        sns.heatmap(
+            correlation_matrix,
+            annot=True,
+            fmt=".2f",
+            cmap=cmap,
+            square=True,
+            xticklabels=True,
+            yticklabels=True,
+            cbar_kws={"label": "Pearson Correlation"},
+            ax=ax,
+        )
+        ax.set_title("Cell Type Colocalization (Pearson Correlation)", fontsize=14)
+        plt.tight_layout()
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
+    @require_attributes("proportions", "spot_dict")
     def evaluate_prop_predictions(self, subset="all") -> Dict[str, float]:
         """
         Evaluate slide-level predictions using various metrics. With this function, you can compute a series of
@@ -508,6 +551,93 @@ class PredAnalyzer:
         metrics["MAE global"] = np.mean(mae_list)
 
         return metrics
+
+    def plot_predicted_probability_histograms(
+        self,
+        bins: int = 60,
+        y_lim: Optional[tuple] = None,
+        figsize: tuple = (16, 10),
+        compare_to_gt: bool = False,
+        savefig: Optional[str] = None,
+    ):
+        """
+        Plots histograms of predicted probabilities for each cell type.
+
+        If compare_to_gt is True, plots histograms separately for cells that are truly
+        that type (based on ground truth) vs. those that are not.
+
+        Parameters:
+            bins (int): Number of bins for histogram.
+            y_lim (tuple, optional): Y-axis limit.
+            figsize (tuple): Size of the figure.
+            compare_to_gt (bool): Whether to split by true/false labels.
+            savefig (str, optional): Path to save the figure.
+        """
+        sns.set(style="whitegrid")
+
+        cell_types = self.predictions.columns.tolist()
+        n_types = len(cell_types)
+        n_cols = 3
+        n_rows = (n_types + n_cols - 1) // n_cols
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+        axes = axes.flatten()
+
+        if compare_to_gt:
+            if self.ground_truth is None:
+                raise ValueError("Ground truth must be provided to compare predicted probabilities.")
+
+            gt_df = self.ground_truth.copy()
+
+            for i, cell_type in enumerate(cell_types):
+                ax = axes[i]
+
+                probs = self.predictions[cell_type]
+                truth = gt_df[cell_type] >= 0.5
+
+                plot_df = pd.DataFrame(
+                    {
+                        "Predicted Probability": probs,
+                        "True Label": truth.map({True: f"{cell_type}", False: f"Not {cell_type}"}),
+                    }
+                )
+
+                sns.histplot(
+                    data=plot_df,
+                    x="Predicted Probability",
+                    hue="True Label",
+                    bins=bins,
+                    ax=ax,
+                    palette="Set1",
+                    element="step",
+                    stat="count",
+                    common_norm=False,
+                )
+
+                ax.set_title(f"{cell_type}", fontsize=12)
+                ax.set_xlim(0, 1)
+                if y_lim is not None:
+                    ax.set_ylim(y_lim)
+
+        else:
+            for i, cell_type in enumerate(cell_types):
+                ax = axes[i]
+                sns.histplot(self.predictions[cell_type], bins=bins, kde=False, ax=ax, color="skyblue")
+                ax.set_title(f"{cell_type}", fontsize=12)
+                ax.set_xlabel("Predicted Probability")
+                ax.set_ylabel("Count")
+                ax.set_xlim(0, 1)
+                if y_lim is not None:
+                    ax.set_ylim(y_lim)
+
+        for j in range(n_types, len(axes)):
+            fig.delaxes(axes[j])
+
+        fig.tight_layout()
+
+        if savefig is not None:
+            fig.savefig(savefig, dpi=300, bbox_inches="tight")
+
+        plt.show()
 
     def evaluate_cell_predictions(self, subset="all", per_class=True) -> Dict[str, float]:
         """
