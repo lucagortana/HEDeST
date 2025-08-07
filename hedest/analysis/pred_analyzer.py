@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pickle
 import random
+from collections import Counter
+from collections import defaultdict
 from typing import Any
 from typing import Dict
 from typing import List
@@ -11,9 +13,14 @@ from typing import Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.patches import FancyArrowPatch
+from matplotlib.patches import PathPatch
+from matplotlib.path import Path
+from scipy.spatial import Delaunay
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score
@@ -77,6 +84,8 @@ class PredAnalyzer:
         """
 
         self.seg_dict_w_class = None
+        self.delaunay_neighbors = None
+        self.neighborhood_aggregates = None
         self.model_state = model_state
         self.adjusted = adjusted
         self.model_info = {}
@@ -598,7 +607,7 @@ class PredAnalyzer:
         Args:
             cell_types (List[str]): List of cell types to compare. Must be in self.ct_list.
         """
-        # Check validity
+
         invalid_ct = [ct for ct in cell_types if ct not in self.ct_list]
         if invalid_ct:
             raise ValueError(f"Invalid cell types: {invalid_ct}. Available types: {self.ct_list}")
@@ -633,6 +642,258 @@ class PredAnalyzer:
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.show()
+
+    def compute_neighborhood_composition(self, max_distance: Optional[float] = None) -> Dict[str, Dict[str, float]]:
+        """
+        Compute average neighbor composition per cell type.
+
+        Returns:
+            Dict[str, Dict[str, float]]: cell_type -> neighbor_type -> average count
+        """
+
+        self.delaunay_neighbors = self._build_delaunay_graph(max_distance=max_distance)
+
+        neighbor_counts = defaultdict(lambda: defaultdict(int))
+        source_type_counts = defaultdict(int)
+
+        for cell_id, neighbors in self.delaunay_neighbors.items():
+            if cell_id not in self.predicted_labels:
+                continue
+
+            source_type = self.predicted_labels[cell_id]["cell_type"]
+            source_type_counts[source_type] += 1
+
+            for neighbor_id in neighbors:
+                if neighbor_id not in self.predicted_labels:
+                    continue
+                neighbor_type = self.predicted_labels[neighbor_id]["cell_type"]
+                neighbor_counts[source_type][neighbor_type] += 1
+
+        aggregated = {
+            src_type: {neigh_type: count / source_type_counts[src_type] for neigh_type, count in neigh_dict.items()}
+            for src_type, neigh_dict in neighbor_counts.items()
+        }
+
+        self.neighborhood_aggregates = aggregated
+        return aggregated
+
+    def plot_colocalization_graph(
+        self,
+        display: bool = True,
+        figsize: tuple = (8, 8),
+        curvature: float = 0.3,
+        min_threshold: float = 0.05,
+    ):
+        """
+        Plot a circular graph where:
+        - Node size is proportional to cell count
+        - Arrows show directional neighborhood influence
+        - Arrows are curved in opposite directions for A->B and B->A
+        """
+
+        if self.neighborhood_aggregates is None:
+            text1 = "Attribute `neighborhood_aggregates` is None. "
+            text2 = "Computing neighborhood composition with default parameters..."
+            print(text1 + text2)
+            self.compute_neighborhood_composition()
+
+        # All unique cell types
+        cell_types = sorted(
+            set(self.neighborhood_aggregates) | {ct for d in self.neighborhood_aggregates.values() for ct in d}
+        )
+
+        # Count cells per type from predicted labels
+        node_counts = Counter([v["cell_type"] for v in self.predicted_labels.values()])
+
+        # Normalize node sizes for plotting
+        min_size, max_size = 10, 500
+        raw_counts = np.array([node_counts[ct] for ct in cell_types])
+        norm_sizes = min_size + (raw_counts - raw_counts.min()) / (raw_counts.ptp() + 1e-6) * (max_size - min_size)
+        node_size_dict = dict(zip(cell_types, norm_sizes))
+
+        # Layout in circle
+        G = nx.DiGraph()
+        G.add_nodes_from(cell_types)
+        pos = nx.circular_layout(G)
+
+        # Track edges we've drawn already to apply symmetric curvature
+        drawn_edges = set()
+
+        # Plot
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.axis("off")
+
+        name_to_rgba = {
+            v[0]: tuple(c / 255 for c in v[1]) for v in self.color_dict.values()  # normalize for matplotlib
+        }
+
+        # Draw nodes (circles)
+        for ct in cell_types:
+            x, y = pos[ct]
+            ax.scatter(x, y, s=node_size_dict[ct], color=name_to_rgba[ct], zorder=3)
+            label_offset = 0.16
+            dx, dy = x, y
+            norm = (dx**2 + dy**2) ** 0.5
+            offset_x = x + label_offset * dx / norm
+            offset_y = y + label_offset * dy / norm
+
+            ax.text(offset_x, offset_y, ct, ha="center", va="center", fontsize=10)
+
+        # Draw all arrows with curvature handling
+        for src in cell_types:
+            targets = self.neighborhood_aggregates.get(src, {})
+            for tgt, weight in targets.items():
+                if weight < min_threshold:
+                    continue
+
+                if src == tgt and weight >= min_threshold:
+                    x, y = pos[src]
+                    color = name_to_rgba[src]
+
+                    # Direction vector from center
+                    dx, dy = x, y
+                    norm = (dx**2 + dy**2) ** 0.5
+                    ux, uy = dx / norm, dy / norm
+
+                    # Perpendicular unit vector
+                    px, py = -uy, ux
+
+                    # Control points for smooth oval loop
+                    loop_size = 0.3
+                    offset = 0.4
+
+                    # Control point 1 (move outwards and to one side)
+                    ctrl1 = (x + offset * ux + loop_size * px, y + offset * uy + loop_size * py)
+                    # Control point 2 (return from other side)
+                    ctrl2 = (x + offset * ux - loop_size * px, y + offset * uy - loop_size * py)
+
+                    # Path vertices
+                    path_data = [
+                        (Path.MOVETO, (x, y)),
+                        (Path.CURVE4, ctrl1),
+                        (Path.CURVE4, ctrl2),
+                        (Path.CURVE4, (x, y)),
+                    ]
+                    codes, verts = zip(*path_data)
+                    path = Path(verts, codes)
+
+                    # Transparent body of loop
+                    patch = PathPatch(
+                        path,
+                        facecolor="none",
+                        edgecolor=color,
+                        lw=2 * weight,
+                        alpha=0.5,  # transparent line
+                        zorder=1,
+                    )
+                    ax.add_patch(patch)
+
+                    # Arrowhead at the end
+                    arrow = FancyArrowPatch(
+                        posA=ctrl2,
+                        posB=(x, y),
+                        arrowstyle="->",
+                        color=color,
+                        lw=0,
+                        mutation_scale=15,
+                        alpha=1.0,
+                        zorder=2,
+                    )
+                    ax.add_patch(arrow)
+                    continue
+
+                if (src, tgt) in drawn_edges or (tgt, src) in drawn_edges:
+                    # If both directions exist, use symmetric curvatures
+                    direction = +1 if (src, tgt) not in drawn_edges else -1
+                    rad = direction * curvature
+                else:
+                    # First appearance of this pair, check if reciprocal exists
+                    rad = curvature
+                    if tgt in self.neighborhood_aggregates and src in self.neighborhood_aggregates[tgt]:
+                        drawn_edges.add((src, tgt))  # mark that one direction is drawn
+
+                # Draw the arrow
+                src_pos = pos[src]
+                tgt_pos = pos[tgt]
+                color = name_to_rgba[src]
+
+                # Transparent arrow body
+                arrow_line = FancyArrowPatch(
+                    posA=src_pos,
+                    posB=tgt_pos,
+                    arrowstyle="-",
+                    connectionstyle=f"arc3,rad={rad}",
+                    color=color,
+                    lw=2 * weight,
+                    alpha=0.5,
+                    shrinkA=18,
+                    shrinkB=18,
+                    zorder=1,
+                )
+                ax.add_patch(arrow_line)
+
+                # Opaque arrowhead
+                arrow_head = FancyArrowPatch(
+                    posA=src_pos,
+                    posB=tgt_pos,
+                    arrowstyle="-|>",
+                    connectionstyle=f"arc3,rad={rad}",
+                    color=color,
+                    lw=0,  # no line
+                    mutation_scale=15,
+                    alpha=1.0,
+                    shrinkA=11,
+                    shrinkB=11,
+                    zorder=2,
+                )
+                ax.add_patch(arrow_head)
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
+    def _build_delaunay_graph(self, max_distance: Optional[float] = None) -> Dict[str, List[str]]:
+        """
+        Build a Delaunay triangulation graph from segmentation centroids.
+        Each cell is a node and neighbors are connected by edges, optionally filtered by a distance threshold.
+
+        Args:
+            max_distance (float, optional): Maximum allowed distance between neighbors. If None, no filtering.
+
+        Returns:
+            Dict[str, List[str]]: Mapping of cell_id to list of neighboring cell_ids.
+        """
+
+        if self.seg_dict_w_class is None:
+            raise ValueError(
+                "No segmentation with predicted classes found. Please run `_generate_dicts_viz_pred` first."
+            )
+
+        nuc_dict = self.seg_dict_w_class["nuc"]
+        coords = np.array([v["centroid"] for v in nuc_dict.values()])
+        cell_ids = list(nuc_dict.keys())
+
+        tri = Delaunay(coords)
+        neighbors = defaultdict(set)
+
+        for simplex in tri.simplices:
+            for i in range(3):
+                a, b = simplex[i], simplex[(i + 1) % 3]
+                cell_a, cell_b = cell_ids[a], cell_ids[b]
+
+                # Distance filtering
+                if max_distance is not None:
+                    dist = np.linalg.norm(coords[a] - coords[b])
+                    if dist > max_distance:
+                        continue
+
+                neighbors[cell_a].add(cell_b)
+                neighbors[cell_b].add(cell_a)
+
+        return {k: list(v) for k, v in neighbors.items()}
 
     @require_attributes("spot_dict")
     def _get_predicted_proportions(self) -> pd.DataFrame:

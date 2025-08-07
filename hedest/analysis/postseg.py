@@ -386,11 +386,12 @@ class StdVisualizer(SlideVisualizer):
                     custom_color_dict[k] = ("Other", (160, 160, 160))  # light grey
 
             overlay = self._visualize_instances_dict(
-                input_image=np.ones_like(self.region) * 255,  # white background
+                input_image=np.ones_like(self.region) * 255,
                 inst_dict=tile_info_dict,
                 draw_dot=draw_dot,
                 color_dict=custom_color_dict,
                 line_thickness=2,
+                filled_types=[cell_type],
             )
 
             ax.imshow(overlay)
@@ -460,6 +461,7 @@ class StdVisualizer(SlideVisualizer):
         draw_dot: bool = False,
         color_dict: Optional[Dict[str, Tuple[str, Tuple[int, int, int]]]] = None,
         line_thickness: int = 2,
+        filled_types: Optional[List[str]] = None,
     ) -> np.ndarray:
         """
         Overlays segmentation results (dictionary) on the image as contours. Adapted from Hovernet.
@@ -480,7 +482,10 @@ class StdVisualizer(SlideVisualizer):
         for _, [_, inst_info] in enumerate(inst_dict.items()):
             inst_contour = inst_info["contour"]
             inst_colour = color_dict[inst_info["type"]][1]
-            cv2.drawContours(overlay, [inst_contour], -1, inst_colour, line_thickness)
+            if filled_types is not None and inst_info["type"] in filled_types:
+                cv2.drawContours(overlay, [inst_contour], -1, inst_colour, -1)
+            else:
+                cv2.drawContours(overlay, [inst_contour], -1, inst_colour, line_thickness)
 
             if draw_dot:
                 inst_centroid = inst_info["centroid"]
