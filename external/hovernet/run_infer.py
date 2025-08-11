@@ -76,6 +76,7 @@ import torch
 import logging
 import os
 import copy
+from pathlib import Path
 import json #added
 from glob import glob #added
 from misc.utils import log_info
@@ -183,26 +184,58 @@ if __name__ == "__main__":
         infer.process_file_list(run_args)
     else:
         from infer.wsi import InferManager
+        from extract_cell_images import extract_images_hn
 
+        # Segmentation
         infer = InferManager(**method_args)
         infer.process_wsi_list(run_args)
 
-        json_files = glob(os.path.join(run_args["output_dir"], "*.json"))
-        for json_path in json_files:
-            with open(json_path, "r") as f:
-                data = json.load(f)
+        # Process data
+        ## Reindex the 'nuc' keys in the output JSON files
+        out_path = Path(run_args["output_dir"])
+        json_files = list(out_path.glob("*.json"))
 
-            if "nuc" not in data:
-                logging.warning(f"No 'nuc' key found in {json_path}. Skipping.")
-                continue
+        if len(json_files) != 1:
+            raise ValueError(f"Unexpected number of JSON files: {len(json_files)}")
+        
+        json_path = json_files[0]
+        with open(json_path, "r") as f:
+            data = json.load(f)
 
-            nuc_dict = data["nuc"]
-            new_nuc = {str(i): value for i, value in enumerate(nuc_dict.values())}
-            data["nuc"] = new_nuc
+        if "nuc" not in data:
+            raise KeyError(f"'nuc' key not found in {json_path}. Cannot reindex.")
 
-            with open(json_path, "w") as f:
-                json.dump(data, f, indent=2)
+        nuc_dict = data["nuc"]
+        new_nuc = {str(i): value for i, value in enumerate(nuc_dict.values())}
+        data["nuc"] = new_nuc
 
-            logging.info(f"Reindexed 'nuc' keys in {json_path}")
+        with open(json_path, "w") as f:
+            json.dump(data, f, indent=2)
 
+        logging.info(f"Reindexed 'nuc' keys in {json_path}")
 
+        ## Extract cell images
+        input_path = Path(run_args["input_dir"])
+        image_files = list(input_path.iterdir())
+
+        if len(image_files) != 1:
+            raise ValueError(f"Unexpected number of files: {len(image_files)}")
+
+        image_path = image_files[0]
+
+        try:
+            image_dict = extract_images_hn(
+                image_path=image_path,
+                json_path=json_path,
+                save_dict=os.path.join(run_args["output_dir"], "image_dict.pt"),
+            )
+            logging.info("-> Image extraction completed successfully.")
+
+        except Exception as e:
+            raise ValueError(
+                "Failed to extract images. Please check the image format.\n"
+                "It must be in one of the following formats:\n"
+                ".tif, .tiff, .svs, .dcm, or .ndpi.\n"
+                "Also, ensure that the json_path is correct and contains "
+                "valid segmentation data."
+            ) from e
