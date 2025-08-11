@@ -207,17 +207,19 @@ def run_hedest(
     # Extract and save statistics
     logger.info("Extracting and saving statistics...")
 
-    stats_best_predicted = PredAnalyzer(model_info=model_info).extract_stats(metric="predicted")
-    stats_best_all = PredAnalyzer(model_info=model_info).extract_stats(metric="all")
+    stats_best_predicted = PredAnalyzer(model_info=model_info, adjusted=False).extract_stats(metric="predicted")
+    stats_best_all = PredAnalyzer(model_info=model_info, adjusted=False).extract_stats(metric="all")
 
     stats_best_adj_predicted = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="predicted")
     stats_best_adj_all = PredAnalyzer(model_info=model_info, adjusted=True).extract_stats(metric="all")
 
     if is_final:
-        stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(
+        stats_final_predicted = PredAnalyzer(model_info=model_info, model_state="final", adjusted=False).extract_stats(
             metric="predicted"
         )
-        stats_final_all = PredAnalyzer(model_info=model_info, model_state="final").extract_stats(metric="all")
+        stats_final_all = PredAnalyzer(model_info=model_info, model_state="final", adjusted=False).extract_stats(
+            metric="all"
+        )
 
         stats_final_adj_predicted = PredAnalyzer(
             model_info=model_info, model_state="final", adjusted=True

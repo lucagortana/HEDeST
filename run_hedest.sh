@@ -3,9 +3,8 @@
 #SBATCH --job-name=HEDeST
 #SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/hedest_%j.log
 #SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/hedest_%j.err
-#SBATCH --gres=gpu:P100:1
+#SBATCH --gres=gpu:1
 #SBATCH -p cbio-gpu
-#SBATCH --exclude=node005,node009
 #SBATCH --cpus-per-task=8
 
 echo 'Found a place!'
@@ -18,7 +17,7 @@ export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/plugin-env/lib
 for seed in 42 43 44 45 46; do
   python3 -u hedest/main.py \
     /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/moco_embed_moco-TENXHB-rn50.pt \
-    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/C2L_Visium_FFPE_Human_Breast_Cancer_prop.csv \
+    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/DestVI_Visium_FFPE_Human_Breast_Cancer_prop.csv \
     /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json/pannuke_fast_mask_lvl3.json \
     /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/ST/ \
     Visium_FFPE_Human_Breast_Cancer \
@@ -32,7 +31,7 @@ for seed in 42 43 44 45 46; do
     --epochs 100 \
     --train-size 0.8 \
     --val-size 0.1 \
-    --out-dir models/Breast_cancer/model_quick_alpha_0.0_lr_0.0003_divergence_l2_beta_0.0_seed_${seed} \
+    --out-dir models/Breast_cancer/DestVI/model_quick_alpha_0.0_lr_0.0003_divergence_l2_beta_0.0_seed_${seed} \
     --tb-dir models/TBruns \
     --rs $seed
 done
