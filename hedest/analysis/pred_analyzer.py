@@ -807,6 +807,62 @@ class PredAnalyzer:
         self.neighborhood_aggregates = aggregated
         return aggregated
 
+    @require_attributes("adata", "adata_name")
+    def plot_mean_neighbor_distances(
+        self, max_distance: Optional[float] = None, cmap: str = "coolwarm", display: bool = True
+    ):
+        """
+        Plot a symmetric matrix of mean distances between neighboring cell types.
+        """
+
+        neighbors = self._build_delaunay_graph(max_distance=max_distance)
+        nuc_dict = self.seg_dict_w_class["nuc"]
+
+        pair_distances = defaultdict(list)
+        coords = {cid: np.array(info["centroid"]) for cid, info in nuc_dict.items()}
+        types = {cid: self.ct_list[info["type"]] for cid, info in nuc_dict.items()}
+
+        for cell_a, neigh_list in neighbors.items():
+            for cell_b in neigh_list:
+                if cell_a >= cell_b:
+                    continue
+                type_a, type_b = types[cell_a], types[cell_b]
+                pair_key = tuple(sorted((type_a, type_b)))
+                dist = np.linalg.norm(coords[cell_a] - coords[cell_b])
+                pair_distances[pair_key].append(dist)
+
+        matrix = pd.DataFrame(np.nan, index=self.ct_list, columns=self.ct_list, dtype=float)
+
+        pix_to_um = 55 / self.adata.uns["spatial"][self.adata_name]["scalefactors"]["spot_diameter_fullres"]
+
+        for (type_a, type_b), dist_list in pair_distances.items():
+            mean_dist = np.mean(dist_list) * pix_to_um
+            matrix.loc[type_a, type_b] = mean_dist
+            matrix.loc[type_b, type_a] = mean_dist
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.heatmap(
+            matrix,
+            cmap=cmap,
+            annot=False,
+            square=True,
+            linewidths=0.5,
+            fmt=".2f",
+            mask=np.triu(np.ones_like(matrix, dtype=bool), k=1),
+            cbar_kws={"orientation": "horizontal", "shrink": 0.55, "label": "Mean Distance (μm)"},
+            ax=ax,
+        )
+        ax.set_xticklabels(self.ct_list, rotation=25, ha="right")
+        ax.set_yticklabels(self.ct_list, rotation=0)
+        plt.tight_layout()
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
+
     def plot_colocalization_graph(
         self,
         display: bool = True,
