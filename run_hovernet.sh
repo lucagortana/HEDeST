@@ -23,6 +23,6 @@ python external/hovernet/run_infer.py \
     --model_path=/cluster/CBIO/data1/lgortana/pretrained/seg_classif/hovernet_fast_pannuke_type_tf2pytorch.tar \
     wsi \
     --input_dir=/cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/pyr_tif/ \
-    --output_dir=/cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json2/ \
+    --output_dir=/cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json/ \
     --input_mask_dir=/cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/mask/lvl3/ \
     --cache_path=/cluster/CBIO/data1/lgortana/cache

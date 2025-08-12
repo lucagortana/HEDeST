@@ -10,7 +10,6 @@ import torch
 import typer
 from loguru import logger
 
-from external.hovernet.extract_cell_images import extract_images_hn
 from hedest.analysis.postseg import map_cells_to_spots
 from hedest.dataset_utils import pp_prop
 from hedest.run_model import run_hedest
@@ -50,12 +49,6 @@ def main(
     val_size: float = typer.Option(0.25, help="Validation set size as a fraction."),
     out_dir: str = typer.Option("results", help="Output directory."),
     tb_dir: str = typer.Option("runs", help="Tensorboard directory."),
-    level: int = typer.Option(0, help="Image extraction level."),
-    edge_size: int = typer.Option(64, help="Edge size of the extracted tiles."),
-    dict_types=typer.Option(None, help="Dictionary of cell types to use for organization when saving cell images."),
-    save_images: Optional[str] = typer.Option(
-        None, help="'jpg' to save images, 'dict' to save dictionary, 'both' to save both."
-    ),
     rs: int = typer.Option(42, help="Random seed"),
 ):
 
@@ -72,52 +65,22 @@ def main(
 
     MAIN_START = time.time()
 
-    size = (edge_size, edge_size)
-
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
         logger.info(f"-> Created output directory: {out_dir}")
 
     # Image data loading
     if image_path.endswith(".pt"):
-        if save_images is not None:
-            logger.warning("save_images is ignored when loading an image dictionary.")
         logger.info(f"-> Loading image dictionary from {image_path}")
         image_dict = torch.load(image_path)
 
     else:
-        logger.info(f"-> Extracting images from whole-slide image at {image_path}")
-        save_options = {
-            None: (None, None),
-            "jpg": (os.path.join(out_dir, "extracted_images"), None),
-            "dict": (None, os.path.join(out_dir, "image_dict.pt")),
-            "both": (os.path.join(out_dir, "extracted_images"), os.path.join(out_dir, "image_dict.pt")),
-        }
-
-        if save_images in save_options:
-            img_dir, dict_dir = save_options[save_images]
-        else:
-            raise ValueError("save_images must be one of None, 'jpg', 'dict', or 'both'")
-        try:
-            image_dict = extract_images_hn(
-                image_path=image_path,
-                json_path=json_path,
-                level=level,
-                size=size,
-                dict_types=dict_types,
-                save_images=img_dir,
-                save_dict=dict_dir,
-            )
-            logger.info("-> Image extraction completed successfully.")
-
-        except Exception as e:
-            raise ValueError(
-                "Failed to extract images. Please check the image format.\n"
-                "It must be in one of the following formats:\n"
-                ".tif, .tiff, .svs, .dcm, or .ndpi.\n"
-                "Also, ensure that the json_path is correct and contains "
-                "valid segmentation data."
-            ) from e
+        raise ValueError(
+            f"Invalid image_path: {image_path}. "
+            "Expected a .pt file containing an image dictionary. "
+            "If you tried to pass a WSI directly, please segment it first "
+            "with run_hovernet.sh."
+        )
 
     example_img = image_dict[list(image_dict.keys())[0]]
     try:
@@ -132,7 +95,6 @@ def main(
     logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
     adata = load_spatial_adata(path_st_adata)
 
-    logger.info("Cell Mapping...")
     if spot_dict_file is not None and os.path.splitext(spot_dict_file)[1] == ".json":
         logger.info(f"Loading spot-to-cell dictionary from {spot_dict_file}...")
         with open(spot_dict_file) as json_file:
