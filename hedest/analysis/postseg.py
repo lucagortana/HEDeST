@@ -319,28 +319,33 @@ class StdVisualizer(SlideVisualizer):
             plt.close(fig)
             return fig
 
-    def plot_seg_mosaic(
+    def plot_seg_overlays(
         self,
         window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]],
         draw_dot: bool = False,
         figsize: Tuple[int, int] = (20, 12),
         max_cols: int = 4,
         display: bool = True,
+        separated: bool = True,
+        scale_cells: float = 1.0,
     ) -> plt.Figure:
         """
-        Plots a mosaic of segmentation overlays, one for each cell type.
+        Plots segmentation overlays.
 
-        Each subplot highlights a specific cell type in color, with all other types in grey.
+        If separated=True → mosaic with one subplot per cell type.
+        If separated=False → one plot with all types shown together, filled in colors.
 
         Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Viewing window for all plots.
-            draw_dot (bool): Whether to draw centroids as dots.
-            figsize (Tuple[int, int]): Size of the entire figure.
-            max_cols (int): Maximum number of columns in the grid.
-            display (bool): Whether to display the plot or return the figure.
+            window: Viewing window for all plots.
+            draw_dot: Whether to draw centroids as dots.
+            figsize: Size of the figure.
+            max_cols: Max number of columns (for separated view).
+            display: Whether to display the plot.
+            separated: If True, make a mosaic; if False, combine all types in one panel.
+            scale_cells: Scaling factor for cell size (1.0 = normal, >1 = bigger cells, <1 = smaller).
 
         Returns:
-            plt.Figure: The complete figure containing the mosaic.
+            plt.Figure: The figure object.
         """
 
         self._set_window(window)
@@ -361,48 +366,72 @@ class StdVisualizer(SlideVisualizer):
             label = str(self.type_list_wsi[idx])
             centroid_x = self.centroid_list_wsi[idx][0] - self.x
             centroid_y = self.centroid_list_wsi[idx][1] - self.y
+
             if cnt_tmp.shape[0] > 0:
                 cnt_adj = np.round(cnt_tmp - np.array([self.x, self.y])).astype("int")
-                tile_info_dict[idx] = {"contour": cnt_adj, "type": label, "centroid": [centroid_x, centroid_y]}
 
-        # Collect unique cell types
-        unique_types = sorted({inst["type"] for inst in tile_info_dict.values()})
-        n_types = len(unique_types)
-        n_cols = min(n_types, max_cols)
-        n_rows = math.ceil(n_types / n_cols)
+                # --- NEW: scale contours around centroid ---
+                if scale_cells != 1.0:
+                    centroid = np.array([centroid_x, centroid_y])
+                    cnt_adj = ((cnt_adj - centroid) * scale_cells + centroid).astype("int")
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
-        axes = axes.flatten()
+                tile_info_dict[idx] = {
+                    "contour": cnt_adj,
+                    "type": label,
+                    "centroid": [centroid_x, centroid_y],
+                }
 
-        for i, cell_type in enumerate(unique_types):
-            ax = axes[i]
+        if separated:
+            # same mosaic code as before ...
+            unique_types = sorted({inst["type"] for inst in tile_info_dict.values()})
+            n_types = len(unique_types)
+            n_cols = min(n_types, max_cols)
+            n_rows = math.ceil(n_types / n_cols)
 
-            # Modify the color dict: highlight current type, grey for others
-            custom_color_dict = {}
-            for k, v in self.color_dict.items():
-                if k == cell_type:
-                    custom_color_dict[k] = v
-                else:
-                    custom_color_dict[k] = ("Other", (160, 160, 160))  # light grey
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+            axes = axes.flatten()
 
+            for i, cell_type in enumerate(unique_types):
+                ax = axes[i]
+                custom_color_dict = {}
+                for k, v in self.color_dict.items():
+                    if k == cell_type:
+                        custom_color_dict[k] = v
+                    else:
+                        custom_color_dict[k] = ("Other", (160, 160, 160))
+
+                overlay = self._visualize_instances_dict(
+                    input_image=np.ones_like(self.region) * 255,
+                    inst_dict=tile_info_dict,
+                    draw_dot=draw_dot,
+                    color_dict=custom_color_dict,
+                    line_thickness=2,
+                    filled_types=[cell_type],
+                )
+
+                ax.imshow(overlay)
+                ax.set_title(self.color_dict[cell_type][0])
+                ax.axis("off")
+
+            for j in range(i + 1, len(axes)):
+                axes[j].axis("off")
+
+            fig.tight_layout()
+
+        else:
+            # All types together
+            fig, ax = plt.subplots(figsize=figsize)
             overlay = self._visualize_instances_dict(
                 input_image=np.ones_like(self.region) * 255,
                 inst_dict=tile_info_dict,
                 draw_dot=draw_dot,
-                color_dict=custom_color_dict,
+                color_dict=self.color_dict,
                 line_thickness=2,
-                filled_types=[cell_type],
+                filled_types=list(self.color_dict.keys()),
             )
-
             ax.imshow(overlay)
-            ax.set_title(self.color_dict[cell_type][0])
+            ax.set_title("All cell types")
             ax.axis("off")
-
-        # Hide unused subplots
-        for j in range(i + 1, len(axes)):
-            axes[j].axis("off")
-
-        fig.tight_layout()
 
         if display:
             plt.show()
