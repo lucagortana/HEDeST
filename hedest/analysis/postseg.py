@@ -430,7 +430,6 @@ class StdVisualizer(SlideVisualizer):
                 filled_types=list(self.color_dict.keys()),
             )
             ax.imshow(overlay)
-            ax.set_title("All cell types")
             ax.axis("off")
 
         if display:

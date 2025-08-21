@@ -3,6 +3,7 @@ __pycache*
 *.svg
 
 benchmark/results
+case_study/figures
 hedest/prob_adjust_naive.py
 log
 models
