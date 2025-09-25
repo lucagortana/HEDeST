@@ -1042,7 +1042,7 @@ class PredAnalyzer:
                         path,
                         facecolor="none",
                         edgecolor=color,
-                        lw=2 * weight,
+                        lw=2 * weight + 0.3,
                         alpha=0.5,  # transparent line
                         zorder=1,
                     )
@@ -1084,7 +1084,7 @@ class PredAnalyzer:
                     arrowstyle="-",
                     connectionstyle=f"arc3,rad={rad}",
                     color=color,
-                    lw=2 * weight,
+                    lw=2 * weight + 0.3,
                     alpha=0.5,
                     shrinkA=18,
                     shrinkB=18,
