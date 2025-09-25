@@ -4,11 +4,12 @@ __pycache*
 
 benchmark/results
 case_study/figures
-hedest/prob_adjust_naive.py
 log
 models
+notebooks/figures
 debug.log
 run_real.sh
+run_hedest2.sh
 run_semi*
 run_sim*
 run_hovernet_tiles.sh
