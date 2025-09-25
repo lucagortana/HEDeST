@@ -704,31 +704,94 @@ class PredAnalyzer:
 
     @require_attributes("image_dict")
     def plot_grid_celltype(
-        self, cell_type: str, n: int = 20, selection: str = "random", show_probs: bool = True, display: bool = False
+        self,
+        cell_type: Optional[str] = None,
+        n: int = 20,
+        selection: str = "random",
+        show_probs: bool = True,
+        display: bool = False,
+        nrows: Optional[int] = None,
+        ncols: Optional[int] = None,
     ) -> Optional[plt.Figure]:
         """
-        Plot a grid of cell images predicted as a specific cell type.
+        Plot a grid of cell images predicted as one or multiple cell types.
 
         Args:
-            cell_type (str): Target cell type to display.
-            n (int): Number of images to include in the grid.
+            cell_type (Optional[str]): Target cell type. If None, plot all cell types in a big grid.
+            n (int): Number of images per cell type grid.
             selection (str): Selection mode ("max" or "random").
             show_probs (bool): Whether to show probability labels.
             display (bool): Whether to display the plot.
+            nrows (Optional[int]): Number of rows for the big grid (only used if cell_type is None).
+            ncols (Optional[int]): Number of cols for the big grid (only used if cell_type is None).
 
         Returns:
             Optional[plt.Figure]: The generated matplotlib figure.
         """
 
-        return plot_grid_celltype(
-            self.predictions,
-            self.image_dict,
-            cell_type,
-            n=n,
-            selection=selection,
-            show_probs=show_probs,
-            display=display,
-        )
+        if cell_type is not None:
+            # --- Single cell type: just call your original function ---
+            return plot_grid_celltype(
+                self.predictions,
+                self.image_dict,
+                cell_type,
+                n=n,
+                selection=selection,
+                title=cell_type,
+                show_probs=show_probs,
+                display=display,
+            )
+
+        # --- All cell types in one big plot ---
+        ct_list = self.ct_list
+        n_ct = len(ct_list)
+
+        if nrows is None or ncols is None:
+            # auto square layout if not provided
+            nrows = int(np.ceil(np.sqrt(n_ct)))
+            ncols = int(np.ceil(n_ct / nrows))
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 6, nrows * 6))
+        axes = np.atleast_2d(axes)
+
+        for idx, ct in enumerate(ct_list):
+            row, col = divmod(idx, ncols)
+            ax = axes[row, col]
+
+            # generate the mini-figure using your original function
+            subfig = plot_grid_celltype(
+                self.predictions,
+                self.image_dict,
+                ct,
+                n=n,
+                selection=selection,
+                show_probs=show_probs,
+                display=False,
+            )
+
+            # draw the mini-figure into the main subplot
+            subfig.canvas.draw()
+            img = np.frombuffer(subfig.canvas.tostring_rgb(), dtype=np.uint8)
+            img = img.reshape(subfig.canvas.get_width_height()[::-1] + (3,))
+            ax.imshow(img)
+            ax.set_title(ct)
+            ax.axis("off")
+
+            plt.close(subfig)
+
+        # turn off any extra empty slots
+        for i in range(n_ct, nrows * ncols):
+            row, col = divmod(i, ncols)
+            axes[row, col].axis("off")
+
+        plt.tight_layout()
+
+        if display:
+            plt.show()
+            return None
+        else:
+            plt.close(fig)
+            return fig
 
     def compare_area(self, cell_types: List[str]) -> None:
         """
@@ -773,15 +836,21 @@ class PredAnalyzer:
         plt.tight_layout()
         plt.show()
 
-    def compute_neighborhood_composition(self, max_distance: Optional[float] = None) -> Dict[str, Dict[str, float]]:
+    def compute_neighborhood_composition(
+        self, compute_dist: str = "centroid", max_distance: Optional[float] = None
+    ) -> Dict[str, Dict[str, float]]:
         """
         Compute average neighbor composition per cell type.
+
+        Args:
+            compute_dist (str): The method to compute distances ("centroid" or "contour").
+            max_distance (Optional[float]): The maximum distance to consider for neighbors.
 
         Returns:
             Dict[str, Dict[str, float]]: cell_type -> neighbor_type -> average count
         """
 
-        self.delaunay_neighbors = self._build_delaunay_graph(max_distance=max_distance)
+        self.delaunay_neighbors = self._build_delaunay_graph(compute_dist=compute_dist, max_distance=max_distance)
 
         neighbor_counts = defaultdict(lambda: defaultdict(int))
         source_type_counts = defaultdict(int)
@@ -813,6 +882,11 @@ class PredAnalyzer:
     ):
         """
         Plot a symmetric matrix of mean distances between neighboring cell types.
+
+        Args:
+            max_distance (Optional[float]): The maximum distance to consider for neighbors.
+            cmap (str): The colormap to use for the plot.
+            display (bool): Whether to display the plot or not.
         """
 
         neighbors = self._build_delaunay_graph(max_distance=max_distance)
@@ -968,7 +1042,7 @@ class PredAnalyzer:
                         path,
                         facecolor="none",
                         edgecolor=color,
-                        lw=2 * weight,
+                        lw=2 * weight + 0.3,
                         alpha=0.5,  # transparent line
                         zorder=1,
                     )
@@ -1010,7 +1084,7 @@ class PredAnalyzer:
                     arrowstyle="-",
                     connectionstyle=f"arc3,rad={rad}",
                     color=color,
-                    lw=2 * weight,
+                    lw=2 * weight + 0.3,
                     alpha=0.5,
                     shrinkA=18,
                     shrinkB=18,
@@ -1041,12 +1115,15 @@ class PredAnalyzer:
             plt.close(fig)
             return fig
 
-    def _build_delaunay_graph(self, max_distance: Optional[float] = None) -> Dict[str, List[str]]:
+    def _build_delaunay_graph(
+        self, compute_dist: str = "centroid", max_distance: Optional[float] = None
+    ) -> Dict[str, List[str]]:
         """
         Build a Delaunay triangulation graph from segmentation centroids.
         Each cell is a node and neighbors are connected by edges, optionally filtered by a distance threshold.
 
         Args:
+            compute_dist (str): The method to compute distances ("centroid" or "contour").
             max_distance (float, optional): Maximum allowed distance between neighbors. If None, no filtering.
 
         Returns:
@@ -1072,7 +1149,15 @@ class PredAnalyzer:
 
                 # Distance filtering
                 if max_distance is not None:
-                    dist = np.linalg.norm(coords[a] - coords[b])
+                    if compute_dist == "centroid":
+                        dist = np.linalg.norm(coords[a] - coords[b])
+                    elif compute_dist == "contour":
+                        contour_a = np.array(nuc_dict[cell_a]["contour"])
+                        contour_b = np.array(nuc_dict[cell_b]["contour"])
+                        dist = np.min(np.linalg.norm(contour_a[:, None, :] - contour_b[None, :, :], axis=-1))
+                    else:
+                        raise ValueError(f"Unknown compute_dist method: {compute_dist}")
+
                     if dist > max_distance:
                         continue
 

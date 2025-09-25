@@ -25,6 +25,7 @@ from anndata import AnnData
 from loguru import logger
 from PIL import Image
 from plotly.subplots import make_subplots
+from scipy.spatial import Delaunay
 from scipy.spatial import KDTree
 from tqdm import tqdm
 
@@ -430,12 +431,57 @@ class StdVisualizer(SlideVisualizer):
                 filled_types=list(self.color_dict.keys()),
             )
             ax.imshow(overlay)
-            ax.set_title("All cell types")
             ax.axis("off")
 
         if display:
             plt.show()
             return None
+        else:
+            plt.close(fig)
+            return fig
+
+    def plot_delaunay_graph(self, window="full", max_distance=None, linewidth=0.5, display=True, figsize=(18, 15)):
+        self._set_window(window)
+        nuc_dict = self.data["nuc"]
+
+        # filter centroids inside the current window
+        coords = []
+        for v in nuc_dict.values():
+            cx, cy = v["centroid"]
+            if self.x <= cx <= self.x + self.w and self.y <= cy <= self.y + self.h:
+                coords.append([cx, cy])
+        coords = np.array(coords)
+
+        if len(coords) < 3:
+            print("Not enough points in this window for Delaunay triangulation.")
+            return None
+
+        # compute Delaunay only on visible coords
+        tri = Delaunay(coords)
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.imshow(self.region)
+
+        for simplex in tri.simplices:
+            for i in range(3):
+                a, b = simplex[i], simplex[(i + 1) % 3]
+                pa, pb = coords[a], coords[b]
+
+                if max_distance is not None:
+                    if np.linalg.norm(pa - pb) > max_distance:
+                        continue
+
+                ax.plot(
+                    [pa[0] - self.x, pb[0] - self.x],
+                    [pa[1] - self.y, pb[1] - self.y],
+                    color="red",
+                    linewidth=linewidth,
+                    alpha=0.6,
+                )
+
+        ax.axis("off")
+        if display:
+            plt.show()
         else:
             plt.close(fig)
             return fig

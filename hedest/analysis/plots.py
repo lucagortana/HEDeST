@@ -240,6 +240,7 @@ def plot_grid_celltype(
     cell_type: str,
     n: int = 20,
     selection: str = "random",
+    title: str = "",
     show_probs: bool = True,
     display: bool = False,
 ) -> Optional[plt.Figure]:
@@ -273,23 +274,39 @@ def plot_grid_celltype(
     selected_images = [image_dict[cell_id] for cell_id in selected_indices if cell_id in image_dict]
     selected_probs = max_probs[selected_indices]
 
-    num_rows = (n + 9) // 10
-    fig, axes = plt.subplots(num_rows, 10, figsize=(15, 2 * num_rows))
+    num_cols = min(10, n)  # max 10 images per row
+    num_rows = int(np.ceil(len(selected_images) / num_cols))
 
-    for i, ax in enumerate(axes.flat):
-        if i < len(selected_images):
-            img = selected_images[i].cpu().numpy().transpose((1, 2, 0))
-            ax.imshow(img, cmap="gray")
-            ax.axis("off")
+    if show_probs:
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(15, 2 * num_rows))
+        axes = np.atleast_2d(axes)
 
-            if show_probs:
+        for i, ax in enumerate(axes.flat):
+            if i < len(selected_images):
+                img = selected_images[i].cpu().numpy().transpose((1, 2, 0))
+                ax.imshow(img, cmap="gray")
+                ax.axis("off")
                 prob_text = f"{selected_probs.iloc[i]:.2f}"
                 ax.set_title(prob_text, fontsize=8, color="blue")
-        else:
+            else:
+                ax.axis("off")
+
+        plt.suptitle(title)
+        plt.tight_layout()
+
+    else:
+        fig, axes = plt.subplots(
+            num_rows, num_cols, figsize=(num_cols, num_rows), gridspec_kw={"wspace": 0.0, "hspace": 0.0}
+        )
+        axes = np.atleast_2d(axes)
+
+        for i, ax in enumerate(axes.flat):
+            if i < len(selected_images):
+                img = selected_images[i].cpu().numpy().transpose((1, 2, 0))
+                ax.imshow(img, cmap="gray")
             ax.axis("off")
 
-    plt.suptitle(cell_type)
-    plt.tight_layout()
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
 
     if display:
         plt.show()
