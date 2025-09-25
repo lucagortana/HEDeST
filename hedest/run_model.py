@@ -5,6 +5,7 @@ import pickle
 import time
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import pandas as pd
 import torch
@@ -21,6 +22,7 @@ from hedest.dataset_utils import split_data
 from hedest.model.cell_classifier import CellClassifier
 from hedest.predict import predict_slide
 from hedest.prob_adjust import PPSAdjustment
+from hedest.prob_adjust_naive import PPSANaive
 from hedest.trainer import ModelTrainer
 from hedest.utils import format_time
 from hedest.utils import set_seed
@@ -29,10 +31,10 @@ from hedest.utils import set_seed
 def run_hedest(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
-    json_path: str,
-    adata: AnnData,
-    adata_name: str,
     spot_dict: Dict[str, List[str]],
+    json_path: Optional[str] = None,
+    adata: Optional[AnnData] = None,
+    adata_name: Optional[str] = None,
     model_name: str = "resnet18",
     hidden_dims: List[int] = [512, 256],
     batch_size: int = 64,
@@ -157,23 +159,29 @@ def run_hedest(
         is_final = False
 
     # Prior Probability Shift adjustment
-    logger.info("Starting Bayesian adjustment...")
+    logger.info("Starting PPSA...")
     p_c = spot_prop_df.loc[list(train_spot_dict.keys())].mean(axis=0)
 
-    cell_prob_best_adjusted = PPSAdjustment(
-        cell_prob_best,
-        spot_dict,
-        spot_prop_df,
-        p_c,
-        adata=adata,
-        adata_name=adata_name,
-        json_path=json_path,
-        beta=beta,
-        device=device,
-    ).adjust()
-    if is_final:
-        cell_prob_final_adjusted = PPSAdjustment(
-            cell_prob_final,
+    if json_path is None or adata is None or adata_name is None:
+        cell_prob_best_adjusted = PPSANaive(
+            cell_prob_best,
+            spot_dict,
+            spot_prop_df,
+            p_c,
+            beta=beta,
+        ).adjust()
+        if is_final:
+            cell_prob_final_adjusted = PPSANaive(
+                cell_prob_final,
+                spot_dict,
+                spot_prop_df,
+                p_c,
+                beta=beta,
+            ).adjust()
+
+    else:
+        cell_prob_best_adjusted = PPSAdjustment(
+            cell_prob_best,
             spot_dict,
             spot_prop_df,
             p_c,
@@ -183,6 +191,18 @@ def run_hedest(
             beta=beta,
             device=device,
         ).adjust()
+        if is_final:
+            cell_prob_final_adjusted = PPSAdjustment(
+                cell_prob_final,
+                spot_dict,
+                spot_prop_df,
+                p_c,
+                adata=adata,
+                adata_name=adata_name,
+                json_path=json_path,
+                beta=beta,
+                device=device,
+            ).adjust()
 
     # Save model infos
     model_info = {

@@ -31,9 +31,9 @@ def parse_hidden_dims(hidden_dims: str) -> List[int]:
 def main(
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
     spot_prop_file: str = typer.Argument(..., help="Path to the proportions file."),
-    json_path: str = typer.Argument(..., help="Path to the post-segmentation file."),
-    path_st_adata: str = typer.Argument(..., help="Path to the ST anndata object."),
-    adata_name: str = typer.Argument(..., help="Name of the sample."),
+    json_path: Optional[str] = typer.Option(None, help="Path to the post-segmentation file."),
+    path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
+    adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
     model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
     hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
@@ -92,16 +92,25 @@ def main(
     logger.info(f"Loading proportions from {spot_prop_file}...")
     spot_prop_df = pp_prop(spot_prop_file)
 
-    logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
-    adata = load_spatial_adata(path_st_adata)
+    adata = None
+    spot_dict = None
+    if path_st_adata is not None:
+        logger.info(f"Loading spatial transcriptomics data from {path_st_adata}...")
+        adata = load_spatial_adata(path_st_adata)
+    else:
+        logger.info("No spatial transcriptomics data provided. There will be no spatial PPS adjustment...")
 
     if spot_dict_file is not None and os.path.splitext(spot_dict_file)[1] == ".json":
         logger.info(f"Loading spot-to-cell dictionary from {spot_dict_file}...")
         with open(spot_dict_file) as json_file:
             spot_dict = json.load(json_file)
-    else:
+    elif adata is not None and adata_name is not None and json_path is not None:
         logger.info("Mapping cells to the spot in which they are located...")
         spot_dict = map_cells_to_spots(adata, adata_name, json_path)
+    else:
+        raise ValueError(
+            "To map cells to spots, please provide a valid spot_dict_file or provide adata, adata_name and json_path."
+        )
 
     # Recap variables
     logger.info("=" * 50)
