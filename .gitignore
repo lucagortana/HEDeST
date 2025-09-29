@@ -17,3 +17,5 @@ run_hovernet_tiles.sh
 !external/hovernet/models
 !external/mhast/run_semisim.sh
 !external/mhast/run_sim.sh
+
+slurm*
