@@ -18,9 +18,9 @@ for seed in 42 43 44 45 46; do
   python3 -u hedest/main.py \
     /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/moco_embed_moco-TENXHB-rn50.pt \
     /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/props/DestVI_2000_hvg_squash_05_02_no_endo_Visium_FFPE_Human_Breast_Cancer_prop.csv \
-    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json/pannuke_fast_mask_lvl3.json \
-    /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/ST/ \
-    Visium_FFPE_Human_Breast_Cancer \
+    --json-path /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/seg_json/pannuke_fast_mask_lvl3.json \
+    --path-st-adata /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/ST/ \
+    --adata-name Visium_FFPE_Human_Breast_Cancer \
     --spot-dict-file /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/spot_dict.json \
     --model-name quick \
     --batch-size 64 \
