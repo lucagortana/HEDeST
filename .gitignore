@@ -8,11 +8,15 @@ log
 models
 simulations/full_simulations/figures
 simulations/semi_simulations/figures
+
 debug.log
-run_real.sh
-run_semi*
-run_sim*
-run_hovernet_tiles.sh
+run_*
+!run_extract_stats.sh
+!run_gridsearch.sh
+!run_hedest.sh
+!run_hovernet.sh
+!run_mask.sh
+!run_moco_ssl.sh
 
 !external/hovernet/models
 !external/mhast/run_semisim.sh
