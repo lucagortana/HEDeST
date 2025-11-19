@@ -6,7 +6,8 @@ benchmark/results
 case_study/figures
 log
 models
-notebooks/figures
+simulations/full_simulations/figures
+simulations/semi_simulations/figures
 debug.log
 run_real.sh
 run_semi*

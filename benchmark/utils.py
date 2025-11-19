@@ -9,11 +9,13 @@ import seaborn as sns
 from openpyxl import load_workbook
 
 
-def box_plot_perf(file_infos, level="cells", title="", savefig=None):
+def box_plot_perf(
+    file_infos: list[tuple[str, str, str]], level: str = "cells", title: str = "", savefig: str = None
+) -> None:
     """
     Creates a box plot comparing performance metrics across multiple models.
 
-    Parameters:
+    Args:
     - file_infos: List of tuples in the form (file_path, sheet_name, model_name)
     - level: 'cells' or 'slide', determines which metrics to plot
     - title: Plot title
@@ -53,12 +55,19 @@ def box_plot_perf(file_infos, level="cells", title="", savefig=None):
     plt.show()
 
 
-def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=None, context="talk"):
+def bar_plot_perf(
+    file_infos: list[tuple[str, str, str, str]],
+    level: str = "cells",
+    title: str = "",
+    figsize: tuple = (12, 6),
+    savefig: str = None,
+    context: str = "talk",
+) -> None:
     """
     Creates a Seaborn bar plot with error bars for performance metrics across models,
     supporting custom colors.
 
-    Parameters:
+    Args:
     - file_infos: List of tuples (file_path, sheet_name, model_name, color)
     - level: 'cells' or 'spots'
     - title: Plot title
@@ -141,7 +150,7 @@ def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=
     plt.show()
 
 
-def compute_statistics(metrics_list):
+def compute_statistics(metrics_list: list[dict[str, float]]) -> tuple[dict[str, float], dict[str, float]]:
     """
     Compute mean and confidence intervals for a list of metrics.
 
@@ -162,7 +171,21 @@ def compute_statistics(metrics_list):
     return mean_values, ci_values
 
 
-def save_metrics_to_excel(metrics_dict, seed, excel_path):
+def save_metrics_to_excel(metrics_dict: dict[str, float], seed: int, excel_path: str) -> None:
+    """
+    Save per-run metrics to an Excel file and maintain an aggregated summary sheet.
+
+    Args:
+        metrics_dict (dict):
+            Dictionary containing metrics for the current run.
+            Keys are metric names and values are numeric results.
+        seed (int):
+            Random seed identifier for the run. This will be added as a separate
+            column in the per-run sheet.
+        excel_path (str):
+            Path to the Excel file where results should be stored. If the file
+            exists, it will be overwritten with updated sheets.
+    """
     new_row = {"seed": seed, **metrics_dict}
 
     if os.path.exists(excel_path):
@@ -195,3 +218,59 @@ def save_metrics_to_excel(metrics_dict, seed, excel_path):
         with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
             summary_df.to_excel(writer, sheet_name="summary", index=False)
             per_run_df.to_excel(writer, sheet_name="per_run", index=False)
+
+
+def plot_probability_histograms_with_uncertainty(preds: list[pd.DataFrame], ct_list: list[str]) -> None:
+    """
+    Plot histogram distributions of predicted probabilities with uncertainty bands.
+
+    Args:
+        preds (list(pandas.DataFrame)):
+            A list where each element is a DataFrame containing predicted
+            probabilities. Each DataFrame must have a column for every cell type
+            listed in `ct_list`.
+        ct_list (list(str)):
+            List of cell-type (or class) names to visualize. Each name must match
+            a column in each DataFrame in `preds`.
+    """
+    bin_edges = np.linspace(0, 1, 21)  # 20 bins: 0.0–0.05, ..., 0.95–1.0
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    plt.figure(figsize=(18, 15))
+
+    global_max = 0
+    binned_per_ctype = []
+
+    for ctype in ct_list:
+        binned_counts = [np.histogram(df[ctype].values, bins=bin_edges)[0] for df in preds]
+        binned_counts = np.array(binned_counts)
+        binned_per_ctype.append(binned_counts)
+        # global_max = max(global_max, (binned_counts.mean(axis=0) + binned_counts.std(axis=0)).max())
+        global_max = 2000
+
+    for i, ctype in enumerate(ct_list):
+        binned_counts = binned_per_ctype[i]
+        mean_counts = np.array(binned_counts).mean(axis=0)
+        std_counts = np.array(binned_counts).std(axis=0)
+
+        ax = plt.subplot(3, 3, i + 1)
+        ax.bar(
+            bin_centers,
+            mean_counts,
+            width=0.051,
+            align="center",
+            alpha=0.7,
+            color="steelblue",
+            yerr=std_counts,
+            capsize=4,
+        )
+        ax.set_title(f"{ctype}", fontsize=14)
+        ax.set_xlabel("Predicted Probability")
+        if i == 0:
+            ax.set_ylabel("Count")
+        ax.grid(True)
+        ax.set_ylim(0, global_max * 1.1)
+
+    plt.suptitle("Probability Distributions", fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
