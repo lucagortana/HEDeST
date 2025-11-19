@@ -328,6 +328,7 @@ class StdVisualizer(SlideVisualizer):
         max_cols: int = 4,
         display: bool = True,
         separated: bool = True,
+        fontsize_separated: int = 25,
         scale_cells: float = 1.0,
     ) -> plt.Figure:
         """
@@ -411,7 +412,7 @@ class StdVisualizer(SlideVisualizer):
                 )
 
                 ax.imshow(overlay)
-                ax.set_title(self.color_dict[cell_type][0])
+                ax.set_title(self.color_dict[cell_type][0], fontsize=fontsize_separated)
                 ax.axis("off")
 
             for j in range(i + 1, len(axes)):

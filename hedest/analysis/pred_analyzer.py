@@ -21,6 +21,7 @@ from matplotlib.patches import FancyArrowPatch
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 from scipy.spatial import Delaunay
+from scipy.stats import mannwhitneyu
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 from sklearn.metrics import accuracy_score
@@ -446,7 +447,7 @@ class PredAnalyzer:
 
     @require_attributes("proportions", "spot_dict")
     def plot_colocalization_matrix(
-        self, display: bool = True, figsize: tuple = (8, 6), cmap: str = "coolwarm"
+        self, title: str = "", display: bool = True, figsize: tuple = (8, 6), cmap: str = "coolwarm"
     ) -> Optional[plt.Figure]:
         """
         Plot the Pearson correlation matrix of cell type proportions across spots.
@@ -468,7 +469,7 @@ class PredAnalyzer:
         fig, ax = plt.subplots(figsize=figsize)
         sns.heatmap(
             correlation_matrix,
-            annot=True,
+            annot=False,
             fmt=".2f",
             cmap=cmap,
             square=True,
@@ -476,8 +477,10 @@ class PredAnalyzer:
             yticklabels=True,
             cbar_kws={"label": "Pearson Correlation"},
             ax=ax,
+            vmin=-1,
+            vmax=1,
         )
-        ax.set_title("Cell Type Colocalization (Pearson Correlation)", fontsize=14)
+        ax.set_title(title, fontsize=14)
         plt.tight_layout()
 
         if display:
@@ -712,6 +715,7 @@ class PredAnalyzer:
         display: bool = False,
         nrows: Optional[int] = None,
         ncols: Optional[int] = None,
+        fontsize: int = 20,
     ) -> Optional[plt.Figure]:
         """
         Plot a grid of cell images predicted as one or multiple cell types.
@@ -774,7 +778,7 @@ class PredAnalyzer:
             img = np.frombuffer(subfig.canvas.tostring_rgb(), dtype=np.uint8)
             img = img.reshape(subfig.canvas.get_width_height()[::-1] + (3,))
             ax.imshow(img)
-            ax.set_title(ct)
+            ax.set_title(ct, fontsize=fontsize)
             ax.axis("off")
 
             plt.close(subfig)
@@ -793,14 +797,33 @@ class PredAnalyzer:
             plt.close(fig)
             return fig
 
-    def compare_area(self, cell_types: List[str]) -> None:
+    @require_attributes("adata", "adata_name")
+    def compare_area(
+        self,
+        cell_types: List[str],
+        title: str = "",
+        ct_utest: List[List[str]] = None,
+        height_unit_factor: float = 0.08,
+        y_offset_factor: float = 1.15,
+        fontsize_utest: float = 12,
+        savefig: Optional[str] = None,
+    ) -> None:
         """
-        Compare the area of predicted cells for specific cell types using box plots.
+        Compare the area of predicted cells for specific cell types using box plots and optional statistical tests.
 
         Args:
             cell_types (List[str]): List of cell types to compare. Must be in self.ct_list.
+            title (str, optional): Plot title.
+            ct_utest (List[List[str]], optional): List of [cell_type_A, cell_type_B] pairs for statistical comparison.
+                                                    Performs one-sided Mann–Whitney U test (A > B).
+            height_unit_factor (float): Factor to adjust vertical spacing of statistical annotations.
+            y_offset_factor (float): Vertical offset factor for statistical annotation brackets.
+            fontsize_utest (float): Font size for statistical annotation text.
+            savefig (str, optional): If provided, saves the plot to this path.
         """
+        pix_to_um = 55 / self.adata.uns["spatial"][self.adata_name]["scalefactors"]["spot_diameter_fullres"]
 
+        # --- Validation ---
         invalid_ct = [ct for ct in cell_types if ct not in self.ct_list]
         if invalid_ct:
             raise ValueError(f"Invalid cell types: {invalid_ct}. Available types: {self.ct_list}")
@@ -810,31 +833,100 @@ class PredAnalyzer:
                 "No segmentation with predicted classes found. Please run `_generate_dicts_viz_pred` first."
             )
 
-        # Collect areas
+        # --- Area collection ---
         areas_by_type = {ct: [] for ct in cell_types}
 
         for cell_id, info in self.seg_dict_w_class["nuc"].items():
             cell_label = self.predicted_labels.get(cell_id, {}).get("cell_type", None)
             if cell_label in cell_types:
                 contour = info.get("contour")
-                if contour and len(contour) >= 3:  # At least 3 points to form a polygon
-                    area = polygon_area(contour)
+                if contour and len(contour) >= 3:
+                    area = polygon_area(contour) * (pix_to_um**2)
                     areas_by_type[cell_label].append(area)
 
-        # Convert to DataFrame for seaborn
         data = [{"Cell Type": ct, "Area": area} for ct, areas in areas_by_type.items() for area in areas]
         df = pd.DataFrame(data)
 
-        # Plotting
+        # --- Color map ---
+        color_map = {}
+        for k, (name, rgba) in self.color_dict.items():
+            rgb = tuple(c / 255 for c in rgba[:3])
+            color_map[name] = rgb
+        palette = {ct: color_map.get(ct, (0.5, 0.5, 0.5)) for ct in cell_types}
+
+        # --- Plotting ---
         plt.figure(figsize=(10, 6))
-        sns.boxplot(data=df, x="Cell Type", y="Area", hue="Cell Type", palette="Set2", legend=False)
-        plt.title("Cell Area Distribution by Predicted Cell Type")
-        plt.ylabel("Area (log scale)")
+        ax = sns.boxplot(data=df, x="Cell Type", y="Area", hue="Cell Type", palette=palette, dodge=False, legend=False)
+
+        plt.title(title)
+        plt.xlabel("")
+        plt.ylabel("Nucleus area (µm²)")
         plt.yscale("log")
-        plt.xlabel("Predicted Cell Type")
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.show()
+
+        # --- Optional statistical comparison ---
+        if ct_utest is not None:
+
+            def p_to_star(p):
+                if p <= 0.001:
+                    return "***"
+                elif p <= 0.01:
+                    return "**"
+                elif p <= 0.05:
+                    return "*"
+                else:
+                    return "ns"
+
+            # Store current max height for stacking brackets
+            y_max = df["Area"].max()
+            y_min = df["Area"].min()
+            height_unit = (np.log10(y_max) - np.log10(y_min)) * height_unit_factor
+
+            # For each pair, perform test and annotate
+            for i, (ct_a, ct_b) in enumerate(ct_utest):
+                if ct_a not in areas_by_type or ct_b not in areas_by_type:
+                    print(f"Skipping invalid comparison: {ct_a} vs {ct_b}")
+                    continue
+
+                areas_a = np.array(areas_by_type[ct_a])
+                areas_b = np.array(areas_by_type[ct_b])
+                if len(areas_a) == 0 or len(areas_b) == 0:
+                    print(f"Skipping empty comparison: {ct_a} vs {ct_b}")
+                    continue
+
+                # Mann–Whitney U test (one-sided: A > B)
+                statistic, p_value = mannwhitneyu(areas_a, areas_b, alternative="greater")
+                stars = p_to_star(p_value)
+
+                # --- Plot annotation ---
+                x1, x2 = cell_types.index(ct_a), cell_types.index(ct_b)
+                y, _ = np.log10(y_max) + (i * height_unit), height_unit * 0.4
+                y = 10**y  # back-transform to log scale space
+
+                # Bracket
+                ax.plot([x1, x1, x2, x2], [y, y * y_offset_factor, y * y_offset_factor, y], lw=1.2, c="black")
+
+                # Annotation text
+                ax.text(
+                    (x1 + x2) / 2,
+                    y * (y_offset_factor**1.3),
+                    f"{ct_a} > {ct_b}\np={p_value:.2e} ({stars})",
+                    ha="center",
+                    va="bottom",
+                    fontsize=fontsize_utest,
+                    color="black",
+                )
+
+                # Print results in console too
+                print(f"{ct_a} > {ct_b}: U={statistic:.3f}, p={p_value:.4e} ({stars})")
+
+        plt.tight_layout()
+        if savefig:
+            plt.savefig(savefig, format=savefig.split(".")[-1], dpi=600, bbox_inches="tight")
+            plt.close()
+        else:
+            plt.show()
 
     def compute_neighborhood_composition(
         self, compute_dist: str = "centroid", max_distance: Optional[float] = None
@@ -928,6 +1020,7 @@ class PredAnalyzer:
         )
         ax.set_xticklabels(self.ct_list, rotation=25, ha="right")
         ax.set_yticklabels(self.ct_list, rotation=0)
+        plt.grid(False)
         plt.tight_layout()
 
         if display:
@@ -943,6 +1036,7 @@ class PredAnalyzer:
         figsize: tuple = (8, 8),
         curvature: float = 0.3,
         min_threshold: float = 0.05,
+        fontsize: int = 12,
     ):
         """
         Plot a circular graph where:
@@ -997,7 +1091,7 @@ class PredAnalyzer:
             offset_x = x + label_offset * dx / norm
             offset_y = y + label_offset * dy / norm
 
-            ax.text(offset_x, offset_y, ct, ha="center", va="center", fontsize=10)
+            ax.text(offset_x, offset_y, ct, ha="center", va="center", fontsize=fontsize)
 
         # Draw all arrows with curvature handling
         for src in cell_types:

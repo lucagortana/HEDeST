@@ -53,65 +53,89 @@ def box_plot_perf(file_infos, level="cells", title="", savefig=None):
     plt.show()
 
 
-def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=None):
+def bar_plot_perf(file_infos, level="cells", title="", figsize=(12, 6), savefig=None, context="talk"):
     """
-    Creates a bar plot with error bars for performance metrics across models.
+    Creates a Seaborn bar plot with error bars for performance metrics across models,
+    supporting custom colors.
 
     Parameters:
-    - file_infos: List of tuples in the form (file_path, sheet_name, model_name)
-    - level: 'cells' or 'spots', determines which metrics to plot
+    - file_infos: List of tuples (file_path, sheet_name, model_name, color)
+    - level: 'cells' or 'spots'
     - title: Plot title
+    - figsize: Tuple specifying figure size
     - savefig: Path to save figure, if desired
+    - context: Seaborn context ('paper', 'notebook', 'talk', or 'poster')
     """
+    # Set style and context
+    sns.set_context(context)
+    sns.set_style("whitegrid")
+
+    # Determine metrics to extract
     if level == "cells":
-        metrics = ["Global Accuracy", "Balanced Accuracy", "Weighted F1 Score", "Weighted Precision", "Weighted Recall"]
+        metrics = {
+            "Global Accuracy": "Global Acc.",
+            "Balanced Accuracy": "Balanced Acc.",
+            "Weighted F1 Score": "Weighted F1",
+            "Weighted Precision": "Weighted Pre.",
+            "Weighted Recall": "Weighted Rec.",
+        }
     elif level == "spots":
-        metrics = ["Pearson Correlation global", "Spearman Correlation global"]
+        metrics = {"Pearson Correlation global": "Pearson Corr.", "Spearman Correlation global": "Spearman Corr."}
     else:
         raise ValueError("Level must be either 'cells' or 'spots'.")
 
+    # Collect data and model colors
     df_rows = []
+    model_colors = {}
 
-    for file_path, sheet_name, model_name in file_infos:
+    for file_info in file_infos:
+        if len(file_info) == 4:
+            file_path, sheet_name, model_name, color = file_info
+            model_colors[model_name] = color
+        else:
+            file_path, sheet_name, model_name = file_info
+            model_colors[model_name] = None  # fallback
+
         df = pd.read_excel(file_path, sheet_name=sheet_name).iloc[0]
-        row_data = {"Model": model_name}
-        for metric in metrics:
-            row_data["Metric"] = metric
-            row_data["Value"] = df[metric]
-            row_data["CI"] = df.get(f"{metric} ci", 0)
-            df_rows.append(row_data.copy())
+        for long_name, short_name in metrics.items():
+            df_rows.append(
+                {
+                    "Model": model_name,
+                    "Metric": short_name,  # what will appear on x-axis
+                    "Value": df[long_name],  # read from file using full name
+                    "CI": df.get(f"{long_name} ci", 0),
+                }
+            )
 
     plot_df = pd.DataFrame(df_rows)
 
+    # Create palette mapping
+    palette = {model: color for model, color in model_colors.items() if color is not None}
+
+    # Plot
     plt.figure(figsize=figsize)
     ax = sns.barplot(
-        data=plot_df,
-        x="Metric",
-        y="Value",
-        hue="Model",
-        errorbar=None,
-        capsize=0.1,
-        err_kws={"linewidth": 1.5},
-        palette="Paired",
+        data=plot_df, x="Metric", y="Value", hue="Model", palette=palette, errorbar=None, order=list(metrics.values())
     )
 
-    # Add error bars manually
+    # Add manual confidence intervals
     for patch, (_, row) in zip(ax.patches, plot_df.iterrows()):
         x = patch.get_x() + patch.get_width() / 2
         y = row["Value"]
         ci = row["CI"]
-        ax.errorbar(x=x, y=y, yerr=ci, fmt="none", c="black", capsize=5, lw=1.5)
+        ax.errorbar(x=x, y=y, yerr=ci, fmt="none", c="black", capsize=5, lw=1.3)
 
-    plt.title(title)
-    plt.legend(loc="lower right", frameon=True, title="")
-    plt.ylabel("Performance")
-    plt.xlabel("")
-    plt.xticks(rotation=0)
-    plt.grid(False)
+    # Aesthetic adjustments
+    ax.set_title(title, fontsize=16)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    plt.legend(title="", loc="lower right", frameon=True)
+    plt.grid(True)
     plt.tight_layout()
 
+    # Save if needed
     if savefig:
-        plt.savefig(savefig, dpi=300)
+        plt.savefig(savefig, dpi=300, bbox_inches="tight")
         print(f"Figure saved to {savefig}")
 
     plt.show()
