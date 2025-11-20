@@ -29,14 +29,14 @@ def extract_images_hn(
     Extracts tiles from a whole slide image (WSI) given a JSON file with cell centroids.
 
     Args:
-        image_path (str): Path to the WSI file.
-        json_path (str): Path to the JSON file with cell centroids.
-        level (int): Level of the WSI to extract the tiles.
-        size (Tuple[int, int]): Size of the tiles (width, height).
-        dict_types (Dict, optional): Optional dictionary mapping cell types to names.
-        save_images (str, optional): Path to save extracted image tiles.
-        save_dict (str, optional): Path to save the dictionary of extracted tiles.
-
+        image_path: Path to the WSI file.
+        json_path: Path to the JSON file with cell centroids.
+        level: Level of the WSI to extract the tiles.
+        size: Size of the tiles (width, height).
+        dict_types: Optional dictionary mapping cell types to names.
+        save_images: Path to save extracted image tiles.
+        save_dict: Path to save the dictionary of extracted tiles.
+        
     Returns:
         Dictionary containing extracted tiles as tensors.
     """

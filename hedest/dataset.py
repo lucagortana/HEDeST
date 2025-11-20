@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import List
+from typing import Tuple
+
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
@@ -87,3 +90,58 @@ class SpotEmbedDataset(Dataset):
         bag_indices = torch.full((len(cell_ids),), idx, dtype=torch.long)  # Track spot index per image
 
         return {"images": images, "proportions": proportions, "bag_indices": bag_indices}
+
+
+class CellProbDataset(Dataset):
+    def __init__(self, p_cell: torch.Tensor, p_local: torch.Tensor, beta: torch.Tensor):
+        self.p_cell = p_cell  # (N, n_types)
+        self.p_local = p_local  # (N, n_types)
+        self.beta = beta  # (N,)
+
+    def __len__(self):
+        return self.p_cell.size(0)
+
+    def __getitem__(self, idx):
+        return self.p_cell[idx], self.p_local[idx], self.beta[idx], idx
+
+
+class CellProbDatasetNaive(Dataset):
+    """
+    Dataset for cell probabilities with corresponding spot IDs.
+
+    Attributes:
+        cell_prob_tensor: Tensor of cell probabilities.
+        spot_ids: List of spot IDs corresponding to each cell.
+    """
+
+    def __init__(self, cell_prob_tensor: torch.Tensor, spot_ids: List[int]):
+        """
+        Initializes the CellProbDataset.
+
+        Args:
+            cell_prob_tensor: Tensor containing probabilities for each cell.
+            spot_ids: List of spot IDs corresponding to each cell.
+        """
+
+        self.cell_prob_tensor = cell_prob_tensor
+        self.spot_ids = spot_ids
+
+    def __len__(self) -> int:
+        """
+        Returns the number of cells in the dataset.
+        """
+
+        return len(self.cell_prob_tensor)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int, int]:
+        """
+        Retrieves a cell's probabilities, spot ID, and index.
+
+        Args:
+            idx: Index of the cell.
+
+        Returns:
+            Tuple containing the cell probabilities, spot ID, and index.
+        """
+
+        return self.cell_prob_tensor[idx], self.spot_ids[idx], idx

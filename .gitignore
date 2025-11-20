@@ -6,11 +6,26 @@ benchmark/results
 case_study/figures
 log
 models
+references/prior_proportions_idea.pdf
 simulations/full_simulations/figures
 simulations/semi_simulations/figures
 
 debug.log
 run_*
+!run_infer.sh
+!run_train.sh
+!run_utils
+!run_infer.py
+!run_mask.py
+!run_tile.sh
+!run_train.py
+!run_wsi.sh
+!run_tangram.py
+!run_moco.py
+!run_model.py
+!run_classif.sh
+!run_feature_extract.sh
+!run_annotation.sh
 !run_extract_stats.sh
 !run_gridsearch.sh
 !run_hedest.sh

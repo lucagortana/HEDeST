@@ -46,7 +46,7 @@ def predict_slide(
     model = model.to(device)
     cell_prob = []
 
-    if model.model_name == "quick":
+    if model.model_name == "default":
         dataset = EmbedDataset(image_dict)
     else:
         transform = get_transform(model.model_name)

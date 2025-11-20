@@ -785,32 +785,6 @@ class IntVisualizer(SlideVisualizer):
         return "data:image/png;base64," + img_str
 
 
-def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFrame:
-    """
-    Counts cell types in the segmentation dictionary.
-
-    Args:
-        seg_dict (Dict): Dictionary containing segmentation data.
-        ct_list (List[str]): List of cell type names.
-
-    Returns:
-        DataFrame containing counts of each cell type.
-    """
-
-    cell_type_counts = {}
-    nuc = seg_dict["nuc"]
-    for cell_id in nuc.keys():
-        label = nuc[cell_id]["type"]
-        cell_type = ct_list[int(label)]
-        if cell_type not in cell_type_counts.keys():
-            cell_type_counts[cell_type] = 1
-        else:
-            cell_type_counts[cell_type] += 1
-    df = pd.DataFrame([cell_type_counts])
-
-    return df
-
-
 def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in: bool = True) -> Dict[str, List[str]]:
     """
     Maps cells to spots based on centroids of the cells and spots.

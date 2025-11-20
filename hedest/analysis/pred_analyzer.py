@@ -67,16 +67,13 @@ class PredAnalyzer:
         "ground_truth",
     }
 
-    def __init__(
-        self, model_state: str = "best", adjusted: bool = True, model_info: Optional[Union[dict, str]] = None, **kwargs
-    ):
+    def __init__(self, adjusted: bool = True, model_info: Optional[Union[dict, str]] = None, **kwargs):
         """
         Initialize PredAnalyzer with variables from a dictionary or a pickle file containing model informations
         and predictions. All variables can be None, except for 'preds' which must be provided. You can add more
         attributes dynamically using the `add_attributes` method.
 
         Args:
-            model_state (str): Model state to use, either "best" or "final".
             adjusted (bool): Whether to use adjusted predictions.
             model_info (Union[dict, str], optional): Model information provided as:
                 - A dictionary with variable data.
@@ -87,7 +84,6 @@ class PredAnalyzer:
         self.seg_dict_w_class = None
         self.delaunay_neighbors = None
         self.neighborhood_aggregates = None
-        self.model_state = model_state
         self.adjusted = adjusted
         self.model_info = {}
 
@@ -117,23 +113,10 @@ class PredAnalyzer:
         assert self.preds is not None, "The 'preds' attribute must be provided and cannot be None."
         assert self.spot_dict is not None, "The 'spot_dict' attribute must be provided and cannot be None."
 
-        if self.model_state == "best":
-            if self.adjusted:
-                self.predictions = self.preds["pred_best_adjusted"]
-            else:
-                self.predictions = self.preds["pred_best"]
-
-        elif self.model_state == "final":
-            try:
-                if self.adjusted:
-                    self.predictions = self.preds["pred_final_adjusted"]
-                else:
-                    self.predictions = self.preds["pred_final"]
-            except KeyError:
-                raise KeyError("No final model found in the 'preds' attribute.")
-
+        if self.adjusted:
+            self.predictions = self.preds["pred_best_adjusted"]
         else:
-            raise ValueError("Invalid model state. Choose 'best' or 'final'.")
+            self.predictions = self.preds["pred_best"]
 
         self.ct_list = list(self.predictions.columns)
         self.color_dict = generate_color_dict(self.ct_list, format="special")

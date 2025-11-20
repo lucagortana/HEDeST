@@ -1,0 +1,68 @@
+#!/bin/bash
+
+#SBATCH --job-name=histocell
+#SBATCH --output=/cluster/CBIO/home/lgortana/HEDeST/log/histocell_%j.log
+#SBATCH --error=/cluster/CBIO/home/lgortana/HEDeST/log/histocell_%j.err
+#SBATCH --gres=gpu:1
+#SBATCH -p cbio-gpu
+#SBATCH --exclude=node005,node006,node009
+#SBATCH --cpus-per-task=8
+
+echo "Found a place!"
+
+source /cluster/CBIO/home/lgortana/anaconda3/etc/profile.d/conda.sh
+conda activate histocell
+
+export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/histocell/lib:$LD_LIBRARY_PATH
+
+for seed in {0..9}; do
+  python3 -u infer.py \
+    --seed $seed \
+    --epoch 40 \
+    --tissue LCA \
+    --deconv Xenium \
+    --origin LCA_256_3types \
+    --prefix LCA_256_3types \
+    --k_class 3 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA_3types.json \
+    --omit_gt
+done
+
+for seed in {0..9}; do
+  python3 -u infer.py \
+    --seed $seed \
+    --epoch 40 \
+    --tissue LCA \
+    --deconv Xenium \
+    --origin LCA_256 \
+    --prefix LCA_256 \
+    --k_class 7 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA.json \
+    --omit_gt
+done
+
+for seed in {0..9}; do
+  python3 -u infer.py \
+    --seed $seed \
+    --epoch 40 \
+    --tissue LCA \
+    --deconv Xenium \
+    --origin LCA_256_3types \
+    --prefix LCA_256_3types_hires \
+    --k_class 3 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA_3types.json \
+    --omit_gt
+done
+
+for seed in {0..9}; do
+  python3 -u infer.py \
+    --seed $seed \
+    --epoch 40 \
+    --tissue LCA \
+    --deconv Xenium \
+    --origin LCA_256 \
+    --prefix LCA_256_hires \
+    --k_class 7 \
+    --tissue_compartment /cluster/CBIO/data1/lgortana/Xenium_V1_humanLung_Cancer_FFPE/histocell/LCA/tissue_compartment_LCA.json \
+    --omit_gt
+done

@@ -13,7 +13,22 @@ from utils import compute_stats
 from utils import generate_X_perm
 
 
-def prepare_data(ground_truth, spot_dict, embeddings):
+def prepare_data(ground_truth: pd.DataFrame, spot_dict: dict, embeddings: dict):
+    """
+    Prepares data matrices A, B, X_perm, X for hierarchical permutation.
+
+    Args:
+        ground_truth: DataFrame with one-hot encoded cell type labels.
+        spot_dict: Dictionary mapping spot IDs to lists of cell IDs.
+        embeddings: Dictionary mapping cell IDs to embedding tensors.
+
+    Returns:
+        A: Spot-cell assignment matrix (M x N).
+        B: Cell feature matrix (N x K).
+        X_perm: Permutable cell type label matrix (M x N).
+        X: Flat cell type label vector (N,).
+    """
+
     # 1. Unique sorted cell IDs across both spot_dict and ground_truth
     cell_ids = sorted(set(ground_truth.index.astype(str)) & set(sum(spot_dict.values(), [])))
     cell_id_to_idx = {cid: i for i, cid in enumerate(cell_ids)}
@@ -83,7 +98,20 @@ def prepare_data(ground_truth, spot_dict, embeddings):
     return A, B, X_perm, X
 
 
-def main(data_path, gt_filename, spot_dict_filename, embeddings_filename, n_iter, output_xlsx):
+def main(
+    data_path: str, gt_filename: str, spot_dict_filename: str, embeddings_filename: str, n_iter: int, output_xlsx: str
+):
+    """
+    Main function to run hierarchical permutation evaluation.
+
+    Args:
+        data_path: Base directory containing data files.
+        gt_filename: Filename for ground truth CSV.
+        spot_dict_filename: Filename for spot dictionary JSON.
+        embeddings_filename: Filename for embeddings PT file.
+        n_iter: Number of repetitions.
+        output_xlsx: Path to output Excel file.
+    """
 
     ground_truth_path = os.path.join(data_path, gt_filename)
     spot_dict_path = os.path.join(data_path, spot_dict_filename)

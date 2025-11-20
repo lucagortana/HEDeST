@@ -41,6 +41,7 @@ def run_experiment(
         beta (float): Regularization parameter for bayesian adjustment.
         lr (float): Learning rate for training.
         divergence (str): Divergence metric to use.
+        out_dir (str): Output directory path.
         seed (int): Random seed for reproducibility.
     """
 

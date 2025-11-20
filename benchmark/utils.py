@@ -21,6 +21,7 @@ def box_plot_perf(
     - title: Plot title
     - savefig: Path to save figure, if desired
     """
+
     if level == "cells":
         metrics = ["Global Accuracy", "Balanced Accuracy", "Weighted F1 Score", "Weighted Precision", "Weighted Recall"]
     elif level == "slide":
@@ -75,6 +76,7 @@ def bar_plot_perf(
     - savefig: Path to save figure, if desired
     - context: Seaborn context ('paper', 'notebook', 'talk', or 'poster')
     """
+
     # Set style and context
     sns.set_context(context)
     sns.set_style("whitegrid")
@@ -152,13 +154,13 @@ def bar_plot_perf(
 
 def compute_statistics(metrics_list: list[dict[str, float]]) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Compute mean and confidence intervals for a list of metrics.
+    Computes mean and confidence intervals for a list of metrics.
 
     Args:
-        metrics_list (List[Dict[str, float]]): List of dictionaries containing metrics from each run.
+        metrics_list: List of dictionaries containing metrics from each run.
 
     Returns:
-        Tuple[Dict[str, float], Dict[str, float]]: Tuple containing the mean and confidence intervals for each metric.
+        Tuple containing the mean and confidence intervals for each metric.
     """
 
     df_metrics = pd.DataFrame(metrics_list)
@@ -173,19 +175,20 @@ def compute_statistics(metrics_list: list[dict[str, float]]) -> tuple[dict[str, 
 
 def save_metrics_to_excel(metrics_dict: dict[str, float], seed: int, excel_path: str) -> None:
     """
-    Save per-run metrics to an Excel file and maintain an aggregated summary sheet.
+    Saves per-run metrics to an Excel file and maintain an aggregated summary sheet.
 
     Args:
-        metrics_dict (dict):
+        metrics_dict:
             Dictionary containing metrics for the current run.
             Keys are metric names and values are numeric results.
-        seed (int):
+        seed:
             Random seed identifier for the run. This will be added as a separate
             column in the per-run sheet.
-        excel_path (str):
+        excel_path:
             Path to the Excel file where results should be stored. If the file
             exists, it will be overwritten with updated sheets.
     """
+
     new_row = {"seed": seed, **metrics_dict}
 
     if os.path.exists(excel_path):
@@ -222,17 +225,18 @@ def save_metrics_to_excel(metrics_dict: dict[str, float], seed: int, excel_path:
 
 def plot_probability_histograms_with_uncertainty(preds: list[pd.DataFrame], ct_list: list[str]) -> None:
     """
-    Plot histogram distributions of predicted probabilities with uncertainty bands.
+    Plots histogram distributions of predicted probabilities with uncertainty bands.
 
     Args:
-        preds (list(pandas.DataFrame)):
+        preds:
             A list where each element is a DataFrame containing predicted
             probabilities. Each DataFrame must have a column for every cell type
             listed in `ct_list`.
-        ct_list (list(str)):
+        ct_list:
             List of cell-type (or class) names to visualize. Each name must match
             a column in each DataFrame in `preds`.
     """
+
     bin_edges = np.linspace(0, 1, 21)  # 20 bins: 0.0–0.05, ..., 0.95–1.0
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 

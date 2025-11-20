@@ -61,12 +61,8 @@ def process_config(config, runs, sim_folder, ground_truth, cell_list=None):
             model_info = pickle.load(f)
             model_info_subset = None
 
-        analyzer_best = PredAnalyzer(
-            model_info=model_info, model_state="best", adjusted=False, ground_truth=ground_truth
-        )
-        analyzer_best_adj = PredAnalyzer(
-            model_info=model_info, model_state="best", adjusted=True, ground_truth=ground_truth
-        )
+        analyzer_best = PredAnalyzer(model_info=model_info, adjusted=False, ground_truth=ground_truth)
+        analyzer_best_adj = PredAnalyzer(model_info=model_info, adjusted=True, ground_truth=ground_truth)
 
         if cell_list is not None:
             model_info_subset = copy.deepcopy(model_info)
@@ -88,10 +84,10 @@ def process_config(config, runs, sim_folder, ground_truth, cell_list=None):
             )
 
             analyzer_best_subset = PredAnalyzer(
-                model_info=model_info_subset, model_state="best", adjusted=False, ground_truth=ground_truth_subset
+                model_info=model_info_subset, adjusted=False, ground_truth=ground_truth_subset
             )
             analyzer_best_adj_subset = PredAnalyzer(
-                model_info=model_info_subset, model_state="best", adjusted=True, ground_truth=ground_truth_subset
+                model_info=model_info_subset, adjusted=True, ground_truth=ground_truth_subset
             )
 
         # Cell-level

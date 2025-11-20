@@ -23,11 +23,11 @@ def plot_pie_chart(
     Plots a pie chart for the given data on the provided axis.
 
     Args:
-        ax (plt.Axes): The axis to plot the pie chart on.
-        data (pd.Series): A Series containing the proportions for each category.
-        color_dict (Dict[str, Tuple]): A dictionary mapping category to color.
-        plot_labels (bool): Whether to display labels on the chart. Defaults to False.
-        add_legend (bool): Whether to add a legend to the chart. Defaults to False.
+        ax: The axis to plot the pie chart on.
+        data: A Series containing the proportions for each category.
+        color_dict: A dictionary mapping category to color.
+        plot_labels: Whether to display labels on the chart. Defaults to False.
+        add_legend: Whether to add a legend to the chart. Defaults to False.
     """
 
     labels = data.index
@@ -56,10 +56,9 @@ def plot_legend(
     Plots a legend with an optional axis. If no axis is provided, a new figure is created.
 
     Args:
-        color_dict (Dict[str, Union[Tuple, Tuple[str, List[int]]]]):
-            A dictionary mapping identifiers to labels and colors.
-        ax (plt.Axes): Axis to add the legend to. Defaults to None.
-        savefig (str, optional): Filename to save the plot. Defaults to None.
+        color_dict: A dictionary mapping identifiers to labels and colors.
+        ax: Axis to add the legend to. Defaults to None.
+        savefig: Filename to save the plot. Defaults to None.
     """
 
     if isinstance(next(iter(color_dict.values())), tuple):
@@ -103,16 +102,16 @@ def plot_mosaic_cells(
     Plots a grid of cell images for a given spot along with predicted labels.
 
     Args:
-        spot_dict (Dict[str, List[str]]): A dictionary mapping spot IDs to lists of cell IDs.
-        image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
-        spot_id (str, optional): The spot ID to visualize. Defaults to a random spot.
-        predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
-        true_labels (Dict[str, Dict[str, str]], optional): True labels for the cells. Defaults to None.
-        num_cols (int): Number of columns in the grid. Defaults to 8.
-        display (bool): Whether to display the plot directly. Defaults to True.
+        spot_dict: A dictionary mapping spot IDs to lists of cell IDs.
+        image_dict: A dictionary mapping cell IDs to images.
+        spot_id: The spot ID to visualize. Defaults to a random spot.
+        predicted_labels: Predicted labels for the cells. Defaults to None.
+        true_labels: True labels for the cells. Defaults to None.
+        num_cols: Number of columns in the grid. Defaults to 8.
+        display: Whether to display the plot directly. Defaults to True.
 
     Returns:
-        Optional[plt.Figure]: The figure object if `display` is False.
+        Figure object if `display` is False.
     """
 
     m = 4
@@ -177,9 +176,9 @@ def plot_cell(
     Plots a single cell image from the provided dictionary.
 
     Args:
-        image_dict (Dict[str, torch.Tensor]): A dictionary mapping cell IDs to images.
-        ax (plt.Axes, optional): Axis to plot the cell on. If None, creates a new plot. Defaults to None.
-        cell_id (Union[str, int], optional): The ID of the cell to plot. Defaults to a random cell.
+        image_dict: A dictionary mapping cell IDs to images.
+        ax: Axis to plot the cell on. If None, creates a new plot. Defaults to None.
+        cell_id: The ID of the cell to plot. Defaults to a random cell.
     """
 
     if cell_id is None:
@@ -206,10 +205,10 @@ def plot_history(
     Plots training and validation loss history.
 
     Args:
-        history_train (List[float]): List of training loss values.
-        history_val (List[float]): List of validation loss values.
-        show (bool): Whether to display the plot. Defaults to False.
-        savefig (str, optional): Filename to save the plot. Defaults to None.
+        history_train: List of training loss values.
+        history_val: List of validation loss values.
+        show: Whether to display the plot. Defaults to False.
+        savefig: Filename to save the plot. Defaults to None.
     """
 
     plt.figure(figsize=(12, 5))
@@ -248,16 +247,16 @@ def plot_grid_celltype(
     Plots a grid of cell images predicted as a specific cell type.
 
     Args:
-        predictions (pd.DataFrame): DataFrame of predicted probabilities for each cell type.
-        image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
-        cell_type (str): The cell type to filter images by.
-        n (int): Number of images to display. Defaults to 20.
-        selection (str): Selection mode ("max" or "random"). Defaults to "random".
-        show_probs (bool): Whether to display probabilities on the images. Defaults to True.
-        display (bool): Whether to display the plot. Defaults to False.
+        predictions: DataFrame of predicted probabilities for each cell type.
+        image_dict: A dictionary mapping cell IDs to images.
+        cell_type: The cell type to filter images by.
+        n: Number of images to display. Defaults to 20.
+        selection: Selection mode ("max" or "random"). Defaults to "random".
+        show_probs: Whether to display probabilities on the images. Defaults to True.
+        display: Whether to display the plot. Defaults to False.
 
     Returns:
-        Optional[plt.Figure]: The figure object if `display` is False.
+        Figure object if `display` is False.
     """
 
     max_prob_cell_types = predictions.idxmax(axis=1)
@@ -331,18 +330,18 @@ def plot_predicted_cell_labels_in_spot(
     Plots a visualization of a spot with cell images and predicted labels.
 
     Args:
-        spot_dict (Dict[str, List[str]]): A dictionary mapping spot IDs to cell IDs.
-        adata (object): Annotated data object.
-        adata_name (str): Name of the annotated dataset.
-        image_path (str): Path to the image data.
-        image_dict (Dict[str, np.ndarray]): A dictionary mapping cell IDs to images.
-        predicted_labels (Dict[str, Dict[str, str]], optional): Predicted labels for the cells. Defaults to None.
-        true_labels (Dict[str, Dict[str, str]], optional): True labels for the cells. Defaults to None.
-        spot_id (str, optional): Spot ID to visualize. Defaults to a random spot.
-        display (bool): Whether to display the plot. Defaults to True.
+        spot_dict: A dictionary mapping spot IDs to cell IDs.
+        adata: Annotated data object.
+        adata_name: Name of the annotated dataset.
+        image_path: Path to the image data.
+        image_dict: A dictionary mapping cell IDs to images.
+        predicted_labels: Predicted labels for the cells. Defaults to None.
+        true_labels: True labels for the cells. Defaults to None.
+        spot_id: Spot ID to visualize. Defaults to a random spot.
+        display: Whether to display the plot. Defaults to True.
 
     Returns:
-        Optional[plt.Figure]: The combined figure object if `display` is False.
+        Figure object if `display` is False.
     """
 
     if spot_id is None:
@@ -386,8 +385,12 @@ def plot_predicted_cell_labels_in_spot(
 
 def polygon_area(contour):
     """
-    Compute the area of a polygon given its contour points using the shoelace formula.
+    Computes the area of a polygon given its contour points using the shoelace formula.
+
+    Args:
+        contour: List of (x, y) tuples representing the polygon's vertices.
     """
+
     x = [p[0] for p in contour]
     y = [p[1] for p in contour]
     return 0.5 * abs(sum(x[i] * y[i + 1] - x[i + 1] * y[i] for i in range(-1, len(contour) - 1)))

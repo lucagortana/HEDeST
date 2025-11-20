@@ -4,6 +4,7 @@ import io
 import os
 import random
 from datetime import timedelta
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -13,6 +14,7 @@ from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scanpy as sc
 import torch
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -92,6 +94,32 @@ def load_spatial_adata(path: str):
             raise RuntimeError("Failed to load data with either sc.read_h5ad or sc.read_visium") from (
                 h5ad_error or visium_error
             )
+
+
+def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFrame:
+    """
+    Counts cell types in the segmentation dictionary.
+
+    Args:
+        seg_dict (Dict): Dictionary containing segmentation data.
+        ct_list (List[str]): List of cell type names.
+
+    Returns:
+        DataFrame containing counts of each cell type.
+    """
+
+    cell_type_counts = {}
+    nuc = seg_dict["nuc"]
+    for cell_id in nuc.keys():
+        label = nuc[cell_id]["type"]
+        cell_type = ct_list[int(label)]
+        if cell_type not in cell_type_counts.keys():
+            cell_type_counts[cell_type] = 1
+        else:
+            cell_type_counts[cell_type] += 1
+    df = pd.DataFrame([cell_type_counts])
+
+    return df
 
 
 def fig_to_array(fig: Figure) -> np.ndarray:

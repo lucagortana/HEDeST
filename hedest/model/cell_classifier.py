@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import timm
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -65,40 +64,43 @@ class CellClassifier(BaseCellClassifier):
         Image classifier using a pretrained model from timm or a custom ConvNet.
 
         Args:
-            model_name (str): Name of the pretrained model (e.g., "resnet18", "hf-hub:imagenet/h_optimus-0",
-                              or "convnet").
+            model_name (str): Name of the pretrained model (e.g., "default", "convnet"
+                              or "resnet18"...).
             num_classes (int): Number of output classes.
             hidden_dims (list): List of hidden dimensions for the fully connected layers.
             device (torch.device): Device to run the model on.
         """
+
         super().__init__(num_classes, device)
         self.model_name = model_name
         self.hidden_dims = hidden_dims
         self.size_edge = 64
 
-        if self.model_name == "convnet":
-            # Use custom ConvNet
-            self.backbone = ConvNet()
-
-            self.fc_layers = nn.Sequential(
-                nn.Linear(
-                    int(32 * (self.size_edge / 8) ** 2), int(8 * (self.size_edge / 8) ** 2)
-                ),  # 32 * (a/8) * (a/8), 8 * (a/8) * (a/8)
-                nn.ReLU(),
-            )
-
-            self.classifier = nn.Linear(int(8 * (self.size_edge / 8) ** 2), self.num_classes)
-
-        elif self.model_name == "quick":
+        if self.model_name == "default":
             self.backbone = nn.Sequential()
             input_dim = 2048
             for i, hidden_dim in enumerate(self.hidden_dims):
                 self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
                 self.backbone.add_module(f"relu_{i}", nn.ReLU())
-                # self.backbone.add_module(f"dropout_{i}", nn.Dropout(p=0.5))
                 input_dim = hidden_dim
 
             self.backbone.add_module("final", nn.Linear(input_dim, num_classes))
+
+        elif self.model_name == "convnet":
+            conv = ConvNet()
+
+            with torch.no_grad():
+                dummy = torch.zeros(1, 3, self.size_edge, self.size_edge)
+                feat = conv(dummy)
+                flat_dim = feat.view(1, -1).shape[1]
+
+            self.backbone = nn.Sequential(
+                conv,
+                nn.Flatten(),
+                nn.Linear(flat_dim, flat_dim // 4),
+                nn.ReLU(),
+                nn.Linear(flat_dim // 4, self.num_classes),
+            )
 
         elif self.model_name == "resnet18":
 
@@ -110,31 +112,14 @@ class CellClassifier(BaseCellClassifier):
             for i, hidden_dim in enumerate(self.hidden_dims):
                 self.backbone.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
                 self.backbone.add_module(f"relu_{i}", nn.ReLU())
-                # self.backbone.add_module(f"dropout_{i}", nn.Dropout(p=0.5))
                 input_dim = hidden_dim
 
             self.backbone.add_module("final", nn.Linear(input_dim, num_classes))
 
         else:
-            self.backbone = timm.create_model(model_name, pretrained=False, num_classes=self.num_classes)
-
-            # for param in self.backbone.parameters():
-            #     param.requires_grad = False
-
-            # self.fc_layers = nn.Sequential()
-            # input_dim = self.backbone(torch.randn(1, 3, 64, 64)).shape[1]
-            # for i, hidden_dim in enumerate(self.hidden_dims):
-            #     self.fc_layers.add_module(f"fc_{i}", nn.Linear(input_dim, hidden_dim))
-            #     self.fc_layers.add_module(f"relu_{i}", nn.ReLU())
-            #     input_dim = hidden_dim
-
-            # # Final classification layer
-            # self.classifier = nn.Linear(input_dim, num_classes)
+            raise ValueError(f"Model {self.model_name} not recognized.")
 
     def forward(self, x: Tensor) -> Tensor:
         features = self.backbone(x)
-        # if self.model_name == "convnet":
-        #     x = torch.flatten(x, 1)
-        # features = self.fc_layers(features)
 
         return F.softmax(features, dim=1)

@@ -10,7 +10,17 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 
 
-def generate_X_perm(X_sparse):
+def generate_X_perm(X_sparse: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Generates a permuted version of the input sparse matrix by shuffling non-zero elements within each row.
+
+    Args:
+        X_sparse: Input sparse matrix where each row represents a different sample.
+
+    Returns:
+        A tuple containing the permuted dense matrix and the permuted sparse matrix.
+    """
+
     X_sparse_perm = []
     for row_X in X_sparse:
         indices = np.where(row_X > 0)[0]
@@ -23,7 +33,19 @@ def generate_X_perm(X_sparse):
     return X_perm, X_sparse_perm
 
 
-def compute_stats(true_labels, predicted_labels, per_class=False):
+def compute_stats(true_labels: np.ndarray, predicted_labels: np.ndarray, per_class: bool = False) -> dict:
+    """
+    Computes classification metrics given true and predicted labels.
+
+    Args:
+        true_labels: Array of true labels.
+        predicted_labels: Array of predicted labels.
+        per_class: Whether to compute per-class metrics.
+
+    Returns:
+        Dictionary containing various classification metrics.
+    """
+
     global_accuracy = accuracy_score(true_labels, predicted_labels)
 
     # Balanced accuracy
@@ -63,13 +85,13 @@ def compute_stats(true_labels, predicted_labels, per_class=False):
 
 def aggregate_stats(metrics_list):
     """
-    Compute mean and confidence intervals for a list of metrics.
+    Computes mean and confidence intervals for a list of metrics.
 
     Args:
-        metrics_list (List[Dict[str, float]]): List of dictionaries containing metrics from each run.
+        metrics_list: List of dictionaries containing metrics from each run.
 
     Returns:
-        Tuple[Dict[str, float], Dict[str, float]]: Tuple containing the mean and confidence intervals for each metric.
+        Tuple containing the mean and confidence intervals for each metric.
     """
 
     df_metrics = pd.DataFrame(metrics_list)

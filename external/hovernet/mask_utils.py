@@ -23,8 +23,8 @@ PIL.Image.MAX_IMAGE_PIXELS = 933120000
 def make_auto_mask(slide: Union[OpenSlide, str],
                    mask_level: int, 
                    save: Optional[str] = None) -> ndarray:
-    
-    """Create a binary mask from a downsampled version of a WSI. Uses the Otsu algorithm 
+    """
+    Creates a binary mask from a downsampled version of a WSI. Uses the Otsu algorithm 
     and a morphological opening.
 
     Args:
@@ -33,7 +33,7 @@ def make_auto_mask(slide: Union[OpenSlide, str],
         save: Path to save the mask.
 
     Returns:
-        ndarray: Binary mask.
+        Binary mask.
     """
 
     assert mask_level >= 0, "mask_level must be a positive integer"
@@ -69,13 +69,14 @@ def make_auto_mask(slide: Union[OpenSlide, str],
 
 def clear_border(mask: ndarray, prop: int) -> ndarray:
     """
-    Clear the border of a binary mask.
+    Clears the border of a binary mask.
+    
     Args:
         mask: Binary mask.
         prop: Proportion of the border to clear.
     
     Returns:
-        ndarray: Mask with cleared border
+        Mask with cleared border
     """
 
     r, c = mask.shape
@@ -106,6 +107,7 @@ def get_x_y(slide: OpenSlide,
     Returns:
         A tuple corresponding to the converted coordinates, point_0.
     """
+    
     x_l, y_l = point_l
     size_x_l = slide.level_dimensions[level][0]
     size_y_l = slide.level_dimensions[level][1]

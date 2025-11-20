@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import random
-from typing import Dict
 from typing import List
 from typing import Tuple
 
@@ -16,34 +14,10 @@ from hedest.analysis.plots import plot_history
 from hedest.model.cell_classifier import CellClassifier
 from hedest.utils import set_seed
 
-# from hedest.analysis.plots import plot_grid_celltype
-# from hedest.predict import predict_slide
-
 
 class ModelTrainer:
     """
     A class for training and evaluating a deep learning model for cell classification tasks.
-
-    Attributes:
-        model (nn.Module): The model to train and evaluate.
-        ct_list (List[str]): List of cell type names.
-        optimizer (optim.Optimizer): Optimizer for model training.
-        train_loader (DataLoader): DataLoader for the training dataset.
-        val_loader (DataLoader): DataLoader for the validation dataset.
-        test_loader (DataLoader): DataLoader for the test dataset.
-        divergence (str): Type of divergence used in loss calculation ('l1', 'l2', 'kl', 'rot').
-        alpha (float): Weight parameter for loss components.
-        num_epochs (int): Number of training epochs.
-        out_dir (str): Directory to save model checkpoints and results.
-        tb_dir (str): Directory for TensorBoard logs.
-        rs (int): Random seed for reproducibility.
-        device (torch.device): Computation device ('cuda' or 'cpu').
-        best_val_loss (float): Best validation loss observed during training.
-        best_model_state (Optional[Dict[str, Any]]): State dictionary of the best model.
-        best_model_path (str): Path to save the best model.
-        final_model_path (str): Path to save the final model.
-        history_train (List[float]): List of training losses per epoch.
-        history_val (List[float]): List of validation losses per epoch.
     """
 
     def __init__(
@@ -54,10 +28,9 @@ class ModelTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         test_loader: DataLoader,
-        divergence: str = "l1",
-        alpha: float = 0.5,
-        # beta: float = 0.0,
-        num_epochs: int = 25,
+        divergence: str = "l2",
+        alpha: float = 0.0,
+        num_epochs: int = 60,
         out_dir: str = "results",
         tb_dir: str = "runs",
         rs: int = 42,
@@ -74,7 +47,6 @@ class ModelTrainer:
             test_loader (DataLoader): DataLoader for the test dataset.
             divergence (str): Type of divergence used in loss calculation.
             alpha (float): Weight parameter for loss components.
-            beta (float): Regularization parameter for Bayesian adjustment.
             num_epochs (int): Number of training epochs.
             out_dir (str): Directory to save model checkpoints and results.
             tb_dir (str): Directory for TensorBoard logs.
@@ -90,7 +62,6 @@ class ModelTrainer:
         self.test_loader = test_loader
         self.divergence = divergence
         self.alpha = alpha
-        # self.beta = beta
         self.num_epochs = num_epochs
         self.out_dir = out_dir
         self.tb_dir = tb_dir
@@ -99,7 +70,6 @@ class ModelTrainer:
         self.best_val_loss = float("inf")
         self.best_model_state = None
         self.best_model_path = os.path.join(self.out_dir, "best_model.pth")
-        self.final_model_path = os.path.join(self.out_dir, "final_model.pth")
 
     def init_model(self) -> None:
         """
@@ -157,7 +127,6 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                # adjusted_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, beta=self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -193,33 +162,6 @@ class ModelTrainer:
             self.history_train.append(train_loss)
             self.history_val.append(val_loss)
 
-            # if epoch % 10 == 0:
-
-            #     n_img_train = sum(element[0].size(0) for element in self.train_loader.dataset)
-            #     n_img_val = sum(element[0].size(0) for element in self.val_loader.dataset)
-
-            #     img_plot_train = self._extract_images_for_tb(self.train_loader, n_img_train)
-            #     img_plot_val = self._extract_images_for_tb(self.val_loader, n_img_val)
-            #     cell_prob_train = predict_slide(self.model, img_plot_train,
-            #                                     self.ct_list, batch_size=256, verbose=False)
-            #     cell_prob_val = predict_slide(self.model, img_plot_val, self.ct_list, batch_size=256, verbose=False)
-
-            #     for ct in self.ct_list:
-            #         writer.add_figure(
-            #             f"Train - {ct}",
-            #             plot_grid_celltype(
-            #                 cell_prob_train, img_plot_train, ct, n=20, selection="max", show_probs=True, display=False
-            #             ),
-            #             global_step=epoch + 1,
-            #         )
-            #         writer.add_figure(
-            #             f"Val - {ct}",
-            #             plot_grid_celltype(
-            #                 cell_prob_val, img_plot_val, ct, n=20, selection="max", show_probs=True, display=False
-            #             ),
-            #             global_step=epoch + 1,
-            #         )
-
             # Save best model based on validation loss
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
@@ -231,16 +173,9 @@ class ModelTrainer:
 
         writer.close()
 
-        # Save best and final models
-        if self.best_val_loss != val_loss:
-            torch.save(self.model.state_dict(), self.final_model_path)
-            logger.info(f"Best model and final model are different. Final model saved at {self.final_model_path}.")
-        else:
-            logger.info("Best model and final model are the same.")
-
         logger.info("Training complete. Evaluating on test set...")
 
-        # Evaluate the final model on the test set
+        # Evaluate the final and best models on the test set
         self.test()
 
     def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
@@ -269,7 +204,6 @@ class ModelTrainer:
                 new_bag_indices = torch.tensor([mapping[val.item()] for val in bag_indices]).to(self.device)
 
                 cell_probs = self.model(images)
-                # adjusted_probs = bayesian_adjustment(cell_probs, new_bag_indices, proportions, self.p_c, beta=self.beta)
                 loss, loss_half1, loss_half2 = self.model.compute_loss(
                     cell_probs,
                     new_bag_indices,
@@ -322,65 +256,3 @@ class ModelTrainer:
             savefig=history_filedir,
         )
         logger.info(f"History saved at {history_filedir}")
-
-    def _extract_images_for_tb(self, dataloader: DataLoader, n: int) -> Dict[str, torch.Tensor]:
-        """
-        Extracts a subset of images from a dataloader for visualization in TensorBoard.
-
-        Args:
-            dataloader (DataLoader): The DataLoader to extract images from.
-            n (int): The number of images to extract.
-
-        Returns:
-            Dict[str, torch.Tensor]: A dictionary where keys are indices and values are image tensors.
-        """
-
-        global_dict = {}
-        for spot in dataloader.dataset:
-            for image in spot[0]:
-                global_dict[str(len(global_dict))] = image
-
-        if n > len(global_dict):
-            raise ValueError(f"Only {len(global_dict)} images are available, but you asked for {n}.")
-
-        random_indices = random.sample(range(len(global_dict)), n)
-
-        image_dict = {}
-        for idx in random_indices:
-            image_dict[str(len(image_dict))] = (global_dict[str(idx)] * 255).to(torch.uint8)
-
-        return image_dict
-
-
-# def bayesian_adjustment(
-#     cell_probs: torch.Tensor,  # shape: (N_cells, N_classes)
-#     bag_indices: torch.Tensor,  # shape: (N_cells,), maps each cell to a spot
-#     proportions: torch.Tensor,  # shape: (N_spots, N_classes)
-#     p_c: torch.Tensor,  # shape: (N_classes,), global class proportions
-#     eps: float = 1e-6,  # avoid division by zero
-#     beta: float = 0.0,  # regularization term: 0 = full adjustment, 1 = original probabilities
-# ) -> torch.Tensor:
-#     """
-#     Bayesian adjustment of cell probabilities with optional recursive regularization.
-
-#     Args:
-#         cell_probs: Predicted cell probabilities.
-#         bag_indices: Mapping of each cell to its corresponding spot.
-#         proportions: Spot-level cell type proportions.
-#         p_c: Global class proportions.
-#         eps: Small constant to avoid division by zero.
-#         regularization: If >0, recursively averages adjusted_probs with original cell_probs.
-
-#     Returns:
-#         Adjusted (and optionally regularized) cell probability tensor.
-#     """
-#     p_tilde_c = proportions[bag_indices]
-#     p_c = p_c.clamp(min=eps)
-
-#     ratio = p_tilde_c / p_c
-#     alpha_x = 1.0 / (torch.sum(cell_probs * ratio, dim=1) + eps)
-#     adjusted_probs = cell_probs * alpha_x.unsqueeze(1) * ratio
-
-#     adjusted_probs = (1 - beta) * adjusted_probs + beta * cell_probs
-
-#     return adjusted_probs

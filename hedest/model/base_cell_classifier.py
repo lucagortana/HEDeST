@@ -24,8 +24,9 @@ class BaseCellClassifier(nn.Module, ABC):
         Base class for image classifiers.
 
         Args:
-            num_classes (int): Number of output classes.
+            num_classes: Number of output classes.
         """
+
         super().__init__()
         self.num_classes = num_classes
         self.device = device
@@ -47,11 +48,11 @@ class BaseCellClassifier(nn.Module, ABC):
         and an optional maximum probability loss.
 
         Args:
-            outputs (torch.Tensor): The output probabilities from the model (num_cells x num_classes).
-            bag_indices (torch.Tensor): Indices indicating which bag each cell belongs to (num_cells).
-            true_proportions (torch.Tensor): The ground-truth class proportions (num_classes).
-            divergence (str): Type of divergence loss to use. Options are "l1", "l2", or "kl".
-            alpha (float): Weight for the max probability loss. Should be in the range [0, 1].
+            outputs: The output probabilities from the model (num_cells x num_classes).
+            bag_indices: Indices indicating which bag each cell belongs to (num_cells).
+            true_proportions: The ground-truth class proportions (num_classes).
+            divergence: Type of divergence loss to use. Options are "l1", "l2", or "kl".
+            alpha: Weight for the max probability loss. Should be in the range [0, 1].
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

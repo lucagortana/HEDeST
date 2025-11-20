@@ -35,16 +35,16 @@ def main(
     path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
     adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
     spot_dict_file: Optional[str] = typer.Option(None, help="Path to the spot-to-cell json file."),
-    model_name: str = typer.Option("resnet18", help="Type of model. Can be 'resnet18' or 'resnet50'."),
+    model_name: str = typer.Option("default", help="Type of model. Can be 'default', 'convnet', or 'resnet18'."),
     hidden_dims: str = typer.Option("512,256", help="Hidden dimensions for the model (comma-separated)."),
     batch_size: int = typer.Option(64, help="Batch size for model training."),
     lr: float = typer.Option(0.0001, help="Learning rate."),
     divergence: str = typer.Option(
         "l2", help="Metric to use for divergence computation. Can be 'l1', 'l2', 'kl', or 'rot'."
     ),
-    alpha: float = typer.Option(0.5, help="Alpha parameter for loss function."),
+    alpha: float = typer.Option(0.0, help="Alpha parameter for loss function."),
     beta: float = typer.Option(0.0, help="Beta parameter for bayesian adjustment."),
-    epochs: int = typer.Option(25, help="Number of training epochs."),
+    epochs: int = typer.Option(60, help="Number of training epochs."),
     train_size: float = typer.Option(0.5, help="Training set size as a fraction."),
     val_size: float = typer.Option(0.25, help="Validation set size as a fraction."),
     out_dir: str = typer.Option("results", help="Output directory."),
@@ -56,7 +56,7 @@ def main(
 
     # Validate inputs
     valid_divergence = {"l1", "l2", "kl"}
-    valid_model_name = {"convnet", "resnet18", "resnet50", "quick"}
+    valid_model_name = {"default", "convnet", "resnet18"}
 
     if divergence not in valid_divergence:
         raise ValueError(f"Invalid value for 'divergence': {divergence}. Must be one of {valid_divergence}.")
@@ -135,10 +135,10 @@ def main(
     run_hedest(
         image_dict=image_dict,
         spot_prop_df=spot_prop_df,
+        spot_dict=spot_dict,
         json_path=json_path,
         adata=adata,
         adata_name=adata_name,
-        spot_dict=spot_dict,
         model_name=model_name,
         hidden_dims=hidden_dims,
         batch_size=batch_size,
