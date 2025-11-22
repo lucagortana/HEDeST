@@ -383,7 +383,7 @@ def plot_predicted_cell_labels_in_spot(
         return combined_fig
 
 
-def polygon_area(contour):
+def polygon_area(contour: List[Tuple[float, float]]) -> float:
     """
     Computes the area of a polygon given its contour points using the shoelace formula.
 

@@ -20,6 +20,16 @@ app = typer.Typer()
 
 
 def parse_hidden_dims(hidden_dims: str) -> List[int]:
+    """
+    Parses the hidden_dims string into a list of integers.
+
+    Args:
+        hidden_dims: Comma-separated string of integers.
+
+    Returns:
+        List of integers representing hidden dimensions.
+    """
+
     try:
         return [int(dim) for dim in hidden_dims.split(",")]
     except ValueError:

@@ -50,7 +50,7 @@ def run_hedest(
     rs: int = 42,
 ) -> None:
     """
-    Runs secondary deconvolution pipeline for cell classification.
+    Runs HEDeST for cell classification.
 
     Args:
         image_dict: Dictionary mapping cell IDs to image tensors.
@@ -123,7 +123,6 @@ def run_hedest(
     # Model training
     trainer = ModelTrainer(
         model=model,
-        ct_list=ct_list,
         optimizer=optimizer,
         train_loader=train_loader,
         val_loader=val_loader,

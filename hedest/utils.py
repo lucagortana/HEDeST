@@ -26,13 +26,10 @@ from hedest.model.cell_classifier import CellClassifier
 
 def set_seed(seed: int) -> None:
     """
-    Set the seed for random number generators in Python libraries.
+    Sets the seed for random number generators in Python libraries.
 
-    Parameters:
-        seed (int): The seed value to set for random number generators.
-
-    Example:
-        >>> set_seed(42)
+    Args:
+        seed: The seed value to set for random number generators.
     """
 
     random.seed(seed)
@@ -43,19 +40,16 @@ def set_seed(seed: int) -> None:
 
 def load_model(model_path: str, model_name: str, num_classes: int, hidden_dims: List[int]) -> CellClassifier:
     """
-    Load a trained model from a file.
+    Loads a trained model from a file.
 
-    Parameters:
-        model_path (str): Path to the model file.
-        edge_size (int): Size of the image edge.
-        num_classes (int): Number of classes in the model.
-        mtype (str): Model type.
+    Args:
+        model_path: Path to the model file.
+        model_name: Name of the model architecture.
+        num_classes: Number of classes in the model.
+        hidden_dims: List of hidden layer dimensions.
 
     Returns:
-        CellClassifier: The loaded model.
-
-    Example:
-        >>> model = load_model("model.pth", 128, 10, "resnet")
+        The loaded model.
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -73,13 +67,13 @@ def load_model(model_path: str, model_name: str, num_classes: int, hidden_dims: 
 
 def load_spatial_adata(path: str):
     """
-    Load spatial transcriptomics data with Scanpy.
+    Loads spatial transcriptomics data with Scanpy.
 
-    Parameters:
-        path (str): Path to an `.h5ad` file **or** a Visium directory.
+    Args:
+        path: Path to an `.h5ad` file **or** a Visium directory.
 
     Returns:
-        adata (AnnData): The loaded AnnData object.
+        adata: The loaded AnnData object.
     """
 
     try:
@@ -101,8 +95,8 @@ def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFra
     Counts cell types in the segmentation dictionary.
 
     Args:
-        seg_dict (Dict): Dictionary containing segmentation data.
-        ct_list (List[str]): List of cell type names.
+        seg_dict: Dictionary containing segmentation data.
+        ct_list: List of cell type names.
 
     Returns:
         DataFrame containing counts of each cell type.
@@ -124,13 +118,13 @@ def count_cell_types(seg_dict: Dict[str, Any], ct_list: List[str]) -> pd.DataFra
 
 def fig_to_array(fig: Figure) -> np.ndarray:
     """
-    Convert a Matplotlib figure to a NumPy array.
+    Converts a Matplotlib figure to a NumPy array.
 
-    Parameters:
-        fig (Figure): A Matplotlib figure.
+    Args:
+        fig: A Matplotlib figure.
 
     Returns:
-        np.ndarray: An image array.
+        An image array.
     """
 
     buf = io.BytesIO()
@@ -143,13 +137,13 @@ def fig_to_array(fig: Figure) -> np.ndarray:
 
 def check_json_classification(data: Dict[str, Dict[str, Dict[str, Optional[str]]]]) -> bool:
     """
-    Check if all cells in the JSON classification data have a non-None type.
+    Checks if all cells in the JSON classification data have a non-None type.
 
-    Parameters:
-        data (Dict): A nested dictionary containing classification data.
+    Args:
+        data: A nested dictionary containing classification data.
 
     Returns:
-        bool: True if all cells have types, False otherwise.
+        True if all cells have types, False otherwise.
     """
 
     first_key = next(iter(data["nuc"]))
@@ -160,14 +154,14 @@ def seg_colors_compatible(
     seg_dict: Dict[str, Dict[str, Dict[str, Union[str, int]]]], color_dict: Dict[str, Tuple[str, Tuple[int, int, int]]]
 ) -> bool:
     """
-    Check if segmentation labels are compatible with color dictionary.
+    Checks if segmentation labels are compatible with color dictionary.
 
-    Parameters:
-        seg_dict (Dict): Segmentation data dictionary.
-        color_dict (Dict): Color dictionary.
+    Args:
+        seg_dict: Segmentation data dictionary.
+        color_dict: Color dictionary.
 
     Returns:
-        bool: True if all segmentation labels have corresponding colors, False otherwise.
+        True if all segmentation labels have corresponding colors, False otherwise.
     """
 
     seg_labels = set(str(cell["type"]) for cell_data in seg_dict["nuc"].values() for cell in [cell_data])
@@ -178,13 +172,13 @@ def seg_colors_compatible(
 
 def format_time(seconds: int) -> str:
     """
-    Format time duration in HH:MM:SS or MM:SS format.
+    Formats time duration in HH:MM:SS or MM:SS format.
 
-    Parameters:
-        seconds (int): Time duration in seconds.
+    Args:
+        seconds: Time duration in seconds.
 
     Returns:
-        str: Formatted time string.
+        Formatted time string.
     """
 
     formatted_time = str(timedelta(seconds=int(seconds)))
@@ -195,13 +189,13 @@ def format_time(seconds: int) -> str:
 
 def revert_dict(data: Dict[str, List[str]]) -> Dict[str, str]:
     """
-    Revert a dictionary with lists as values to a dictionary mapping values to keys.
+    Reverts a dictionary with lists as values to a dictionary mapping values to keys.
 
-    Parameters:
-        data (Dict): Input dictionary.
+    Args:
+        data: Input dictionary.
 
     Returns:
-        Dict: Reverted dictionary.
+        Reverted dictionary.
     """
 
     return {val: key for key, values in data.items() for val in values}
@@ -209,13 +203,13 @@ def revert_dict(data: Dict[str, List[str]]) -> Dict[str, str]:
 
 def remove_empty_keys(data: Dict[str, List]) -> Dict[str, List]:
     """
-    Remove keys with empty lists from a dictionary.
+    Removes keys with empty lists from a dictionary.
 
-    Parameters:
-        data (Dict): Input dictionary.
+    Args:
+        data: Input dictionary.
 
     Returns:
-        Dict: Dictionary without empty keys.
+        Dictionary without empty keys.
     """
 
     empty_keys = []
@@ -233,16 +227,16 @@ def generate_color_dict(
     labels: List[str], palette: str = "tab20", format: str = "classic", n_max: int = 40
 ) -> Dict[str, Union[Tuple, Tuple[str, List[int]]]]:
     """
-    Generate a dictionary of colors for labels.
+    Generates a dictionary of colors for labels.
 
-    Parameters:
-        labels (List): List of class labels.
-        palette (str): Matplotlib color palette.
-        format (str): Output format - "classic" or "special".
-        n_max (int): Maximum number of unique colors.
+    Args:
+        labels: List of class labels.
+        palette: Matplotlib color palette.
+        format: Output format - "classic" or "special".
+        n_max: Maximum number of unique colors.
 
     Returns:
-        Dict: Color dictionary.
+        Color dictionary.
     """
 
     if len(labels) > n_max:
@@ -272,8 +266,8 @@ def require_attributes(*required_attributes: str) -> Callable:
     """
     Decorator to ensure required attributes of a class are not None.
 
-    Parameters:
-        *required_attributes (str): Names of required attributes.
+    Args:
+        *required_attributes: Names of required attributes.
 
     Returns:
         Callable: Decorated function.

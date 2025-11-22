@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 
 class ImageDataset(Dataset):
-    """Dataset for loading images from a pre-saved image_dict.pt"""
+    """Dataset for loading individual cell images from a pre-saved image_dict.pt"""
 
     def __init__(self, image_dict: dict[str, torch.Tensor], transform: transforms.Compose) -> None:
         self.image_dict = image_dict
@@ -31,6 +31,8 @@ class ImageDataset(Dataset):
 
 
 class SpotDataset(Dataset):
+    """Dataset for loading spots with their corresponding cell images and proportions."""
+
     def __init__(self, spot_dict, spot_prop_df, image_dict, transform):
         self.spot_dict = spot_dict
         self.spot_prop_df = spot_prop_df
@@ -57,6 +59,8 @@ class SpotDataset(Dataset):
 
 
 class EmbedDataset(Dataset):
+    """Dataset for loading individual cell embeddings from a pre-saved image_dict.pt"""
+
     def __init__(self, image_dict: dict[str, torch.Tensor]) -> None:
         self.image_dict = image_dict
         self.cell_ids = list(image_dict.keys())
@@ -72,6 +76,8 @@ class EmbedDataset(Dataset):
 
 
 class SpotEmbedDataset(Dataset):
+    """Dataset for loading spots with their corresponding cell embeddings and proportions."""
+
     def __init__(self, spot_dict, spot_prop_df, image_dict):
         self.spot_dict = spot_dict
         self.spot_prop_df = spot_prop_df
@@ -93,6 +99,8 @@ class SpotEmbedDataset(Dataset):
 
 
 class CellProbDataset(Dataset):
+    """Dataset for cell probabilities used during PPSA."""
+
     def __init__(self, p_cell: torch.Tensor, p_local: torch.Tensor, beta: torch.Tensor):
         self.p_cell = p_cell  # (N, n_types)
         self.p_local = p_local  # (N, n_types)
@@ -106,42 +114,14 @@ class CellProbDataset(Dataset):
 
 
 class CellProbDatasetNaive(Dataset):
-    """
-    Dataset for cell probabilities with corresponding spot IDs.
-
-    Attributes:
-        cell_prob_tensor: Tensor of cell probabilities.
-        spot_ids: List of spot IDs corresponding to each cell.
-    """
+    """Dataset for cell probabilities used during naive PPSA."""
 
     def __init__(self, cell_prob_tensor: torch.Tensor, spot_ids: List[int]):
-        """
-        Initializes the CellProbDataset.
-
-        Args:
-            cell_prob_tensor: Tensor containing probabilities for each cell.
-            spot_ids: List of spot IDs corresponding to each cell.
-        """
-
         self.cell_prob_tensor = cell_prob_tensor
         self.spot_ids = spot_ids
 
     def __len__(self) -> int:
-        """
-        Returns the number of cells in the dataset.
-        """
-
         return len(self.cell_prob_tensor)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int, int]:
-        """
-        Retrieves a cell's probabilities, spot ID, and index.
-
-        Args:
-            idx: Index of the cell.
-
-        Returns:
-            Tuple containing the cell probabilities, spot ID, and index.
-        """
-
         return self.cell_prob_tensor[idx], self.spot_ids[idx], idx

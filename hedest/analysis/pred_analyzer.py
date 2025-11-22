@@ -69,13 +69,13 @@ class PredAnalyzer:
 
     def __init__(self, adjusted: bool = True, model_info: Optional[Union[dict, str]] = None, **kwargs):
         """
-        Initialize PredAnalyzer with variables from a dictionary or a pickle file containing model informations
+        Initializes PredAnalyzer with variables from a dictionary or a pickle file containing model informations
         and predictions. All variables can be None, except for 'preds' which must be provided. You can add more
         attributes dynamically using the `add_attributes` method.
 
         Args:
-            adjusted (bool): Whether to use adjusted predictions.
-            model_info (Union[dict, str], optional): Model information provided as:
+            adjusted: Whether to use adjusted predictions.
+            model_info: Model information provided as:
                 - A dictionary with variable data.
                 - A path to a pickle file.
             **kwargs: Additional variables to add dynamically.
@@ -154,10 +154,10 @@ class PredAnalyzer:
 
     def __repr__(self) -> str:
         """
-        Return a string representation of the PredAnalyzer instance.
+        Returns a string representation of the PredAnalyzer instance.
 
         Returns:
-            str: A string containing all expected attributes and their values.
+            A string containing all expected attributes and their values.
         """
 
         attrs = ", ".join(f"{k}={getattr(self, k, None)}" for k in self.EXPECTED_VARIABLES)
@@ -166,17 +166,17 @@ class PredAnalyzer:
     @classmethod
     def expected_variables(cls) -> Set[str]:
         """
-        Get the set of expected variable keys.
+        Gets the set of expected variable keys.
 
         Returns:
-            Set[str]: Expected variable keys.
+            Expected variable keys.
         """
 
         return cls.EXPECTED_VARIABLES
 
     def add_attributes(self, **kwargs) -> None:
         """
-        Dynamically add attributes to the instance if they are in EXPECTED_VARIABLES.
+        Dynamically adds attributes to the instance if they are in EXPECTED_VARIABLES.
 
         Args:
             **kwargs: Attribute names and values to add.
@@ -205,20 +205,21 @@ class PredAnalyzer:
 
     def list_attributes(self) -> Dict[str, Any]:
         """
-        Return all current attributes of the instance.
+        Returns all current attributes of the instance.
 
         Returns:
-            Dict[str, Any]: Dictionary of current attributes.
+            Dictionary of current attributes.
         """
 
         return {key: getattr(self, key, None) for key in self.EXPECTED_VARIABLES}
 
     def extract_stats(self, metric: str = "predicted") -> pd.DataFrame:
         """
-        Extract statistics from predictions.
+        Extracts statistics from predictions. You can choose to extract statistics based on either
+        predicted labels or all predictions.
 
         Args:
-            metric (str): Metric to use, either "predicted" or "all".
+            metric: Metric to use, either "predicted" or "all".
 
         Returns:
             pd.DataFrame: DataFrame containing class-wise statistics.
@@ -291,14 +292,14 @@ class PredAnalyzer:
     @require_attributes("history_train", "history_val")
     def plot_history(self, show: bool = False, savefig: Optional[str] = None) -> None:
         """
-        Plot training and validation history.
+        Plots training and validation history.
 
         Args:
-            show (bool): Whether to display the plot.
-            savefig (str, optional): File path to save the plot.
+            show: Whether to display the plot.
+            savefig: File path to save the plot.
 
         Returns:
-            Optional[plt.Figure]: Train and validation history of the model.
+            Train and validation history of the model.
         """
 
         return plot_history(self.history_train, self.history_val, show=show, savefig=savefig)
@@ -308,15 +309,15 @@ class PredAnalyzer:
         self, spot_id: Optional[str] = None, num_cols: int = 8, display: bool = True
     ) -> Optional[plt.Figure]:
         """
-        Plot a grid of individual cell images for a given spot ID.
+        Plots a grid of individual cell images for a given spot ID.
 
         Args:
-            spot_id (str, optional): Spot ID to plot. If None, spot ID will be random.
-            num_cols (int): Number of columns in the grid.
-            display (bool): Whether to display the plot.
+            spot_id: Spot ID to plot. If None, spot ID will be random.
+            num_cols: Number of columns in the grid.
+            display: Whether to display the plot.
 
         Returns:
-            Optional[plt.Figure]: Image grid with individual cell images of the same spot.
+            Image grid with individual cell images of the same spot.
         """
 
         return plot_mosaic_cells(
@@ -334,15 +335,15 @@ class PredAnalyzer:
         self, spot_id: Optional[str] = None, show_labels: bool = True, display: bool = True
     ) -> Optional[plt.Figure]:
         """
-        Plot a spot's visualization with all cell images arranged in a grid.
+        Plots a spot's visualization with all cell images arranged in a grid.
 
         Args:
-            spot_id (str, optional): Spot ID to plot. If None, spot ID will be random.
-            show_labels (bool): Whether to show predicted labels.
-            display (bool): Whether to display the plot.
+            spot_id: Spot ID to plot. If None, spot ID will be random.
+            show_labels: Whether to show predicted labels.
+            display: Whether to display the plot.
 
         Returns:
-            Optional[plt.Figure]: Image spot with cell spots and potentially cell labels.
+            Image spot with cell spots and potentially cell labels.
         """
 
         return plot_predicted_cell_labels_in_spot(
@@ -360,11 +361,11 @@ class PredAnalyzer:
     @require_attributes("spot_dict", "proportions", "image_path", "adata", "adata_name")
     def plot_spot_proportions(self, spot_id: Optional[str] = None, draw_seg: bool = False) -> None:
         """
-        Plot true and predicted cell type proportions for a given spot.
+        Plots true and predicted cell type proportions for a given spot.
 
         Args:
-            spot_id (str, optional): Spot ID to plot. If None, selects a random spot.
-            draw_seg (bool): Whether to draw segmentation overlays.
+            spot_id: Spot ID to plot. If None, selects a random spot.
+            draw_seg: Whether to draw segmentation overlays.
         """
 
         if draw_seg:
@@ -433,18 +434,19 @@ class PredAnalyzer:
         self, title: str = "", display: bool = True, figsize: tuple = (8, 6), cmap: str = "coolwarm"
     ) -> Optional[plt.Figure]:
         """
-        Plot the Pearson correlation matrix of cell type proportions across spots.
+        Plots the Pearson correlation matrix of cell type proportions across spots.
 
         This visualizes cell type colocalization: how often cell types co-occur
         across spots based on proportion similarity.
 
         Args:
-            display (bool): Whether to display the plot immediately.
-            figsize (tuple): Size of the figure.
-            cmap (str): Colormap for heatmap.
+            title: Title of the plot.
+            display: Whether to display the plot immediately.
+            figsize: Size of the figure.
+            cmap: Colormap for heatmap.
 
         Returns:
-            Optional[plt.Figure]: The matplotlib figure (if display is False).
+            The matplotlib figure (if display is False).
         """
 
         correlation_matrix = self.proportions.corr(method="pearson")
@@ -476,8 +478,11 @@ class PredAnalyzer:
     @require_attributes("proportions", "spot_dict")
     def evaluate_prop_predictions(self, subset="all") -> Dict[str, float]:
         """
-        Evaluate slide-level predictions using various metrics. With this function, you can compute a series of
+        Evaluates slide-level predictions using various metrics. With this function, you can compute a series of
         metrics to compare, for each cell-type, true vs predicted proportions over the histological slide.
+
+        Args:
+            subset: Subset of spots to evaluate ("train", "no_train", or "all").
 
         Returns:
             Dict[str, float]: A dictionary of computed metrics.
@@ -552,13 +557,14 @@ class PredAnalyzer:
         If compare_to_gt is True, plots histograms separately for cells that are truly
         that type (based on ground truth) vs. those that are not.
 
-        Parameters:
-            bins (int): Number of bins for histogram.
-            y_lim (tuple, optional): Y-axis limit.
-            figsize (tuple): Size of the figure.
-            compare_to_gt (bool): Whether to split by true/false labels.
-            savefig (str, optional): Path to save the figure.
+        Args:
+            bins: Number of bins for histogram.
+            y_lim: Y-axis limit.
+            figsize: Size of the figure.
+            compare_to_gt: Whether to split by true/false labels.
+            savefig: Path to save the figure.
         """
+
         sns.set(style="whitegrid")
 
         cell_types = self.predictions.columns.tolist()
@@ -627,10 +633,14 @@ class PredAnalyzer:
 
     def evaluate_cell_predictions(self, subset="all", per_class=True) -> Dict[str, float]:
         """
-        Evaluate cell-level predictions using various metrics.
+        Evaluates cell-level predictions using various metrics.
+
+        Args:
+            subset: Subset of cells to evaluate ("train", "no_train", or "all").
+            per_class: Whether to compute metrics per class.
 
         Returns:
-            Dict[str, float]: A dictionary of computed metrics.
+            A dictionary of computed metrics.
         """
 
         if self.true_labels is None:
@@ -701,19 +711,20 @@ class PredAnalyzer:
         fontsize: int = 20,
     ) -> Optional[plt.Figure]:
         """
-        Plot a grid of cell images predicted as one or multiple cell types.
+        Plots a grid of cell images predicted as one or multiple cell types.
 
         Args:
-            cell_type (Optional[str]): Target cell type. If None, plot all cell types in a big grid.
-            n (int): Number of images per cell type grid.
-            selection (str): Selection mode ("max" or "random").
-            show_probs (bool): Whether to show probability labels.
-            display (bool): Whether to display the plot.
-            nrows (Optional[int]): Number of rows for the big grid (only used if cell_type is None).
-            ncols (Optional[int]): Number of cols for the big grid (only used if cell_type is None).
+            cell_type: Target cell type. If None, plot all cell types in a big grid.
+            n: Number of images per cell type grid.
+            selection: Selection mode ("max" or "random").
+            show_probs: Whether to show probability labels.
+            display: Whether to display the plot.
+            nrows: Number of rows for the big grid (only used if cell_type is None).
+            ncols: Number of cols for the big grid (only used if cell_type is None).
+            fontsize: Font size for cell type titles (only used if cell_type is None).
 
         Returns:
-            Optional[plt.Figure]: The generated matplotlib figure.
+            The generated matplotlib figure.
         """
 
         if cell_type is not None:
@@ -792,7 +803,7 @@ class PredAnalyzer:
         savefig: Optional[str] = None,
     ) -> None:
         """
-        Compare the area of predicted cells for specific cell types using box plots and optional statistical tests.
+        Compares the area of predicted cells for specific cell types using box plots and optional statistical tests.
 
         Args:
             cell_types (List[str]): List of cell types to compare. Must be in self.ct_list.
@@ -804,6 +815,7 @@ class PredAnalyzer:
             fontsize_utest (float): Font size for statistical annotation text.
             savefig (str, optional): If provided, saves the plot to this path.
         """
+
         pix_to_um = 55 / self.adata.uns["spatial"][self.adata_name]["scalefactors"]["spot_diameter_fullres"]
 
         # --- Validation ---
@@ -915,14 +927,14 @@ class PredAnalyzer:
         self, compute_dist: str = "centroid", max_distance: Optional[float] = None
     ) -> Dict[str, Dict[str, float]]:
         """
-        Compute average neighbor composition per cell type.
+        Computes average neighbor composition per cell type.
 
         Args:
-            compute_dist (str): The method to compute distances ("centroid" or "contour").
-            max_distance (Optional[float]): The maximum distance to consider for neighbors.
+            compute_dist: The method to compute distances ("centroid" or "contour").
+            max_distance: The maximum distance to consider for neighbors.
 
         Returns:
-            Dict[str, Dict[str, float]]: cell_type -> neighbor_type -> average count
+            Dictionnary cell_type -> neighbor_type -> average count
         """
 
         self.delaunay_neighbors = self._build_delaunay_graph(compute_dist=compute_dist, max_distance=max_distance)
@@ -956,12 +968,12 @@ class PredAnalyzer:
         self, max_distance: Optional[float] = None, cmap: str = "coolwarm", display: bool = True
     ):
         """
-        Plot a symmetric matrix of mean distances between neighboring cell types.
+        Plots a symmetric matrix of mean distances between neighboring cell types.
 
         Args:
-            max_distance (Optional[float]): The maximum distance to consider for neighbors.
-            cmap (str): The colormap to use for the plot.
-            display (bool): Whether to display the plot or not.
+            max_distance: The maximum distance to consider for neighbors.
+            cmap: The colormap to use for the plot.
+            display: Whether to display the plot or not.
         """
 
         neighbors = self._build_delaunay_graph(max_distance=max_distance)
@@ -1020,12 +1032,19 @@ class PredAnalyzer:
         curvature: float = 0.3,
         min_threshold: float = 0.05,
         fontsize: int = 12,
-    ):
+    ) -> Optional[plt.Figure]:
         """
-        Plot a circular graph where:
+        Plots a circular graph where:
         - Node size is proportional to cell count
         - Arrows show directional neighborhood influence
         - Arrows are curved in opposite directions for A->B and B->A
+
+        Args:
+            display: Whether to display the plot.
+            figsize: Size of the figure.
+            curvature: Curvature of arrows between nodes.
+            min_threshold: Minimum weight threshold to draw an arrow.
+            fontsize: Font size for cell type labels.
         """
 
         if self.neighborhood_aggregates is None:
@@ -1196,15 +1215,15 @@ class PredAnalyzer:
         self, compute_dist: str = "centroid", max_distance: Optional[float] = None
     ) -> Dict[str, List[str]]:
         """
-        Build a Delaunay triangulation graph from segmentation centroids.
+        Builds a Delaunay triangulation graph from segmentation centroids.
         Each cell is a node and neighbors are connected by edges, optionally filtered by a distance threshold.
 
         Args:
-            compute_dist (str): The method to compute distances ("centroid" or "contour").
-            max_distance (float, optional): Maximum allowed distance between neighbors. If None, no filtering.
+            compute_dist: The method to compute distances ("centroid" or "contour").
+            max_distance: Maximum allowed distance between neighbors. If None, no filtering.
 
         Returns:
-            Dict[str, List[str]]: Mapping of cell_id to list of neighboring cell_ids.
+            Mapping of cell_id to list of neighboring cell_ids.
         """
 
         if self.seg_dict_w_class is None:
@@ -1246,10 +1265,10 @@ class PredAnalyzer:
     @require_attributes("spot_dict")
     def _get_predicted_proportions(self) -> pd.DataFrame:
         """
-        Compute predicted proportions of cell types for each spot.
+        Computes predicted proportions of cell types for each spot.
 
         Returns:
-            pd.DataFrame: DataFrame with predicted proportions per spot.
+            DataFrame with predicted proportions per spot.
         """
 
         spot_proportions = {}
@@ -1265,10 +1284,13 @@ class PredAnalyzer:
 
     def _get_labels_slide(self, data) -> Dict[str, Dict[str, Any]]:
         """
-        Generate a dictionary mapping cell IDs to predicted labels.
+        Generates a dictionary mapping cell IDs to predicted labels.
+
+        Args:
+            data: DataFrame with predicted probabilities per cell.
 
         Returns:
-            Dict[str, Dict[str, Any]]: Mapping of cell IDs to predicted labels.
+            Mapping of cell IDs to predicted labels.
         """
 
         predicted_classes = data.idxmax(axis=1)
@@ -1284,10 +1306,10 @@ class PredAnalyzer:
 
     def _generate_dicts_viz_pred(self, seg_dict: Dict[str, Any]) -> None:
         """
-        Update the segmentation dictionary with predicted classes.
+        Updates the segmentation dictionary with predicted classes.
 
         Args:
-            seg_dict (Dict[str, Any]): Dictionary containing segmentation data.
+            seg_dict: Dictionary containing segmentation data.
         """
 
         self.seg_dict_w_class = {

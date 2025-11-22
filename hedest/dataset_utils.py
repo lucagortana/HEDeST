@@ -19,18 +19,18 @@ def split_data(
     Splits data into training, validation, and testing sets.
 
     Args:
-        spot_dict (dict[str, list[str]]): Dictionary containing {spot_id: list of cell IDs}.
-        spot_prop_df (pd.DataFrame): DataFrame where each row corresponds to a spot and columns
-                                     represent cell type proportions.
-        train_size (float): Proportion of the dataset to use for training. Defaults to 0.7.
-        val_size (float): Proportion of the dataset to use for validation. Defaults to 0.15.
-        rs (int): Random state for reproducibility. Defaults to 42.
+        spot_dict: Dictionary containing {spot_id: list of cell IDs}.
+        spot_prop_df: DataFrame where each row corresponds to a spot and columns
+                      represent cell type proportions.
+        train_size: Proportion of the dataset to use for training. Defaults to 0.7.
+        val_size: Proportion of the dataset to use for validation. Defaults to 0.15.
+        rs: Random state for reproducibility. Defaults to 42.
 
     Returns:
-        tuple: A tuple containing:
-            - Training set dictionary and corresponding proportions (dict, pd.DataFrame).
-            - Validation set dictionary and corresponding proportions (dict, pd.DataFrame).
-            - Testing set dictionary and corresponding proportions (dict, pd.DataFrame).
+        A tuple containing:
+            - Training set dictionary and corresponding proportions.
+            - Validation set dictionary and corresponding proportions.
+            - Testing set dictionary and corresponding proportions.
     """
 
     assert train_size + val_size <= 1, "Train size + validation size must not exceed 1."
@@ -56,12 +56,11 @@ def pp_prop(spot_prop: Union[pd.DataFrame, str]) -> pd.DataFrame:
     Preprocesses spot proportions by normalizing each row to sum to 1.
 
     Args:
-        spot_prop (Union[pd.DataFrame, str]): A DataFrame where each row corresponds to a spot and columns represent
-                                        cell type proportions. If a string is provided, it is treated as a file path,
-                                        and the DataFrame is read from the file.
+        spot_prop: A DataFrame where each row corresponds to a spot and columns represent cell type proportions.
+                   If a string is provided, it is treated as a file path, and the DataFrame is read from the file.
 
     Returns:
-        pd.DataFrame: A normalized DataFrame where each row sums to 1.
+        A normalized DataFrame where each row sums to 1.
     """
 
     if isinstance(spot_prop, str):
@@ -74,15 +73,15 @@ def pp_prop(spot_prop: Union[pd.DataFrame, str]) -> pd.DataFrame:
     return spot_prop
 
 
-def get_transform(model_name) -> transforms.Compose:
+def get_transform(model_name: str) -> transforms.Compose:
     """
     Returns the appropriate image transformation for a given model.
 
     Args:
-        model_name (str): The name of the model.
+        model_name: The name of the model.
 
     Returns:
-        transforms.Compose: A composition of image transformations.
+        A composition of image transformations.
     """
 
     if "resnet" in model_name:
@@ -95,7 +94,14 @@ def get_transform(model_name) -> transforms.Compose:
     return transform
 
 
-def custom_collate(batch):
+def custom_collate(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+    """
+    Custom collate function to combine a list of data samples into a batch.
+
+    Args:
+        batch: A list of dictionaries, each containing 'images', 'proportions', and 'bag_indices'.
+    """
+
     images = torch.cat([b["images"] for b in batch])
     proportions = torch.stack([b["proportions"] for b in batch])
     bag_indices = torch.cat([b["bag_indices"] for b in batch])

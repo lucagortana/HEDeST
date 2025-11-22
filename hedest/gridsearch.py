@@ -26,23 +26,23 @@ def run_experiment(
     seed: int,
 ) -> None:
     """
-    Run one experiment (model) with the specified parameters.
+    Runs one experiment (model) with the specified parameters.
 
     Args:
-        image_dict_path (str): Path to the image dictionary file.
-        spot_prop_df (str): Path to the spot proportions DataFrame.
-        json_path (str): Path to the JSON file containing segmentation.
-        path_st_adata (str): Path to the spatial transcriptomics AnnData file.
-        adata_name (str): Name of the AnnData object.
-        spot_dict_file (str): Path to the spot dictionary file.
-        model_name (str): Name of the model to use.
-        batch_size (int): Batch size for training.
-        alpha (float): Regularization parameter for the model.
-        beta (float): Regularization parameter for bayesian adjustment.
-        lr (float): Learning rate for training.
-        divergence (str): Divergence metric to use.
-        out_dir (str): Output directory path.
-        seed (int): Random seed for reproducibility.
+        image_dict_path: Path to the image dictionary file.
+        spot_prop_df: Path to the spot proportions DataFrame.
+        json_path: Path to the JSON file containing segmentation.
+        path_st_adata: Path to the spatial transcriptomics AnnData file.
+        adata_name: Name of the AnnData object.
+        spot_dict_file: Path to the spot dictionary file.
+        model_name: Name of the model to use.
+        batch_size: Batch size for training.
+        alpha: Regularization parameter for the model.
+        beta: Regularization parameter for bayesian adjustment.
+        lr: Learning rate for training.
+        divergence: Divergence metric to use.
+        out_dir: Output directory path.
+        seed: Random seed for reproducibility.
     """
 
     config_out_dir = os.path.join(
@@ -107,23 +107,23 @@ def main_simulation(
     out_dir: str,
 ) -> None:
     """
-    Perform the main simulation pipeline for a given divergence metric.
+    Performs the main simulation pipeline for a given divergence metric.
 
     Args:
-        image_dict_path (str): Path to the image dictionary file.
-        spot_prop_df (str): Path to the spot proportions DataFrame.
-        json_path (str): Path to the JSON file containing segmentation.
-        path_st_adata (str): Path to the spatial transcriptomics AnnData file.
-        adata_name (str): Name of the AnnData object.
-        spot_dict_file (str): Path to the spot dictionary file.
-        models (List[str]): List of model names.
-        alphas (List[float]): List of alpha values.
-        betas (List[float]): List of beta values.
-        learning_rates (List[float]): List of learning rates.
-        divergences (List[str]): List of divergence metrics.
-        seeds (List[int]): List of random seed values.
-        batch_size (int): Batch size for training.
-        out_dir (str): Output directory path.
+        image_dict_path: Path to the image dictionary file.
+        spot_prop_df: Path to the spot proportions DataFrame.
+        json_path: Path to the JSON file containing segmentation.
+        path_st_adata: Path to the spatial transcriptomics AnnData file.
+        adata_name: Name of the AnnData object.
+        spot_dict_file: Path to the spot dictionary file.
+        models: List of model names.
+        alphas: List of alpha values.
+        betas: List of beta values.
+        learning_rates: List of learning rates.
+        divergences: List of divergence metrics.
+        seeds: List of random seed values.
+        batch_size: Batch size for training.
+        out_dir: Output directory path.
     """
 
     logger.info(f"Image dictionary path: {image_dict_path}")

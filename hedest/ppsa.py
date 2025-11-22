@@ -42,30 +42,18 @@ class PPSAdjustment:
         weight 0.  If no spot lies in range the probability vector is left
         untouched.
 
-    Parameters
-    ----------
-    cell_prob_df : pd.DataFrame
-        *n_cells × n_types* matrix with raw model probabilities.
-    spot_dict : Dict[str, List[str]]
-        Mapping *spot ID → list(cell IDs)*.
-    spot_prop_df : pd.DataFrame
-        *n_spots × n_types* matrix with spot‑level cell‑type fractions.
-    global_prop : pd.Series
-        Global slide‑wide cell‑type fractions (same ordering as columns).
-    adata : AnnData
-        Visium AnnData object (full‑resolution coordinates required).
-    adata_name : str
-        Key under ``adata.uns['spatial']`` holding the scalefactors.
-    json_path : str
-        Path to the JSON file with segmentation data.
-    beta : float, default 0
-        Interpolation between adjusted (0 → full adj., 1 → keep original).
-    batch_size : int, default 256
-        Minibatch size for GPU throughput.
-    eps : float, default 1e‑6
-        Numerical stability constant.
-    device : Union[str, torch.device], optional
-        Computation device.  Defaults to "cuda" if available.
+    Args:
+        cell_prob_df: *n_cells × n_types* matrix with raw model probabilities.
+        spot_dict: Mapping *spot ID → list(cell IDs)*.
+        spot_prop_df: *n_spots × n_types* matrix with spot‑level cell‑type fractions.
+        global_prop: Global slide‑wide cell‑type fractions (same ordering as columns).
+        adata: Visium AnnData object (full‑resolution coordinates required).
+        adata_name: Key under ``adata.uns['spatial']`` holding the scalefactors.
+        json_path: Path to the JSON file with segmentation data.
+        beta: Interpolation between adjusted (0 → full adj., 1 → keep original).
+        batch_size: Minibatch size for GPU throughput.
+        eps: Numerical stability constant.
+        device: Computation device.  Defaults to "cuda" if available.
     """
 
     def __init__(
@@ -82,6 +70,7 @@ class PPSAdjustment:
         eps: float = 1e-6,
         device: Optional[Union[str, torch.device]] = None,
     ) -> None:
+
         if list(cell_prob_df.columns) != list(spot_prop_df.columns):
             raise ValueError("cell_prob_df and spot_prop_df must share identical columns order")
 
@@ -124,6 +113,20 @@ class PPSAdjustment:
         self.beta_cell = torch.tensor(beta_np, dtype=torch.float32, device=self.device)
 
     def _prepare_local_vectors(self, seg_dict: Dict) -> Tuple[List[str], List[str], np.ndarray, np.ndarray]:
+        """
+        Prepares local proportion vectors and beta values for each cell.
+
+        Args:
+            seg_dict: Dictionary containing segmentation data with cell centroids.
+
+        Returns:
+            A tuple containing:
+            - List of adjustable cell IDs.
+            - List of unadjustable cell IDs.
+            - Numpy array of local proportion vectors for adjustable cells.
+            - Numpy array of beta values for adjustable cells.
+        """
+
         _ = self.spot_prop_df.shape[1]
         spot_prop_np = self.spot_prop_df.to_numpy(dtype=np.float64)
 
@@ -197,10 +200,28 @@ class PPSAdjustment:
         )
 
     def _alpha(self, p_cell: torch.Tensor, p_local: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the alpha adjustment factor for a cell.
+
+        Args:
+            p_cell: Predicted probability vector for a single cell.
+            p_local: Local proportion vector for the cell.
+
+        Returns:
+            Alpha adjustment factor.
+        """
+
         sim = torch.sum(p_cell * (p_local / self.p_c)).clamp(min=self.eps)
         return 1.0 / sim
 
     def adjust(self) -> pd.DataFrame:
+        """
+        Adjusts cell probabilities based on local proportions and beta values.
+
+        Returns:
+            DataFrame of adjusted cell probabilities.
+        """
+
         dataset = CellProbDataset(self.p_cell, self.p_local, self.beta_cell)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
@@ -224,15 +245,16 @@ class PPSAdjustment:
 
 class PPSANaive:
     """
-    Performs PPSA on cell probabilities.
+    Performs naive PPSA on cell probabilities.
 
-    Attributes:
+    Args:
         cell_prob_df: DataFrame of cell probabilities.
-        cell_prob_tensor: Tensor representation of cell probabilities.
-        spot_prop_tensor: Tensor of spot-level proportions.
-        p_c: Global cell type proportions as a tensor.
-        spot_ids: List of indices mapping cells to their spots.
+        spot_dict: Dictionary mapping spot IDs to cell IDs.
+        spot_prop_df: DataFrame of spot proportions.
+        global_prop: Global proportions of cell types over the slide.
+        beta: Hyperparameter to regularize adjustment.
         batch_size: Batch size for processing.
+        eps: Small value to avoid division by zero.
         device: Device used for computation ("cuda" or "cpu").
     """
 
@@ -247,19 +269,6 @@ class PPSANaive:
         eps: float = 1e-6,
         device: Optional[Union[str, torch.device]] = None,
     ):
-        """
-        Initializes BayesianAdjustment.
-
-        Args:
-            cell_prob_df: DataFrame of cell probabilities.
-            spot_dict: Dictionary mapping spot IDs to cell IDs.
-            spot_prop_df: DataFrame of spot proportions.
-            global_prop: Global proportions of cell types over the slide.
-            beta: Hyperparameter to regularize adjustment.
-            batch_size: Batch size for processing.
-            eps: Small value to avoid division by zero.
-            device: Device for computation.
-        """
 
         self.inverse_spot_dict = revert_dict(spot_dict)
 

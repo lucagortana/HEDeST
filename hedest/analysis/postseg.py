@@ -51,11 +51,11 @@ class SlideVisualizer(ABC):
         Initializes the SlideVisualizer.
 
         Args:
-            image_path (str): Path to the histological image.
-            adata (AnnData, optional): Optional Anndata object containing Visium data.
-            adata_name (str, optional): Name of the dataset in the adata object.
-            seg_dict(Union[str, Dict[str, Any]], optional): Segmentation dictionary or path to a JSON file.
-            color_dict(Dict, optional): Dictionary mapping cell types to color tuples.
+            image_path: Path to the histological image.
+            adata: Optional Anndata object containing Visium data.
+            adata_name: Name of the dataset in the adata object.
+            seg_dict: Segmentation dictionary or path to a JSON file.
+            color_dict: Dictionary mapping cell types to color tuples.
         """
 
         self.image_path = image_path
@@ -147,11 +147,12 @@ class SlideVisualizer(ABC):
         Plots a specific Visium spot with its segmentation contours.
 
         Args:
-            spot_id (str, optional): ID of the Visium spot to plot. Randomly selected if None.
-            figsize (Tuple[int, int]): Size of the plot.
-            display (bool): Whether to display the plot or return the figure.
+            spot_id: ID of the Visium spot to plot. Randomly selected if None.
+            figsize: Size of the plot.
+            display: Whether to display the plot or return the figure.
+
         Returns:
-            Optional[plt.Figure]: The plotted figure if display is False.
+            The plotted figure if display is False.
         """
 
         assert self.adata is not None, "Please create a SlideVisualizer object with adata."
@@ -176,7 +177,12 @@ class SlideVisualizer(ABC):
         return fig
 
     def _set_window(self, window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]) -> None:
-        """Sets the current viewing window for the slide."""
+        """
+        Sets the current viewing window for the slide.
+
+        Args:
+            window: The (x, y, width, height) of the region to display. "full" for the entire slide.
+        """
 
         self.window = window
         if self.window == "full":
@@ -210,15 +216,15 @@ class StdVisualizer(SlideVisualizer):
         Plots the histological slide with an optional overlay of Visium spots.
 
         Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
-                    "full" for the entire slide.
-            spot_prop_df (pd.DataFrame, optional): DataFrame containing proportions for each Visium spot.
-            show_visium (bool): Whether to overlay Visium spots.
-            title (str, optional): Optional title for the plot.
-            display (bool): Whether to display the plot or return the figure.
-            figsize (Tuple[int, int]): Size of the plot.
+            window: Region of the slide to plot. "full" for the entire slide.
+            spot_prop_df: DataFrame containing proportions for each Visium spot.
+            show_visium: Whether to overlay Visium spots.
+            title: Optional title for the plot.
+            display: Whether to display the plot or return the figure.
+            figsize: Size of the plot.
+
         Returns:
-            Optional[plt.Figure]: The plotted figure if display is False.
+            The plotted figure if display is False.
         """
 
         self._set_window(window)
@@ -263,13 +269,12 @@ class StdVisualizer(SlideVisualizer):
         Adds segmentation contours to the slide.
 
         Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): The (x, y, width, height) of the
-                    region to display. "full" for the entire slide.
-            draw_dot (bool): Whether to draw centroids as dots.
-            show_visium (bool): Whether to overlay Visium spots.
-            title (str, optional): Optional title for the plot.
-            display (bool): Whether to display the plot. If False, returns the figure object.
-            figsize (Tuple[int, int]): Size of the figure.
+            window: The (x, y, width, height) of the region to display. "full" for the entire slide.
+            draw_dot: Whether to draw centroids as dots.
+            show_visium: Whether to overlay Visium spots.
+            title: Optional title for the plot.
+            display: Whether to display the plot. If False, returns the figure object.
+            figsize: Size of the figure.
 
         Returns:
             The matplotlib figure object if display is False, otherwise None.
@@ -330,12 +335,9 @@ class StdVisualizer(SlideVisualizer):
         separated: bool = True,
         fontsize_separated: int = 25,
         scale_cells: float = 1.0,
-    ) -> plt.Figure:
+    ) -> Optional[plt.Figure]:
         """
         Plots segmentation overlays.
-
-        If separated=True → mosaic with one subplot per cell type.
-        If separated=False → one plot with all types shown together, filled in colors.
 
         Args:
             window: Viewing window for all plots.
@@ -347,7 +349,7 @@ class StdVisualizer(SlideVisualizer):
             scale_cells: Scaling factor for cell size (1.0 = normal, >1 = bigger cells, <1 = smaller).
 
         Returns:
-            plt.Figure: The figure object.
+            The figure object.
         """
 
         self._set_window(window)
@@ -441,7 +443,28 @@ class StdVisualizer(SlideVisualizer):
             plt.close(fig)
             return fig
 
-    def plot_delaunay_graph(self, window="full", max_distance=None, linewidth=0.5, display=True, figsize=(18, 15)):
+    def plot_delaunay_graph(
+        self,
+        window: Union[str, Tuple[Tuple[int, int], Tuple[int, int]]] = "full",
+        max_distance: Optional[float] = None,
+        linewidth: float = 0.5,
+        display: bool = True,
+        figsize: Tuple[int, int] = (18, 15),
+    ) -> Optional[plt.Figure]:
+        """
+        Plots the Delaunay triangulation graph of nuclei centroids within a specified window.
+
+        Args:
+            window: The (x, y, width, height) of the region to display. "full" for the entire slide.
+            max_distance: Maximum distance between points to draw an edge. If None, all edges are drawn.
+            linewidth: Line width for the edges.
+            display: Whether to display the plot. If False, returns the figure object.
+            figsize: Size of the figure.
+
+        Returns:
+            The matplotlib figure object if display is False, otherwise None.
+        """
+
         self._set_window(window)
         nuc_dict = self.data["nuc"]
 
@@ -488,6 +511,14 @@ class StdVisualizer(SlideVisualizer):
             return fig
 
     def _add_visium(self, ax: Optional[plt.Axes] = None, spot_prop_df: Optional[pd.DataFrame] = None) -> None:
+        """
+        Adds Visium spots to the plot.
+
+        Args:
+            ax: Matplotlib Axes object to add spots to. If None, uses current axes.
+            spot_prop_df: DataFrame containing spot properties for coloring.
+        """
+
         if ax is None:
             ax = plt.gca()
 
@@ -543,11 +574,12 @@ class StdVisualizer(SlideVisualizer):
         Overlays segmentation results (dictionary) on the image as contours. Adapted from Hovernet.
 
         Args:
-            input_image (np.ndarray): Input image array.
-            inst_dict (Dict): Dictionary containing segmentation instance data.
-            draw_dot (bool): Whether to draw centroids as dots.
-            color_dict (Dict, optional): Dictionary mapping type IDs to (name, color).
-            line_thickness (int): Thickness of contour lines.
+            input_image: Input image array.
+            inst_dict: Dictionary containing segmentation instance data.
+            draw_dot: Whether to draw centroids as dots.
+            color_dict: Dictionary mapping type IDs to (name, color).
+            line_thickness: Thickness of contour lines.
+            filled_types: List of types to fill in color instead of just contouring.
 
         Returns:
             Image with overlaid segmentation contours.
@@ -583,14 +615,14 @@ class IntVisualizer(SlideVisualizer):
         Plots the histological slide with an optional overlay of Visium spots.
 
         Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): Region of the slide to plot.
-                    "full" for the entire slide.
-            show_visium (bool): Whether to overlay Visium spots.
-            title (str, optional): Optional title for the plot.
-            display (bool): Whether to display the plot or return the figure.
-            figsize (Tuple[int, int]): Size of the plot.
+            window: Region of the slide to plot. "full" for the entire slide.
+            show_visium: Whether to overlay Visium spots.
+            title: Optional title for the plot.
+            display: Whether to display the plot or return the figure.
+            figsize: Size of the plot.
+
         Returns:
-            Optional[plt.Figure]: The plotted figure if display is False.
+            The plotted figure if display is False.
         """
 
         self._set_window(window)
@@ -628,13 +660,12 @@ class IntVisualizer(SlideVisualizer):
         Adds segmentation contours to the slide using Plotly.
 
         Args:
-            window (Union[str, Tuple[Tuple[int, int], Tuple[int, int]]]): The (x, y, width, height) of the
-                    region to display. "full" for the entire slide.
-            show_visium (bool): Whether to overlay Visium spots.
-            line_width (int): Line width for segmentation contours.
-            title (str, optional): Optional title for the plot.
-            display (bool): Whether to display the plot. If False, returns the figure object.
-            figsize (Tuple[int, int]): Size of the figure.
+            window: The (x, y, width, height) of the region to display. "full" for the entire slide.
+            show_visium: Whether to overlay Visium spots.
+            line_width: Line width for segmentation contours.
+            title: Optional title for the plot.
+            display: Whether to display the plot. If False, returns the figure object.
+            figsize: Size of the figure.
 
         Returns:
             The Plotly figure object if display is False, otherwise None.
@@ -790,11 +821,11 @@ def map_cells_to_spots(adata: AnnData, adata_name: str, json_path: str, only_in:
     Maps cells to spots based on centroids of the cells and spots.
 
     Args:
-        adata (AnnData): Anndata object containing the Visium dataset.
-        adata_name (str): Name of the dataset in the adata object.
-        json_path (str): Path to the JSON file with cell centroids.
-        only_in (bool): If True, maps cells only if they are located in a spot.
-                        If False, maps cells to the closest spot regardless of distance.
+        adata: Anndata object containing the Visium dataset.
+        adata_name: Name of the dataset in the adata object.
+        json_path: Path to the JSON file with cell centroids.
+        only_in: If True, maps cells only if they are located in a spot.
+                 If False, maps cells to the closest spot regardless of distance.
 
     Returns:
         Dictionary mapping cells to spots.

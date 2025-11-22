@@ -8,6 +8,7 @@ import pickle
 import re
 from collections import defaultdict
 from typing import List
+from typing import Optional
 
 import pandas as pd
 from joblib import delayed
@@ -18,10 +19,26 @@ from pyinstrument import Profiler
 from benchmark.utils import compute_statistics
 
 
-def process_config(config, runs, sim_folder, ground_truth, cell_list=None):
+def process_config(
+    config: tuple, runs: List[tuple], sim_folder: str, ground_truth: pd.DataFrame, cell_list: Optional[List[str]] = None
+) -> tuple:
     """
-    Process a single configuration (all seeds) and return results for all metric keys.
+    Processes a single configuration (all seeds) and returns results for all metric keys.
+
+    Args:
+        config: Configuration tuple (model_name, alpha, lr, divergence, beta).
+        runs: List of tuples (folder_name, seed) for this configuration.
+        sim_folder: Path to the simulation folder.
+        ground_truth: DataFrame containing ground truth labels.
+        cell_list: Optional list of cell IDs to filter predictions and ground truth.
+
+    Returns:
+        A tuple containing:
+            - config: The input configuration tuple.
+            - results: A list of tuples (metric_key, summary_row) for this configuration.
+            - metrics_lists: A dictionary mapping metric keys to lists of per-run metric dictionaries.
     """
+
     from hedest.analysis.pred_analyzer import PredAnalyzer
 
     profiler = Profiler()
@@ -146,9 +163,9 @@ def extract_stats(
     Extracts the statistics from the simulation models.
 
     Args:
-        sim_folder (str): Path to the simulation folder.
-        ground_truth_file (str): Path to the ground truth file.
-        cell_list_file (List[str], optional): Path to a CSV file containing a list of cell IDs
+        sim_folder: Path to the simulation folder.
+        ground_truth_file: Path to the ground truth file.
+        cell_list_file: Optional path to a CSV file containing a list of cell IDs
         to filter the ground truth and predictions.
     """
 

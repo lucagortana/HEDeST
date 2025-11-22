@@ -28,14 +28,14 @@ def predict_slide(
     Predicts the cell type probabilities for all cells in a slide.
 
     Args:
-        model (nn.Module): The trained model to use for predictions.
-        image_dict (Dict[str, torch.Tensor]): A dictionary where keys are cell IDs and values are image tensors.
-        ct_list (List[str]): List of cell type names.
-        batch_size (int): Batch size for prediction.
-        verbose (bool): Whether to display progress.
+        model: The trained model to use for predictions.
+        image_dict: A dictionary where keys are cell IDs and values are image tensors.
+        ct_list: List of cell type names.
+        batch_size: Batch size for prediction.
+        verbose: Whether to display progress.
 
     Returns:
-        pd.DataFrame: A DataFrame where rows correspond to cell IDs and columns to cell type probabilities.
+        A DataFrame where rows correspond to cell IDs and columns to cell type probabilities.
     """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

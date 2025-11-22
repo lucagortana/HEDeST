@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import List
 from typing import Tuple
 
 import torch
@@ -18,12 +17,24 @@ from hedest.utils import set_seed
 class ModelTrainer:
     """
     A class for training and evaluating a deep learning model for cell classification tasks.
+
+    Args:
+        model: The cell classifier to train and evaluate.
+        optimizer: Optimizer for model training.
+        train_loader: DataLoader for the training dataset.
+        val_loader: DataLoader for the validation dataset.
+        test_loader: DataLoader for the test dataset.
+        divergence: Type of divergence used in loss calculation.
+        alpha: Weight parameter for loss components.
+        num_epochs: Number of training epochs.
+        out_dir: Directory to save model checkpoints and results.
+        tb_dir: Directory for TensorBoard logs.
+        rs: Random seed for reproducibility.
     """
 
     def __init__(
         self,
         model: CellClassifier,
-        ct_list: List[str],
         optimizer: optim.Optimizer,
         train_loader: DataLoader,
         val_loader: DataLoader,
@@ -35,26 +46,8 @@ class ModelTrainer:
         tb_dir: str = "runs",
         rs: int = 42,
     ) -> None:
-        """
-        Initializes the ModelTrainer with the given parameters.
-
-        Args:
-            model (CellClassifier): The cell classifier to train and evaluate.
-            ct_list (List[str]): List of cell type names.
-            optimizer (optim.Optimizer): Optimizer for model training.
-            train_loader (DataLoader): DataLoader for the training dataset.
-            val_loader (DataLoader): DataLoader for the validation dataset.
-            test_loader (DataLoader): DataLoader for the test dataset.
-            divergence (str): Type of divergence used in loss calculation.
-            alpha (float): Weight parameter for loss components.
-            num_epochs (int): Number of training epochs.
-            out_dir (str): Directory to save model checkpoints and results.
-            tb_dir (str): Directory for TensorBoard logs.
-            rs (int): Random seed for reproducibility.
-        """
 
         self.model = model
-        self.ct_list = ct_list
         self.optimizer = optimizer
         self.train_loader = train_loader
         self.p_c = self.train_loader.dataset.spot_prop_df.mean().values
@@ -180,13 +173,13 @@ class ModelTrainer:
 
     def evaluate(self, dataloader: DataLoader) -> Tuple[float, float, float]:
         """
-        Evaluate the model on the validation or test set.
+        Evaluates the model on the validation or test set.
 
         Args:
-            dataloader (DataLoader): The DataLoader for the dataset to evaluate.
+            dataloader: The DataLoader for the dataset to evaluate.
 
         Returns:
-            Tuple[float, float, float]: Total loss, loss component 1, and loss component 2.
+            Total loss, loss component 1, and loss component 2.
         """
 
         self.model.eval()
@@ -219,7 +212,7 @@ class ModelTrainer:
 
     def test(self) -> None:
         """
-        Evaluate the final model and the best model on the test set.
+        Evaluates the final model and the best model on the test set.
         """
 
         # Evaluate the final model
@@ -243,7 +236,7 @@ class ModelTrainer:
 
     def save_history(self) -> None:
         """
-        Save training and validation history as a plot.
+        Saves training and validation history as a plot.
 
         This method saves a visualization of the training history (losses per epoch)
         as a PNG file in the output directory.
