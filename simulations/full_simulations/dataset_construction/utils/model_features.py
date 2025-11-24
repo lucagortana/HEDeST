@@ -14,20 +14,44 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def load_image_dict(data_path):
-    """Loads the image_dict from a .pt file."""
+def load_image_dict(data_path: str) -> dict:
+    """
+    Loads the image_dict from a .pt file.
+
+    Args:
+        data_path: Path to the .pt file containing the image dictionary.
+
+    Returns:
+        A dictionary mapping cell IDs to image tensors.
+    """
+
     logger.info("Loading image dictionary from %s", data_path)
     return torch.load(data_path)
 
 
-def save_embedding_dict(emb_dict, out_path):
-    """Saves the extracted embeddings to a .pt file."""
+def save_embedding_dict(emb_dict: dict, out_path: str) -> None:
+    """
+    Saves the extracted embeddings to a .pt file.
+
+    Args:
+        emb_dict: A dictionary mapping cell IDs to embedding tensors.
+        out_path: Path to save the .pt file.
+    """
+
     logger.info("Saving extracted embeddings to %s", out_path)
     torch.save(emb_dict, out_path)
 
 
-def get_embedding_model(model_name):
-    """Load a pretrained ResNet50 from timm and remove the classification head."""
+def get_embedding_model(model_name: str) -> tuple[torch.nn.Module, transforms.Compose]:
+    """
+    Loads a pretrained model from timm and removes the classification head.
+
+    Args:
+        model_name: Name of the model to load.
+
+    Returns:
+        A tuple containing the model and the corresponding image transform.
+    """
 
     if "resnet" in model_name:
         model = timm.create_model(model_name, pretrained=True, num_classes=0)
@@ -49,8 +73,18 @@ def get_embedding_model(model_name):
     return model, transform
 
 
-def extract_embeddings(model_name, image_dict_path, batch_size=32):
-    """Extract embeddings from cell images stored in image_dict.pt."""
+def extract_embeddings(model_name: str, image_dict_path: str, batch_size: int = 32) -> dict:
+    """
+    Extracts embeddings from cell images stored in image_dict.pt.
+
+    Args:
+        model_name: Name of the model to use for embedding extraction.
+        image_dict_path: Path to the .pt file containing the image dictionary.
+        batch_size: Batch size for processing images.
+
+    Returns:
+        A dictionary mapping cell IDs to embedding tensors.
+    """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Using device %s", device)

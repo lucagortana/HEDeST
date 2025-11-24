@@ -5,12 +5,31 @@ import argparse
 import anndata as ad
 import scanpy as sc
 import spatialdata as sd
-from utils import transfer_annot_batched
+from spatial_tools import transfer_annot_batched
 
 
 def main(
-    sc_adata_path, xenium_data_path, out_dir, min_counts=0, cell_type_key="cell_type", k_neighb=20, batch_size=5000
-):
+    sc_adata_path: str,
+    xenium_data_path: str,
+    out_dir: str,
+    min_counts: int = 0,
+    cell_type_key: str = "cell_type",
+    k_neighb: int = 20,
+    batch_size: int = 5000,
+) -> None:
+    """
+    Annotates Xenium spatial data using a reference scRNA-seq dataset via cosine similarity.
+
+    Args:
+        sc_adata_path: Path to the scRNA-seq AnnData file (h5ad).
+        xenium_data_path: Path to the Xenium data (zarr).
+        out_dir: Output directory for processed data.
+        min_counts: Minimum number of counts for filtering cells.
+        cell_type_key: Key for cell type annotations.
+        k_neighb: Number of neighbors to consider for annotation.
+        batch_size: Number of cells to process at a time.
+    """
+
     # Load scRNA-seq data
     sc_adata = ad.read_h5ad(sc_adata_path)
     sc.pp.normalize_total(sc_adata)

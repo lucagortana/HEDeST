@@ -7,7 +7,14 @@ from pathlib import Path
 from spatialdata_io import xenium
 
 
-def main(path: str):
+def main(path: str) -> None:
+    """
+    Parses Xenium data from the given path and writes it to a Zarr format.
+
+    Args:
+        path: The base path where the data folder is located.
+    """
+
     path_read = Path(path) / "data"
     path_write = Path(path) / "data.zarr"
 

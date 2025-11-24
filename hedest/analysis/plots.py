@@ -238,7 +238,7 @@ def plot_grid_celltype(
     image_dict: Dict[str, np.ndarray],
     cell_type: str,
     n: int = 20,
-    selection: str = "random",
+    selection: str = "max",
     title: str = "",
     show_probs: bool = True,
     display: bool = False,
@@ -251,7 +251,7 @@ def plot_grid_celltype(
         image_dict: A dictionary mapping cell IDs to images.
         cell_type: The cell type to filter images by.
         n: Number of images to display. Defaults to 20.
-        selection: Selection mode ("max" or "random"). Defaults to "random".
+        selection: Selection mode ("max" or "random"). Defaults to "max".
         show_probs: Whether to display probabilities on the images. Defaults to True.
         display: Whether to display the plot. Defaults to False.
 

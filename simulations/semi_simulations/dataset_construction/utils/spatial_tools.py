@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from anndata import AnnData
 from geopandas import GeoDataFrame
 from scipy.spatial import cKDTree
 from scipy.spatial.distance import cdist
@@ -15,13 +18,34 @@ from spatialdata.transformations import get_transformation
 from tqdm import tqdm
 
 
-def apply_transformation_to_gdf(gdf, affine_matrix):
-    """Apply affine transformation to GeoDataFrame geometries."""
+def apply_transformation_to_gdf(gdf: GeoDataFrame, affine_matrix: tuple) -> GeoDataFrame:
+    """
+    Applies affine transformation to GeoDataFrame geometries.
+
+    Args:
+        gdf: Input GeoDataFrame with geometries to transform.
+        affine_matrix: Affine transformation parameters in the form
+                       (a, b, d, e, xoff, yoff).
+
+    Returns:
+        Transformed GeoDataFrame with updated geometries.
+    """
+
     transformed_geometries = gdf.geometry.apply(lambda geom: affine_transform(geom, affine_matrix))
     return transformed_geometries
 
 
-def match_nuclei_and_cells(gdf_nucleus, gdf_cells):
+def match_nuclei_and_cells(gdf_nucleus: GeoDataFrame, gdf_cells: GeoDataFrame) -> GeoDataFrame:
+    """
+    Matches nuclei to cells based on spatial overlap.
+
+    Args:
+        gdf_nucleus: GeoDataFrame containing nucleus geometries.
+        gdf_cells: GeoDataFrame containing cell geometries.
+
+    Returns:
+        GeoDataFrame with intersection areas and overlap ratios.
+    """
 
     gdf_nucleus["geometry"] = gdf_nucleus["geometry"].apply(
         lambda geom: make_valid(geom) if not geom.is_valid else geom
@@ -43,7 +67,17 @@ def match_nuclei_and_cells(gdf_nucleus, gdf_cells):
     return intersections
 
 
-def filter_matches(intersections, overlap_threshold=0.95):
+def filter_matches(intersections: GeoDataFrame, overlap_threshold: float = 0.95) -> GeoDataFrame:
+    """
+    Filters nucleus-cell matches based on overlap ratio.
+
+    Args:
+        intersections: GeoDataFrame with intersection areas and overlap ratios.
+        overlap_threshold: Minimum overlap ratio to consider a valid match.
+
+    Returns:
+        GeoDataFrame with filtered nucleus-cell matches.
+    """
 
     filtered_matches = intersections[intersections["overlap_ratio"] >= overlap_threshold]
 
@@ -62,6 +96,21 @@ def filter_matches(intersections, overlap_threshold=0.95):
 def make_spot_grid(
     x_min: float, x_max: float, y_min: float, y_max: float, diameter: float, spacing: float
 ) -> GeoDataFrame:
+    """
+    Creates a hexagonal grid of circular spots within specified bounds.
+
+    Args:
+        x_min: Minimum x-coordinate of the bounding box.
+        x_max: Maximum x-coordinate of the bounding box.
+        y_min: Minimum y-coordinate of the bounding box.
+        y_max: Maximum y-coordinate of the bounding box.
+        diameter: Diameter of each circular spot.
+        spacing: Distance between the centers of adjacent spots.
+
+    Returns:
+        GeoDataFrame containing the circular spots.
+    """
+
     radius = diameter / 2
     circles = []
 
@@ -85,7 +134,17 @@ def make_spot_grid(
     return ShapesModel.parse(grid_gdf)
 
 
-def match_nuclei_in_spots(gdf_spots, gdf_nucleus):
+def match_nuclei_in_spots(gdf_spots: GeoDataFrame, gdf_nucleus: GeoDataFrame) -> GeoDataFrame:
+    """
+    Matches nuclei to spots based on spatial containment.
+
+    Args:
+        gdf_spots: GeoDataFrame containing spot geometries.
+        gdf_nucleus: GeoDataFrame containing nucleus geometries.
+
+    Returns:
+        GeoDataFrame with matched nucleus and spot IDs.
+    """
 
     nucleus_centers = gdf_nucleus.copy()
     nucleus_centers["geometry"] = nucleus_centers.geometry.centroid
@@ -115,7 +174,18 @@ def match_nuclei_in_spots(gdf_spots, gdf_nucleus):
     return nuclei_in_spots
 
 
-def match_nuclei_to_closest_spots(gdf_nucleus, gdf_spots):
+def match_nuclei_to_closest_spots(gdf_nucleus: GeoDataFrame, gdf_spots: GeoDataFrame) -> GeoDataFrame:
+    """
+    Matches each nucleus to the closest spot based on centroid distances.
+
+    Args:
+        gdf_nucleus: GeoDataFrame containing nucleus geometries.
+        gdf_spots: GeoDataFrame containing spot geometries.
+
+    Returns:
+        DataFrame with matched nucleus and spot IDs along with distances.
+    """
+
     if "geometry" not in gdf_nucleus.columns or "geometry" not in gdf_spots.columns:
         raise ValueError("Both GeoDataFrames must have a 'geometry' column with valid geometries.")
 
@@ -151,13 +221,39 @@ def match_nuclei_to_closest_spots(gdf_nucleus, gdf_spots):
     return result_df
 
 
-def add_cell_type_to_df(df, adata, cell_id_key="cell_id", cell_type_key="cell_type"):
+def add_cell_type_to_df(
+    df: pd.DataFrame, adata: AnnData, cell_id_key: str = "cell_id", cell_type_key: str = "cell_type"
+) -> pd.DataFrame:
+    """
+    Adds cell type annotations from an AnnData object to a DataFrame based on cell IDs.
+
+    Args:
+        df: DataFrame containing cell IDs.
+        adata: AnnData object with cell type annotations in `obs`.
+        cell_id_key: Column name in `df` corresponding to cell IDs.
+        cell_type_key: Column name in `adata.obs` corresponding to cell type annotations.
+
+    Returns:
+        DataFrame with added cell type annotations.
+    """
+
     table = adata.obs
     df = df.merge(table[["cell_id", cell_type_key]], on=cell_id_key, how="left")
     return df
 
 
-def find_closest_nucleus(gdf_nucleus, gdf_nucleus_hn):
+def find_closest_nucleus(gdf_nucleus: GeoDataFrame, gdf_nucleus_hn: GeoDataFrame) -> pd.DataFrame:
+    """
+    Finds the closest nucleus in `gdf_nucleus` for each nucleus in `gdf_nucleus_hn`.
+
+    Args:
+        gdf_nucleus: GeoDataFrame containing nucleus geometries.
+        gdf_nucleus_hn: GeoDataFrame containing high-nucleus geometries.
+
+    Returns:
+        DataFrame with closest nucleus IDs and distances.
+    """
+
     if "geometry" not in gdf_nucleus.columns or "geometry" not in gdf_nucleus_hn.columns:
         raise ValueError("Both GeoDataFrames must have a 'geometry' column with valid geometries.")
 
@@ -177,10 +273,24 @@ def find_closest_nucleus(gdf_nucleus, gdf_nucleus_hn):
     return result_df
 
 
-def histogram_per_spot(df, ax=None, color="skyblue", title=None, show_mean=True):
+def histogram_per_spot(
+    df: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    color: str = "skyblue",
+    title: Optional[str] = None,
+    show_mean: bool = True,
+) -> None:
     """
-    Plot a histogram for the given dataframe. If no axis is provided, a new figure is created.
+    Plots a histogram for the given dataframe. If no axis is provided, a new figure is created.
+
+    Args:
+        df: DataFrame containing `spot_id` column.
+        ax: Matplotlib Axes object to plot on. If None, a new figure is created.
+        color: Color of the histogram bars.
+        title: Title of the plot.
+        show_mean: Whether to display the mean line on the histogram.
     """
+
     nucleus_per_spot = df.groupby("spot_id").size()
     spots_per_nucleus_count = nucleus_per_spot.value_counts().sort_index()
     mean_nucleus_per_spot = nucleus_per_spot.mean()
@@ -205,16 +315,17 @@ def histogram_per_spot(df, ax=None, color="skyblue", title=None, show_mean=True)
         plt.show()
 
 
-def spot_gdf_to_df(gdf):
+def spot_gdf_to_df(gdf: GeoDataFrame) -> pd.DataFrame:
     """
-    Transform a GeoDataFrame of spots into a DataFrame with their center coordinates and diameter.
+    Transforms a GeoDataFrame of spots into a DataFrame with their center coordinates and diameter.
 
-    Parameters:
-        gdf (GeoDataFrame): GeoDataFrame containing spot geometries.
+    Args:
+        gdf: GeoDataFrame containing spot geometries.
 
     Returns:
-        DataFrame: DataFrame with columns `x_center`, `y_center`, and `diameter`.
+        DataFrame with columns `x_center`, `y_center`, and `diameter`.
     """
+
     centers = gdf.geometry.centroid
     x_center = centers.x
     y_center = centers.y
@@ -234,22 +345,24 @@ def spot_gdf_to_df(gdf):
     return df
 
 
-def transfer_annot_batched(sc_adata, xenium_adata, cell_type_key, min_counts, k_neighb, batch_size=5000):
+def transfer_annot_batched(
+    sc_adata: AnnData, xenium_adata: AnnData, cell_type_key: str, min_counts: int, k_neighb: int, batch_size: int = 5000
+) -> AnnData:
     """
     Computes the cell type annotation for xenium cells using batched processing to reduce memory usage.
-    Progress tracking is added using tqdm.
 
-    Parameters:
-        sc_adata (AnnData): The single-cell RNA-seq dataset.
-        xenium_adata (AnnData): The xenium dataset.
-        cell_type_key (str): The key in `sc_adata.obs` corresponding to cell type annotations.
-        k_neighb (int): Number of nearest neighbors to consider.
-        batch_size (int): Number of xenium cells to process at a time.
+    Args:
+        sc_adata: The single-cell RNA-seq dataset.
+        xenium_adata: The xenium dataset.
+        cell_type_key: The key in `sc_adata.obs` corresponding to cell type annotations.
+        k_neighb: Number of nearest neighbors to consider.
+        batch_size: Number of xenium cells to process at a time.
 
     Returns:
-        np.ndarray: Annotated cell types for xenium cells.
-        np.ndarray: Annotation confidence scores.
+        Annotated cell types for xenium cells.
+        Annotation confidence scores.
     """
+
     rna_annot = sc_adata.obs[cell_type_key].values
     cm_genes = [g for g in xenium_adata.var_names if g in sc_adata.var_names]
 

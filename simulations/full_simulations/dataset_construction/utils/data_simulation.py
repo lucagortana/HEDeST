@@ -23,6 +23,20 @@ def perform_umap(
     n_components: int = 2,
     verbose: Optional[bool] = False,
 ) -> np.ndarray:
+    """
+    Performs UMAP dimensionality reduction on the given embeddings.
+
+    Args:
+        embeddings: The input high-dimensional embeddings.
+        n_neighbors: The size of local neighborhood (in terms of number of neighboring sample points)
+                     used for manifold approximation.
+        min_dist: The effective minimum distance between embedded points.
+        n_components: The dimension of the space to embed into.
+        verbose: Whether to print progress messages.
+
+    Returns:
+        The UMAP-reduced embeddings.
+    """
 
     reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components, verbose=verbose)
     umap_embeddings = reducer.fit_transform(embeddings)
@@ -32,7 +46,21 @@ def perform_umap(
 
 def perform_kmeans(
     embeddings: np.ndarray, n_clusters: int = 5, metric: str = "euclidean", random_state: int = 42
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Performs KMeans clustering on the given embeddings.
+
+    Args:
+        embeddings: The input embeddings.
+        n_clusters: The number of clusters to form.
+        metric: The distance metric to use for computing distances.
+        random_state: Seed for reproducibility.
+
+    Returns:
+        cluster_labels: The labels of each point indicating cluster membership.
+        distances: The distances of each point to each cluster centroid.
+        centroids: The coordinates of the cluster centroids.
+    """
 
     kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
     cluster_labels = kmeans.fit_predict(embeddings)
@@ -46,6 +74,17 @@ def perform_kmeans(
 def find_closest_cells_to_clusters(
     cluster_labels: np.ndarray, distances: np.ndarray, num_per_cluster: int = 5000
 ) -> np.ndarray:
+    """
+    Finds the indices of the closest cells to each cluster centroid.
+
+    Args:
+        cluster_labels: The labels of each point indicating cluster membership.
+        distances: The distances of each point to each cluster centroid.
+        num_per_cluster: The number of closest cells to select per cluster.
+
+    Returns:
+        The indices of the closest cells to each cluster centroid.
+    """
 
     selected_indices = []
     n_clusters = len(np.unique(cluster_labels))
@@ -58,11 +97,32 @@ def find_closest_cells_to_clusters(
     return selected_indices
 
 
-def plot_cells_per_cluster(image_dict, cell_ids, cluster_labels, selection="top", nrows=1, ncols=1, display=False):
+def plot_cells_per_cluster(
+    image_dict: dict,
+    cell_ids: np.ndarray,
+    cluster_labels: np.ndarray,
+    selection: str = "top",
+    nrows: int = 1,
+    ncols: int = 1,
+    display: bool = False,
+) -> Optional[plt.Figure]:
     """
     Plots 8x8 mosaics per cluster in a grid of cluster mosaics (nrows x ncols),
     with thin spacing and properly positioned titles.
+
+    Args:
+        image_dict: Dictionary mapping cell IDs to images (as tensors).
+        cell_ids: Array of cell IDs.
+        cluster_labels: Array of cluster labels corresponding to cell_ids.
+        selection: 'top', 'random', or 'bottom' to select which cells to display per cluster.
+        nrows: Number of rows in the grid of cluster mosaics.
+        ncols: Number of columns in the grid of cluster mosaics.
+        display: If True, displays the plot; otherwise returns the figure object.
+
+    Returns:
+        If display is False, returns the matplotlib figure object.
     """
+
     n_clusters = len(np.unique(cluster_labels))
     if n_clusters > nrows * ncols:
         raise ValueError(f"Number of clusters ({n_clusters}) exceeds layout capacity ({nrows}x{ncols})")
@@ -154,23 +214,23 @@ def create_bags(
     not_mixed: Optional[List[int]] = None,
 ) -> Tuple[List[List[int]], np.ndarray]:
     """
-    Create bags of cell IDs with controlled sampling based on cluster proportions,
+    Creates bags of cell IDs with controlled sampling based on cluster proportions,
     with optional constraint to not mix certain clusters.
 
-    Parameters:
-    - cell_ids: Array of cell IDs.
-    - cluster_labels: Array of cluster labels corresponding to cell_ids.
-    - mean_cell_per_bag: Mean number of cells per bag.
-    - var_cell_per_bag: Variance in the number of cells per bag.
-    - balance: List of weights representing the desired overall distribution of clusters.
+    Args:
+        cell_ids: Array of cell IDs.
+        cluster_labels: Array of cluster labels corresponding to cell_ids.
+        mean_cell_per_bag: Mean number of cells per bag.
+        var_cell_per_bag: Variance in the number of cells per bag.
+        balance: List of weights representing the desired overall distribution of clusters.
                If "auto", the cluster proportions will be used. Default is "auto".
-    - total_number_of_bags: Total number of bags to create.
-    - random_state: Seed for reproducibility.
-    - not_mixed: List of two cluster indices that should not appear together in any bag.
+        total_number_of_bags: Total number of bags to create.
+        random_state: Seed for reproducibility.
+        not_mixed: List of two cluster indices that should not appear together in any bag.
 
     Returns:
-    - bags: List of lists, where each inner list contains the cell IDs for a bag.
-    - cells_per_cluster: Array with the total number of sampled cells per cluster.
+        bags: List of lists, where each inner list contains the cell IDs for a bag.
+        cells_per_cluster: Array with the total number of sampled cells per cluster.
     """
 
     if random_state is not None:
@@ -240,7 +300,18 @@ def create_bags(
     return bags, cells_per_cluster
 
 
-def get_bag_proportions(bags, cell_ids, cluster_labels):
+def get_bag_proportions(bags: List[List[int]], cell_ids: np.ndarray, cluster_labels: np.ndarray) -> pd.DataFrame:
+    """
+    Calculates the cluster proportions for each bag.
+
+    Args:
+        bags: List of lists, where each inner list contains the cell IDs for a bag.
+        cell_ids: Array of cell IDs.
+        cluster_labels: Array of cluster labels corresponding to cell_ids.
+
+    Returns:
+        bag_prop_df: DataFrame with shape (n_bags, n_clusters) containing cluster proportions per bag.
+    """
 
     id_to_cluster = {}
     for cell_id, cluster in zip(cell_ids, cluster_labels):
@@ -271,15 +342,16 @@ def get_bag_proportions(bags, cell_ids, cluster_labels):
 
 def add_perturbation(proportions_df: pd.DataFrame, strength: float) -> pd.DataFrame:
     """
-    Add perturbation to a proportion dataframe.
+    Adds perturbation to a proportion dataframe.
 
-    Parameters:
-    - proportions_df: pd.DataFrame with shape (n_spots, n_cell_types), each row sums to 1
-    - strength: float in [0, 1], 0 = no perturbation, 1 = full random
+    Args:
+        proportions_df: pd.DataFrame with shape (n_spots, n_cell_types), each row sums to 1
+        strength: float in [0, 1], 0 = no perturbation, 1 = full random
 
     Returns:
-    - perturbed_df: pd.DataFrame with same shape, rows still sum to 1
+        perturbed_df: pd.DataFrame with same shape, rows still sum to 1
     """
+
     if not (0 <= strength <= 1):
         raise ValueError("strength must be between 0 and 1")
 
@@ -292,17 +364,24 @@ def add_perturbation(proportions_df: pd.DataFrame, strength: float) -> pd.DataFr
     return perturbed_df
 
 
-def plot_cluster_distribution(filtered_labels, n_cells_per_cluster, title="", savefig=None, context="talk"):
+def plot_cluster_distribution(
+    filtered_labels: np.ndarray,
+    n_cells_per_cluster: np.ndarray,
+    title: str = "",
+    savefig: str = None,
+    context: str = "talk",
+) -> None:
     """
     Plots a bar chart of cell counts per cluster using Seaborn.
 
     Args:
-        filtered_labels (array-like): Cluster labels.
-        n_cells_per_cluster (array-like): Cell counts per cluster.
-        title (str, optional): Title for the plot.
-        savefig (str, optional): If provided, saves the figure to this path.
-        context (str, optional): Seaborn context (e.g., 'paper', 'notebook', 'talk', 'poster').
+        filtered_labels: Cluster labels.
+        n_cells_per_cluster: Cell counts per cluster.
+        title: Title for the plot.
+        savefig: If provided, saves the figure to this path.
+        context: Seaborn context (e.g., 'paper', 'notebook', 'talk', 'poster').
     """
+
     sns.set_context(context)
     sns.set_style("whitegrid")
 
@@ -326,29 +405,29 @@ def plot_cluster_distribution(filtered_labels, n_cells_per_cluster, title="", sa
     plt.show()
 
 
-def plot_bags(bags, cell_ids, cluster_labels, title="", fig_edge_size=20, cmap="viridis", savefig=None, dpi=300):
+def plot_bags(
+    bags: list,
+    cell_ids: list,
+    cluster_labels: list,
+    title: str = "",
+    fig_edge_size: int = 20,
+    cmap: str = "viridis",
+    savefig: str = None,
+    dpi: int = 300,
+) -> None:
     """
-    Visualize spatial 'bags' of cells, where each bag contains cells colored by cluster.
+    Visualizes spatial 'bags' of cells, where each bag contains cells colored by cluster.
     Uses Seaborn for styling and Matplotlib for drawing.
 
-    Parameters
-    ----------
-    bags : list of lists
-        Each sublist contains cell IDs belonging to a bag.
-    cell_ids : list or array
-        List of cell IDs corresponding to cluster_labels.
-    cluster_labels : list or array
-        Cluster assignment for each cell ID.
-    title : str, optional
-        Title for the figure.
-    fig_edge_size : int, optional
-        Size of the figure edge (controls overall scale).
-    cmap : str, optional
-        Matplotlib or Seaborn colormap (default: 'viridis').
-    savefig : str, optional
-        Path to save the figure. If None, the plot is shown.
-    dpi : int, optional
-        Resolution for saving figures.
+    Args:
+        bags: Each sublist contains cell IDs belonging to a bag.
+        cell_ids: List or array of cell IDs corresponding to cluster_labels.
+        cluster_labels: Cluster assignment for each cell ID.
+        title: Title for the figure.
+        fig_edge_size: Size of the figure edge (controls overall scale).
+        cmap: Matplotlib or Seaborn colormap (default: 'viridis').
+        savefig: Path to save the figure. If None, the plot is shown.
+        dpi: Resolution for saving figures.
     """
 
     # ---- Seaborn style ----

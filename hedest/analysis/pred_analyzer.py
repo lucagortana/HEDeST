@@ -703,7 +703,7 @@ class PredAnalyzer:
         self,
         cell_type: Optional[str] = None,
         n: int = 20,
-        selection: str = "random",
+        selection: str = "max",
         show_probs: bool = True,
         display: bool = False,
         nrows: Optional[int] = None,

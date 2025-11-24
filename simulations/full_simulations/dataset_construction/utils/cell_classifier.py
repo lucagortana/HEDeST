@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def save_confusion_matrices(conf_matrices, labels, out_dir):
+def save_confusion_matrices(conf_matrices: List[np.ndarray], labels: List[str], out_dir: str) -> None:
+    """
+    Saves confusion matrices to an Excel file.
+
+    Args:
+        conf_matrices: List of confusion matrices.
+        labels: List of class labels.
+        out_dir: Output directory to save the Excel file.
+    """
+
     with pd.ExcelWriter(out_dir) as writer:
         for i, cm in enumerate(conf_matrices):
             df_cm = pd.DataFrame(cm, index=labels, columns=labels)
@@ -30,7 +40,18 @@ def save_confusion_matrices(conf_matrices, labels, out_dir):
     logger.info(f"Confusion matrices saved to {out_dir}.")
 
 
-def load_data(features_file, ground_truth_file):
+def load_data(features_file: str, ground_truth_file: str) -> tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Loads features and ground truth labels from files.
+
+    Args:
+        features_file: Path to the features file (PyTorch format).
+        ground_truth_file: Path to the ground truth CSV file.
+
+    Returns:
+        Feature matrix, labels array, and list of class labels.
+    """
+
     features_dict = torch.load(features_file)
     features = {k: v.numpy() for k, v in features_dict.items()}
 
@@ -46,7 +67,22 @@ def load_data(features_file, ground_truth_file):
     return X, y, sorted(df.columns.tolist())
 
 
-def train_xgboost(X, y, balance, rs):
+def train_xgboost(
+    X: np.ndarray, y: np.ndarray, balance: bool, rs: int
+) -> tuple[xgb.XGBClassifier, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Trains an XGBoost classifier.
+
+    Args:
+        X: Feature matrix.
+        y: Labels.
+        balance: Whether to use class balancing.
+        rs: Random seed.
+
+    Returns:
+        Trained model, training labels, test labels, training predictions, test predictions.
+    """
+
     classes = np.unique(y)
     class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
     y_encoded = np.array([class_to_idx[label] for label in y])
@@ -85,7 +121,24 @@ def train_xgboost(X, y, balance, rs):
     return model, y_train, y_test, model.predict(X_train), model.predict(X_test)
 
 
-def train_logistic_regression(X, y, balance, rs, penalty, C):
+def train_logistic_regression(
+    X: np.ndarray, y: np.ndarray, balance: bool, rs: int, penalty: str, C: float
+) -> tuple[LogisticRegression, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Trains a Logistic Regression classifier.
+
+    Args:
+        X: Feature matrix.
+        y: Labels.
+        balance: Whether to use class balancing.
+        rs: Random seed.
+        penalty: Regularization type.
+        C: Inverse regularization strength.
+
+    Returns:
+        Trained model, training labels, test labels, training predictions, test predictions.
+    """
+
     classes = np.unique(y)
     class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
     y_encoded = np.array([class_to_idx[label] for label in y])
@@ -116,7 +169,18 @@ def train_logistic_regression(X, y, balance, rs, penalty, C):
     return model, y_train, y_test, model.predict(X_train), model.predict(X_test)
 
 
-def evaluate_model(y_true, y_pred):
+def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """
+    Evaluates the model using various metrics.
+
+    Args:
+        y_true: True labels.
+        y_pred: Predicted labels.
+
+    Returns:
+        Dict: Dictionary containing evaluation metrics.
+    """
+
     metrics = {
         "Global Accuracy": accuracy_score(y_true, y_pred),
         "Balanced Accuracy": balanced_accuracy_score(y_true, y_pred),
@@ -127,15 +191,15 @@ def evaluate_model(y_true, y_pred):
     return metrics
 
 
-def compute_statistics(metrics_list):
+def compute_statistics(metrics_list: List[dict]) -> tuple[dict, dict]:
     """
-    Compute mean and confidence intervals for a list of metrics.
+    Computes mean and confidence intervals for a list of metrics.
 
     Args:
-        metrics_list (List[Dict[str, float]]): List of dictionaries containing metrics from each run.
+        metrics_list: List of dictionaries containing metrics from each run.
 
     Returns:
-        Tuple[Dict[str, float], Dict[str, float]]: Tuple containing the mean and confidence intervals for each metric.
+        Tuple containing the mean and confidence intervals for each metric.
     """
 
     df_metrics = pd.DataFrame(metrics_list)
