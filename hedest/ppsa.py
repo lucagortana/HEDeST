@@ -245,7 +245,10 @@ class PPSAdjustment:
 
 class PPSANaive:
     """
-    Performs naive PPSA on cell probabilities.
+    Performs naive PPSA on cell probabilities. If spot_dict contains only cells belonging to spots,
+    the adjustment will be applied only to those cells (as is the case by default). If you want to
+    naively adjust all cells, you must define spot_dict using map_cells_to_spots with parameter
+    only_in=False.
 
     Args:
         cell_prob_df: DataFrame of cell probabilities.

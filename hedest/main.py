@@ -110,6 +110,13 @@ def main(
     else:
         logger.info("No spatial transcriptomics data provided. There will be no spatial PPS adjustment...")
 
+    if adata is not None and adata_name is None:
+        try:
+            adata_name = list(adata.uns["spatial"].keys())[0]
+            logger.info(f"-> Using default adata_name: {adata_name}")
+        except Exception:
+            raise ValueError("adata_name was not provided and could not be inferred from adata.uns['spatial'].")
+
     if spot_dict_file is not None and os.path.splitext(spot_dict_file)[1] == ".json":
         logger.info(f"Loading spot-to-cell dictionary from {spot_dict_file}...")
         with open(spot_dict_file) as json_file:
