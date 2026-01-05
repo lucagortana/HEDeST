@@ -23,8 +23,6 @@ run_*
 !run_tangram.py
 !run_moco.py
 !run_model.py
-!run_classif.sh
-!run_feature_extract.sh
 !run_annotation.sh
 !run_extract_stats.sh
 !run_gridsearch.sh
