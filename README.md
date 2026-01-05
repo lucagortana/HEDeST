@@ -1,9 +1,15 @@
-<div style="display: flex; align-items: center; gap: 16px;">
-  <img src="references/HEDeST_logo.png" width="150" />
-  <h1 style="margin: 0;">
-    HEDeST: An Integrative Approach to Enhance Spatial Transcriptomic Deconvolution with Histology
-  </h1>
-</div>
+<table>
+  <tr>
+    <td style="vertical-align: middle;">
+      <img src="references/HEDeST_logo.png" width="150">
+    </td>
+    <td style="vertical-align: middle;">
+      <h1 style="margin: 0;">
+        HEDeST: An Integrative Approach to Enhance Spatial Transcriptomic Deconvolution with Histology
+      </h1>
+    </td>
+  </tr>
+</table>
 
 **HEDeST** is a deep-learning framework for assigning cell types to single cells on H&E slides using **deconvoluted spatial transcriptomics** data.
 
