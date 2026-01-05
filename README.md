@@ -1,6 +1,6 @@
-<img src="references/HEDeST_logo.png" align="left" width="130"/>
+<img src="references/HEDeST_logo.png" align="left" width="140"/>
 
-<h1 style="margin-top: -30px;">
+<h1 style="margin-top: -50px;">
     HEDeST: An Integrative Approach to Enhance Spatial Transcriptomic Deconvolution with Histology
 </h1>
 
