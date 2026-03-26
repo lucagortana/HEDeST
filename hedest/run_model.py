@@ -32,6 +32,7 @@ from hedest.utils import set_seed
 def run_hedest(
     image_dict: Dict[str, torch.Tensor],
     spot_prop_df: pd.DataFrame,
+    cell_annot_level: int,
     spot_dict: Dict[str, List[str]],
     json_path: Optional[str] = None,
     adata: Optional[AnnData] = None,
@@ -59,6 +60,7 @@ def run_hedest(
     Args:
         image_dict: Dictionary mapping cell IDs to image tensors.
         spot_prop_df: DataFrame containing cell type proportions for each spot.
+        cell_annot_level: The level of cell annotations used.
         spot_dict: Dictionary mapping cell IDs to their spot.
         json_path: Path to the post-segmentation file.
         adata: AnnData object containing spatial transcriptomics data.
@@ -208,6 +210,7 @@ def run_hedest(
     # Save model infos
     model_info = {
         "model_name": model_name,
+        "cell_level": cell_annot_level,
         "hidden_dims": hidden_dims,
         "norm": norm,
         "dropout": dropout,
@@ -217,65 +220,65 @@ def run_hedest(
         "history": {"train": trainer.history_train, "val": trainer.history_val},
         "preds": {
             "pred_best": cell_prob_best,
-            "pred_best_adjusted": cell_prob_best_adjusted,
+            "pred_best_adjusted": cell_prob_best_adjusted, # YB: I could remove it but does not bother me
         },
     }
 
-    info_dir = os.path.join(out_dir, "info.pickle")
+    info_dir = os.path.join(out_dir, f"level_{cell_annot_level}_info.pickle")
     logger.info(f"Saving objects to {info_dir}...")
     with open(info_dir, "wb") as f:
         pickle.dump(model_info, f)
 
-    # Extract and save statistics
-    logger.info("Extracting and saving statistics...")
+    # # Extract and save statistics
+    # logger.info("Extracting and saving statistics...")
+    #
+    # # Load seg_dict once if needed for GeoJSON export
+    # seg_dict_raw = None
+    # if save_geojson and json_path is not None:
+    #     with open(json_path, "r") as f:
+    #         seg_dict_raw = json.load(f)
+    # elif save_geojson and json_path is None:
+    #     logger.warning("save_geojson=True but json_path is None — GeoJSON export will be skipped.")
+    #
+    # # Instantiate PredAnalyzer objects (with seg_dict if available)
+    # analyzer_best = PredAnalyzer(model_info=model_info, adjusted=False, seg_dict=seg_dict_raw)
+    # analyzer_best_adj = PredAnalyzer(model_info=model_info, adjusted=True, seg_dict=seg_dict_raw)
+    #
+    # # Extract stats
+    # stats_best_predicted = analyzer_best.extract_stats(metric="predicted")
+    # stats_best_all = analyzer_best.extract_stats(metric="all")
+    # stats_best_adj_predicted = analyzer_best_adj.extract_stats(metric="predicted")
+    # stats_best_adj_all = analyzer_best_adj.extract_stats(metric="all")
+    #
+    # with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
+    #     stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
+    #     stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
+    #     stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
+    #     stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
+    #
+    # # GeoJSON export
+    # if save_geojson and seg_dict_raw is not None:
+    #     import yaml
+    #     from hedest.utils import seg_dict_to_geojson, generate_color_dict
+    #
+    #     if color_dict_file is not None:
+    #         with open(color_dict_file, "r") as f:
+    #             color_dict = yaml.safe_load(f)
+    #     else:
+    #         color_dict = generate_color_dict(ct_list, format="special")
+    #         auto_color_path = os.path.join(out_dir, "auto_color_dict.yaml")
+    #         with open(auto_color_path, "w") as f:
+    #             yaml.dump(color_dict, f)
+    #         logger.info(f"Auto-generated color dict saved to {auto_color_path}")
+    #
+    #     geojson_path_best = os.path.join(out_dir, "hedest_predictions.geojson")
+    #     geojson_path_best_adj = os.path.join(out_dir, "hedest_predictions_adj.geojson")
+    #
+    #     seg_dict_to_geojson(analyzer_best.seg_dict_w_class, geojson_path_best, color_dict=color_dict)
+    #     logger.info(f"GeoJSON (unadjusted) exported to {geojson_path_best}")
 
-    # Load seg_dict once if needed for GeoJSON export
-    seg_dict_raw = None
-    if save_geojson and json_path is not None:
-        with open(json_path, "r") as f:
-            seg_dict_raw = json.load(f)
-    elif save_geojson and json_path is None:
-        logger.warning("save_geojson=True but json_path is None — GeoJSON export will be skipped.")
-
-    # Instantiate PredAnalyzer objects (with seg_dict if available)
-    analyzer_best = PredAnalyzer(model_info=model_info, adjusted=False, seg_dict=seg_dict_raw)
-    analyzer_best_adj = PredAnalyzer(model_info=model_info, adjusted=True, seg_dict=seg_dict_raw)
-
-    # Extract stats
-    stats_best_predicted = analyzer_best.extract_stats(metric="predicted")
-    stats_best_all = analyzer_best.extract_stats(metric="all")
-    stats_best_adj_predicted = analyzer_best_adj.extract_stats(metric="predicted")
-    stats_best_adj_all = analyzer_best_adj.extract_stats(metric="all")
-
-    with pd.ExcelWriter(os.path.join(out_dir, "stats.xlsx")) as writer:
-        stats_best_predicted.to_excel(writer, sheet_name="best_predicted", index=False)
-        stats_best_all.to_excel(writer, sheet_name="best_all", index=False)
-        stats_best_adj_predicted.to_excel(writer, sheet_name="best_adj_predicted", index=False)
-        stats_best_adj_all.to_excel(writer, sheet_name="best_adj_all", index=False)
-
-    # GeoJSON export
-    if save_geojson and seg_dict_raw is not None:
-        import yaml
-        from hedest.utils import seg_dict_to_geojson, generate_color_dict
-
-        if color_dict_file is not None:
-            with open(color_dict_file, "r") as f:
-                color_dict = yaml.safe_load(f)
-        else:
-            color_dict = generate_color_dict(ct_list, format="special")
-            auto_color_path = os.path.join(out_dir, "auto_color_dict.yaml")
-            with open(auto_color_path, "w") as f:
-                yaml.dump(color_dict, f)
-            logger.info(f"Auto-generated color dict saved to {auto_color_path}")
-
-        geojson_path_best = os.path.join(out_dir, "hedest_predictions.geojson")
-        geojson_path_best_adj = os.path.join(out_dir, "hedest_predictions_adj.geojson")
-
-        seg_dict_to_geojson(analyzer_best.seg_dict_w_class, geojson_path_best, color_dict=color_dict)
-        logger.info(f"GeoJSON (unadjusted) exported to {geojson_path_best}")
-
-        seg_dict_to_geojson(analyzer_best_adj.seg_dict_w_class, geojson_path_best_adj, color_dict=color_dict)
-        logger.info(f"GeoJSON (adjusted) exported to {geojson_path_best_adj}")
+        # seg_dict_to_geojson(analyzer_best_adj.seg_dict_w_class, geojson_path_best_adj, color_dict=color_dict)
+        # logger.info(f"GeoJSON (adjusted) exported to {geojson_path_best_adj}")
 
     logger.info("Secondary deconvolution process completed successfully.")
     logger.info(f"Training time: {TRAIN_TIME}")
