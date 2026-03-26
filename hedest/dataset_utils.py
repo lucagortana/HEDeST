@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
-
+import re
 
 def split_data(
     spot_dict: dict[str, list[str]],
@@ -107,3 +107,18 @@ def custom_collate(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tens
     bag_indices = torch.cat([b["bag_indices"] for b in batch])
 
     return {"images": images, "proportions": proportions, "bag_indices": bag_indices}
+
+
+def level_extraction(file):
+    """
+    Extract the number of the level based on the name of the file.
+
+    Args:
+        file: the name of the file.
+
+    Returns:
+        The first number found in the file name.
+    """
+
+    level = re.findall(r'\d+', file.name)
+    return int(level[0]) if level else 0
