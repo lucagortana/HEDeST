@@ -16,7 +16,8 @@ from hedest.run_model import run_hedest
 from hedest.utils import format_time
 from hedest.utils import load_spatial_adata
 from hedest.utils import update_spot_diameter
-
+from hedest.dataset_utils import level_extraction # new
+from sequential_posthoc_masking import run_sequential_hedest
 app = typer.Typer()
 
 
@@ -49,7 +50,7 @@ def parse_hidden_dims(hidden_dims: str) -> List[int]:
 @app.command()
 def main(
     image_path: str = typer.Argument(..., help="Path to the high-quality WSI directory or image dict."),
-    spot_prop_file: str = typer.Argument(..., help="Path to the proportions file."),
+    spot_prop_folder: str = typer.Argument(..., help="Path to the folder with the proportions file."),
     json_path: Optional[str] = typer.Option(None, help="Path to the post-segmentation file."),
     path_st_adata: Optional[str] = typer.Option(None, help="Path to the ST anndata object."),
     adata_name: Optional[str] = typer.Option(None, help="Name of the sample."),
@@ -115,9 +116,11 @@ def main(
     except Exception:
         size = example_img.shape[0]
 
-    # Load spot information
-    logger.info(f"Loading proportions from {spot_prop_file}...")
-    spot_prop_df = pp_prop(spot_prop_file)
+    # Load spot information in the list
+    logger.info(f"Loading proportions from {spot_prop_folder}...")
+    spot_prop_files = sorted(spot_prop_folder.iterdir(), key=level_extraction)
+    spot_prop_df_list = [pp_prop(file) for file in spot_prop_files]
+    # spot_prop_df = pp_prop(spot_prop_file)
 
     adata = None
     spot_dict = None
@@ -171,10 +174,10 @@ def main(
     logger.info(f"Random state: {rs}")
     logger.info("=" * 50)
 
-    # Run HEDeST
-    run_hedest(
+    # Run HEDeST   #################il faudra mettre autre chose que le sequential hedest #########################
+    run_sequential_hedest(
         image_dict=image_dict,
-        spot_prop_df=spot_prop_df,
+        spot_prop_df_list = spot_prop_df_list,
         spot_dict=spot_dict,
         json_path=json_path,
         adata=adata,
