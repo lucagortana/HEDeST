@@ -743,7 +743,7 @@ class PredAnalyzer:
             )
 
         # --- All cell types in one big plot ---
-        ct_list = self.ct_list
+        ct_list = [ct for ct in self.ct_list if (self.predictions.idxmax(axis=1) == ct).any()]
         n_ct = len(ct_list)
 
         if nrows is None or ncols is None:
