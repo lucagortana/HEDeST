@@ -9,7 +9,7 @@
 ![figure](references/method.png)
 
 ## Installation
-To create your conda environment and install the requirements
+To create your conda environment and install the requirements with ``pip``
 ```
 git clone git@github.com:lucagortana/HEDeST.git
 cd HEDeST
