@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cellvit"
+version = "1.0.9"
+description = "CellViT Inference Pipeline for Whole Slide Images (WSI) in Memory"
+authors = [
+    { name = "Fabian Hörst", email = "fabian.hoerst@uk-essen.de" }
+]
+license = {text = "Apache 2.0 with common clause, see LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Other",
+]
+readme = "docs/README-PyPI.md"
+requires-python = ">=3.9"
+dependencies = [
+    "colorama",
+    "colour",
+    "einops>=0.6.1",
+    "geojson>=2.0.0",
+    "natsort",
+    "numba>=0.58.0",
+    "numpy<2.0.0",
+    "opencv-python-headless==4.7.0.72",
+    "opt-einsum>=3.3.0",
+    "pandas",
+    "pathopatch>=1.0.9",
+    "pydantic>=1.10.16,<2.0",
+    "pydicom==2.4.4",
+    "ray[default]>=2.9.3",
+    "scikit-image>=0.19.3,<0.27",
+    "scipy>=1.8.0",
+    "Shapely>=1.8.5.post1,<=2.0.5",
+    "ujson==5.8.0",
+    "python-snappy",
+    "tqdm",
+    "psutil",
+    "pyaml"
+]
+
+[tool.setuptools]
+packages = {find = {exclude = ["tests", "tests.*"]}}
+
+[project.urls]
+Homepage = "https://github.com/TIO-IKIM/CellViT-Inference"
+Documentation = "https://tio-ikim.github.io/CellViT-Inference/"
+License = "https://github.com/TIO-IKIM/CellViT-Inference/blob/main/LICENSE"
+
+[project.scripts]
+cellvit-inference = "cellvit.detect_cells:main"
+cellvit-check = "cellvit.check_system:main"
+cellvit-download-examples = "cellvit.utils.cache_test_database:cache_test_database"
+cellvit-download-models = "cellvit.utils.cache_models:main"

@@ -1,9 +1,12 @@
 cache
 __pycache*
 *.svg
+*.md
 
 benchmark/results
 case_study/figures
+external/CellViT/docs
+external/CellViT/examples
 external/LEMON
 log
 models
@@ -13,6 +16,7 @@ simulations/semi_simulations/figures
 
 debug.log
 run_*
+!README.md
 !run_infer.sh
 !run_train.sh
 !run_utils
@@ -34,6 +38,7 @@ run_*
 !run_mask.sh
 !run_moco_ssl.sh
 
+!external/CellViT/cellvit/models
 !external/hovernet/models
 !external/mhast/run_semisim.sh
 !external/mhast/run_sim.sh

@@ -1,0 +1,47 @@
+# PyTorch model files
+*.pt
+*.pth
+*.bin
+
+# VS Code settings
+.vscode/
+
+# Python cache and temporary files
+*.pyc
+__pycache__/
+**/cache/
+.pytest_cache/
+.ruff_cache/
+.coverage*
+
+# WSI and example datasets
+*.svs
+*.tiff
+/test_database*
+/test_results/
+/test_scripts/
+
+# Notebooks
+/notebooks/
+
+# Logs and miscellaneous files
+*.log
+cufile.log
+gdc-client
+.DS_Store
+
+# Build and distribution directories
+dist/
+cellvit.egg-info/
+docs/build/
+
+# Tests and test data
+/tests/data/
+/tests/test_data/
+
+# Miscellaneous scripts
+check_examples.sh
+
+# Unnecessary files
+test_scripts
+json_to_geojson.ipynb
