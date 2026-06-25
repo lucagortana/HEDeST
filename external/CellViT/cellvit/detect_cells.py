@@ -6,6 +6,17 @@
 # University Medicine Essen
 from __future__ import annotations
 
+import os
+import sys
+
+# Allow running this file directly (e.g. `python external/CellViT/cellvit/detect_cells.py`)
+# from the modified repository without installing the package: make sure the repo
+# root (the directory that contains the `cellvit` package) is importable, taking
+# precedence over any cellvit installed in the environment.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from pathlib import Path
 
 import numpy as np
@@ -46,6 +57,12 @@ def main():
         compression=args["compression"],
         enforce_amp=args["enforce_amp"],
         debug=args["debug"],
+        export_cells=args["export_cells"],
+        save_geojson=args["save_geojson"],
+        size_px=args["size_px"],
+        size_um=args["size_um"],
+        image_dict_path=args["image_dict_path"],
+        adata_path=args["adata_path"],
     )
 
     if command.lower() == "process_wsi":

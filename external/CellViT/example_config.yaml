@@ -63,6 +63,28 @@ process_dataset:
                       # Can be used with both `wsi_folder` and `wsi_filelist`.
 
 # ==========================
+# Cell Export Settings (OPTIONAL) - HoVer-Net compatible outputs
+# ==========================
+# When enabled, CellViT additionally produces the same per-cell artefacts as the
+# HoVer-Net pipeline: a <wsi>.json with the HoVer-Net {"mag", "nuc": {...}} shape
+# (cell ids re-indexed from 0 to n_cells-1), an optional per-cell geojson, and an
+# optional dictionary of cell crops extracted around each nucleus centroid.
+cell_extraction:
+  export_cells:       # OPTIONAL | bool: Enable HoVer-Net compatible cell export.
+                      # Default: false (disabled)
+  save_geojson:       # OPTIONAL | bool: Export a HoVer-Net style (one feature per cell) geojson.
+                      # Default: false (disabled)
+  size_px:            # OPTIONAL | int: Output cell-crop size in pixels.
+                      # Default: 64
+  size_um:            # OPTIONAL | float: Cell-crop size in micrometers. Converted to pixels using the
+                      # WSI's own mpp (wsi_mpp / auto-detected).
+                      # Default: None (a size_px x size_px window is cropped directly)
+  image_dict_path:    # OPTIONAL | str: Where to save the extracted cell-crop dictionary (.pt).
+                      # If omitted, no crops are extracted.
+  adata_path:         # OPTIONAL | str: AnnData .h5ad with ST spot coordinates in obsm['spatial'].
+                      # If set, cells further than 300um from the closest spot are filtered out.
+
+# ==========================
 # System Settings (OPTIONAL)
 # ==========================
 system:

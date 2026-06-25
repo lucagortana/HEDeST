@@ -86,6 +86,12 @@ class CellViTInference:
         compression: bool = False,
         enforce_amp: bool = False,
         debug: bool = False,
+        export_cells: bool = False,
+        save_geojson: bool = False,
+        size_px: int = 64,
+        size_um: float = None,
+        image_dict_path: Union[Path, str] = None,
+        adata_path: str = None,
     ) -> None:
         """CellViT Inference Class
 
@@ -105,6 +111,16 @@ class CellViTInference:
             enforce_amp (bool, optional): Using PyTorch autocasting with dtype float16 to speed up inference. Also good for trained amp networks.
                 Can be used to enforce amp inference even for networks trained without amp. Otherwise, the network setting is used. Defaults to False.
             debug (bool, optional): If debug level. Defaults to False.
+            export_cells (bool, optional): If HoVer-Net compatible cell export should be performed. For every WSI this additionally writes a
+                ``<wsi>.json`` file with the HoVer-Net ``{"mag": ..., "nuc": {...}}`` shape and cell ids re-indexed from 0 to n_cells-1. Defaults to False.
+            save_geojson (bool, optional): If a HoVer-Net style (one feature per cell) GeoJSON should be exported during cell export. Defaults to False.
+            size_px (int, optional): Output cell-crop size in pixels (crop extraction). Defaults to 64.
+            size_um (float, optional): Cell-crop size in micrometers (crop extraction). If set, the WSI's own mpp (``wsi_mpp`` or
+                auto-detected, exposed as ``base_mpp``) is used to convert it to pixels. Defaults to None.
+            image_dict_path (Union[Path, str], optional): If set (and ``export_cells`` is True), cell crops are extracted and the resulting image_dict is
+                saved here. If the path ends with ``.pt`` it is treated as a single file, otherwise as a directory in which one ``<wsi>.pt`` per WSI is written. Defaults to None.
+            adata_path (str, optional): If set (and ``export_cells`` is True), cells further than 300um from the closest spatial-transcriptomics spot
+                (read from the AnnData ``obsm['spatial']``) are filtered out before the json/geojson/crops are produced. Defaults to None.
 
         Attributes:
             model_name (Literal["SAM", "HIPT"]): Name of the model to use. Must be one of: SAM, HIPT
@@ -174,6 +190,14 @@ class CellViTInference:
         self.graph: bool = graph
         self.compression: bool = compression
         self.debug: bool = debug
+
+        # HoVer-Net compatible cell-export / post-processing options
+        self.export_cells: bool = export_cells
+        self.save_geojson: bool = save_geojson
+        self.size_px: int = size_px
+        self.size_um: float = size_um
+        self.image_dict_path: Union[Path, str] = image_dict_path
+        self.adata_path: str = adata_path
 
         # derived parameters
         self.logger: Logger
@@ -992,6 +1016,15 @@ class CellViTInference:
         self.logger.info("Stats:")
         self.logger.info(f"{verbose_stats}")
 
+        # HoVer-Net compatible cell export (json reorder, ST filter, geojson, crops)
+        if self.export_cells:
+            self._run_seg_postprocessing(
+                wsi_path=wsi_path,
+                wsi_outdir=wsi_outdir,
+                cells=cell_dict_wsi["cells"],
+                wsi_metadata=wsi.metadata,
+            )
+
         # store a json with processed files -> append if already exists
         processed_files = []
         if (self.outdir / "processed_files.json").exists():
@@ -1005,6 +1038,111 @@ class CellViTInference:
         processed_files = list(set(processed_files))
         with open(self.outdir / "processed_files.json", "w") as outfile:
             ujson.dump(processed_files, outfile)
+
+    def _run_seg_postprocessing(
+        self,
+        wsi_path: Path,
+        wsi_outdir: Path,
+        cells: List[dict],
+        wsi_metadata: dict,
+    ) -> None:
+        """Produce HoVer-Net compatible per-cell artefacts for a single WSI.
+
+        Writes (inside ``wsi_outdir``):
+            * ``<wsi>.json``     - HoVer-Net ``{"mag": ..., "nuc": {...}}`` json,
+              with cell ids re-indexed from 0 to n_cells-1.
+            * ``<wsi>.geojson``  - one-feature-per-cell GeoJSON (if save_geojson).
+        And, if ``image_dict_path`` is set, extracts one crop per nucleus
+        centroid and saves the resulting image_dict (a ``.pt`` file).
+
+        If ``adata_path`` is set, cells too far from the closest ST spot are
+        filtered out before any of the above is produced.
+
+        Args:
+            wsi_path (Path): Path to the processed WSI.
+            wsi_outdir (Path): Per-WSI output directory used by CellViT.
+            cells (List[dict]): The ``"cells"`` list of the CellViT output.
+            wsi_metadata (dict): WSI metadata (provides ``base_mpp`` and
+                ``magnification``).
+        """
+        from cellvit.inference.seg_postprocessing import (
+            cells_to_nuc_dict,
+            extract_cell_images,
+            filter_by_st_proximity,
+            nuc_to_geojson,
+            reindex_nuc,
+            save_nuc_json,
+        )
+
+        if wsi_path.suffix == ".dcm":
+            wsi_stem = wsi_path.parent.name
+        else:
+            wsi_stem = wsi_path.stem
+
+        # mpp used for both the ST filtering and the crop sizing: the WSI's own
+        # native (level-0) mpp, i.e. wsi_mpp if provided, else auto-detected.
+        mpp = wsi_metadata.get("base_mpp")
+
+        # 1) Build re-indexed HoVer-Net style nuc dict
+        nuc = cells_to_nuc_dict(cells)
+
+        # 2) Optional spatial-transcriptomics proximity filtering
+        if self.adata_path is not None:
+            if mpp is None:
+                self.logger.warning(
+                    "adata_path provided but no mpp is available. Skipping ST filtering."
+                )
+            else:
+                nuc = filter_by_st_proximity(
+                    nuc, self.adata_path, mpp, logger=self.logger
+                )
+                nuc = reindex_nuc(nuc)
+
+        # 3) Re-indexed HoVer-Net style json
+        mag = wsi_metadata.get("magnification", wsi_metadata.get("base_mag"))
+        json_out = wsi_outdir / f"{wsi_stem}.json"
+        save_nuc_json(nuc, json_out, mag=mag)
+        self.logger.info(
+            f"Cell export: HoVer-Net json saved to {json_out} "
+            f"({len(nuc)} cells, ids 0..{max(len(nuc) - 1, 0)})"
+        )
+
+        # 4) Optional QuPath-compatible GeoJSON (HoVer-Net feature schema)
+        if self.save_geojson:
+            geojson_out = wsi_outdir / f"{wsi_stem}.geojson"
+            n_feat = nuc_to_geojson(nuc, geojson_out)
+            self.logger.info(
+                f"Cell export: GeoJSON saved to {geojson_out} ({n_feat} features)"
+            )
+
+        # 5) Optional cell-crop extraction
+        if self.image_dict_path is not None:
+            if self.size_um is not None and mpp is None:
+                raise ValueError(
+                    "size_um was provided but the WSI mpp is unknown. "
+                    "Pass --wsi_mpp explicitly or ensure the WSI exposes its resolution."
+                )
+
+            out_p = Path(self.image_dict_path)
+            if out_p.suffix == ".pt":
+                dict_path = out_p
+            else:
+                dict_path = out_p / f"{wsi_stem}.pt"
+
+            extract_cell_images(
+                slide_path=wsi_path,
+                nuc=nuc,
+                level=0,
+                size_px=self.size_px,
+                size_um=self.size_um,
+                mpp=mpp,
+                save_dict=str(dict_path),
+                logger=self.logger,
+            )
+            self.logger.info(
+                f"Cell export: extracted {len(nuc)} cell crops "
+                f"(size_px={self.size_px}, size_um={self.size_um}, mpp={mpp}) -> {dict_path}"
+            )
 
     def apply_softmax_reorder(self, predictions: dict) -> dict:
         """Reorder and apply softmax on predictions

@@ -28,6 +28,20 @@ ___
 > To access the previous version (CellViT), follow this [link](https://github.com/TIO-IKIM/CellViT)
 > To access the CellViT++ repo, follow this [link](https://github.com/TIO-IKIM/CellViT-plus-plus)
 
+## Adaptation
+
+This repository has been adapted so that CellViT can produce the **same per-cell artefacts as the (adapted) HoVer-Net** repository, making the two segmentation backends interchangeable. Everything is gated behind an `--export_cells` flag, so the native CellViT behaviour is unchanged by default:
+
+- We added `cellvit/inference/seg_postprocessing.py`, which converts CellViT's `cells.json` into a HoVer-Net shaped json (`{"mag": ..., "nuc": {...}}`) **with the cell ids re-ordered from 0 to n_cells-1**, exports a HoVer-Net style (one feature per cell) GeoJSON, and extracts cell crops around each nucleus centroid,
+- We adapted `cellvit/inference/inference.py` so that `process_wsi` runs this post-processing and writes `<wsi>.json` / `<wsi>.geojson` plus an `image_dict` of crops,
+- We added the arguments `--size_px` and `--size_um` so the user can choose the biological and pixel size of the cell crops (a `size_um × size_um` µm window resized to `size_px × size_px`); the µm→px conversion reuses the WSI's own mpp (`--wsi_mpp` / auto-detected), so there is a single mpp argument,
+- We added `--image_dict_path` to choose where the cell-crop dictionary (`.pt`) is saved,
+- We added `--save_geojson` for a HoVer-Net compatible GeoJSON to visualise the segmentation in QuPath,
+- We added an optional `--adata_path` argument that filters cells based on their distance to the closest spatial-transcriptomics spot (e.g. Visium v2),
+- PanNuke labels match HoVer-Net 1-to-1 (see `type_info.json`); run with `--nuclei_taxonomy pannuke`.
+
+The launcher `run_cellvit.sh` (next to `run_hovernet.sh`) runs inference with these arguments. See `RESULT.md` at the repository root for details.
+
 ## Key Features
 
 - 🚀 Optimized inference pipeline for high-performance processing

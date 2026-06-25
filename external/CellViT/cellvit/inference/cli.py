@@ -52,6 +52,12 @@ class InferenceConfiguration:
             ray_remote_cpus (int): Number of CPUs to use for Ray workers
             memory (int): RAM ot use
             debug (bool): If debug should be used
+            export_cells (bool): If HoVer-Net compatible cell export should be performed (re-indexed <wsi>.json, optional geojson and cell crops)
+            save_geojson (bool): If a HoVer-Net style (one feature per cell) geojson should be exported during cell export
+            size_px (int): Output cell-crop size in pixels (crop extraction)
+            size_um (float): Cell-crop size in micrometers (crop extraction). Converted to pixels using the WSI's own mpp (wsi_mpp / auto-detected)
+            image_dict_path (str): If set (and export_cells is True), cell crops are extracted and the resulting image_dict is saved here
+            adata_path (str): If set (and export_cells is True), cells further than 300um from the closest ST spot are filtered out
         """
         self.model: str
         self.nuclei_taxonomy: str = "pannuke"
@@ -75,6 +81,14 @@ class InferenceConfiguration:
         self.memory: int = None
         self.debug: int = False
 
+        # HoVer-Net compatible cell export / post-processing
+        self.export_cells: bool = False
+        self.save_geojson: bool = False
+        self.size_px: int = 64
+        self.size_um: float = None
+        self.image_dict_path: str = None
+        self.adata_path: str = None
+
         assert isinstance(config, dict), "Config must be of type dict"
 
         # set model and classifier type
@@ -91,6 +105,9 @@ class InferenceConfiguration:
         self.__set_geojson(config)
         self.__set_graph(config)
         self.__set_compression(config)
+
+        # set cell-export / post-processing options
+        self.__set_cell_export(config)
 
         # set command
         self.__set_command(config)
@@ -366,6 +383,53 @@ class InferenceConfiguration:
         else:
             self.debug = False
 
+    def __set_cell_export(self, config: dict) -> None:
+        """Sets the HoVer-Net compatible cell-export / post-processing options
+
+        Args:
+            config (dict): Configuration dictionary
+
+        Raises:
+            AssertionError: If any of the cell-export options has an invalid type/value
+        """
+        export_config = config.get("cell_extraction")
+        if export_config is None:
+            return
+        assert isinstance(export_config, dict), "cell_extraction config must be of type dict"
+
+        export_cells = export_config.get("export_cells")
+        if export_cells is not None:
+            assert isinstance(export_cells, bool), "export_cells must be of type boolean"
+            self.export_cells = export_cells
+
+        save_geojson = export_config.get("save_geojson")
+        if save_geojson is not None:
+            assert isinstance(save_geojson, bool), "save_geojson must be of type boolean"
+            self.save_geojson = save_geojson
+
+        size_px = export_config.get("size_px")
+        if size_px is not None:
+            assert isinstance(size_px, int), "size_px must be of type integer"
+            assert size_px > 0, "size_px must be greater than 0"
+            self.size_px = size_px
+
+        size_um = export_config.get("size_um")
+        if size_um is not None:
+            assert isinstance(size_um, (int, float)), "size_um must be a number"
+            assert size_um > 0, "size_um must be greater than 0"
+            self.size_um = float(size_um)
+
+        image_dict_path = export_config.get("image_dict_path")
+        if image_dict_path is not None:
+            assert isinstance(image_dict_path, str), "image_dict_path must be of type string"
+            self.image_dict_path = image_dict_path
+
+        adata_path = export_config.get("adata_path")
+        if adata_path is not None:
+            assert isinstance(adata_path, str), "adata_path must be of type string"
+            assert Path(adata_path).exists(), "adata_path does not exist"
+            self.adata_path = adata_path
+
     def __set_command(self, config: dict) -> None:
         """Sets the main run command for either performing inference on single WSI-file or on whole dataset
 
@@ -541,6 +605,48 @@ class InferenceWSIParser:
             help="Whether to use Snappy compression for output files",
         )
 
+        # Cell Export Settings (HoVer-Net compatible outputs)
+        export_group = parser.add_argument_group("Cell Export Settings (HoVer-Net compatible outputs)")
+        export_group.add_argument(
+            "--export_cells",
+            action="store_true",
+            help="Enable HoVer-Net compatible cell export. For every WSI this writes a "
+            "<wsi>.json file with the HoVer-Net {'mag': ..., 'nuc': {...}} shape and cell ids "
+            "re-indexed from 0 to n_cells-1.",
+        )
+        export_group.add_argument(
+            "--save_geojson",
+            action="store_true",
+            help="Export a HoVer-Net style (one feature per cell) GeoJSON during cell export",
+        )
+        export_group.add_argument(
+            "--size_px",
+            type=int,
+            default=64,
+            help="Output cell-crop size in pixels (crop extraction)",
+        )
+        export_group.add_argument(
+            "--size_um",
+            type=float,
+            default=None,
+            help="Cell-crop size in micrometers (crop extraction). Converted to pixels using the WSI's own "
+            "mpp (--wsi_mpp or auto-detected from the file)",
+        )
+        export_group.add_argument(
+            "--image_dict_path",
+            type=str,
+            default=None,
+            help="If set (with --export_cells), extract one crop per nucleus and save the image_dict here. "
+            "If the path ends with .pt it is a single file, otherwise a directory holding one <wsi>.pt per WSI",
+        )
+        export_group.add_argument(
+            "--adata_path",
+            type=str,
+            default=None,
+            help="If set (with --export_cells), filter out cells further than 300um from the closest "
+            "spatial-transcriptomics spot read from the AnnData obsm['spatial'] (e.g. Visium v2)",
+        )
+
         # Processing Mode
         mode_group = parser.add_argument_group("Processing Mode (Choose One)")
         mode_subparsers = parser.add_subparsers(dest="mode", help="Select processing mode")
@@ -632,6 +738,15 @@ class InferenceWSIParser:
         opt_yaml_style["system"]["ray_remote_cpus"] = opt["ray_remote_cpus"]
         opt_yaml_style["system"]["memory"] = opt["memory"]
         opt_yaml_style["debug"] = opt["debug"]
+
+        # cell export / post-processing
+        opt_yaml_style["cell_extraction"] = {}
+        opt_yaml_style["cell_extraction"]["export_cells"] = opt["export_cells"]
+        opt_yaml_style["cell_extraction"]["save_geojson"] = opt["save_geojson"]
+        opt_yaml_style["cell_extraction"]["size_px"] = opt["size_px"]
+        opt_yaml_style["cell_extraction"]["size_um"] = opt["size_um"]
+        opt_yaml_style["cell_extraction"]["image_dict_path"] = opt["image_dict_path"]
+        opt_yaml_style["cell_extraction"]["adata_path"] = opt["adata_path"]
 
         if opt["mode"] == "process_wsi":
             opt_yaml_style["process_wsi"] = {}
