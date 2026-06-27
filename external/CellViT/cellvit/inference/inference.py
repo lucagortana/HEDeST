@@ -1100,7 +1100,7 @@ class CellViTInference:
 
         # 3) Re-indexed HoVer-Net style json
         mag = wsi_metadata.get("magnification", wsi_metadata.get("base_mag"))
-        json_out = wsi_outdir / f"{wsi_stem}.json"
+        json_out = self.outdir / f"{wsi_stem}.json"
         save_nuc_json(nuc, json_out, mag=mag)
         self.logger.info(
             f"Cell export: HoVer-Net json saved to {json_out} "
@@ -1109,7 +1109,7 @@ class CellViTInference:
 
         # 4) Optional QuPath-compatible GeoJSON (HoVer-Net feature schema)
         if self.save_geojson:
-            geojson_out = wsi_outdir / f"{wsi_stem}.geojson"
+            geojson_out = self.outdir / f"{wsi_stem}.geojson"
             n_feat = nuc_to_geojson(nuc, geojson_out)
             self.logger.info(
                 f"Cell export: GeoJSON saved to {geojson_out} ({n_feat} features)"
