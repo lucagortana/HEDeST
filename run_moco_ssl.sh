@@ -16,8 +16,8 @@ conda activate CellST
 export LD_LIBRARY_PATH=/cluster/CBIO/home/lgortana/anaconda3/envs/CellST/lib:$LD_LIBRARY_PATH
 
 python -u external/mocov3/run_moco.py \
-    --image_path /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/image_dict_64px_20um.pt \
+    --image_path /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer/image_dict_cellvit_64px_20um.pt \
     --save_path /cluster/CBIO/data1/lgortana/Visium_FFPE_Human_Breast_Cancer \
-    --tag BRCA_64px_20um \
+    --tag BRCA_cellvit_64px_20um \
     --batch_size_infer 2048 \
     --num_workers 4 \
