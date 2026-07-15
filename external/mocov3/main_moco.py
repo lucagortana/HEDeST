@@ -469,6 +469,11 @@ def main_worker(gpu, ngpus_per_node, args):
     # set loss to inf
     best_loss = float("inf")
     best_epoch = 0
+    # When MOCO_LIMIT_CKPT=1, keep only ONE checkpoint (the best-so-far), overwriting
+    # it on improvement, instead of dumping a ~413MB checkpoint every epoch. This
+    # both saves disk (N x 413MB -> 413MB) and speeds up training (fewer filer writes).
+    limit_ckpt = os.environ.get("MOCO_LIMIT_CKPT", "0") == "1"
+    best_ckpt = os.path.join(checkpointdir, "checkpoint_best.pth.tar")
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -480,29 +485,29 @@ def main_worker(gpu, ngpus_per_node, args):
         if not args.multiprocessing_distributed or (
             args.multiprocessing_distributed and args.rank == 0
         ):  # only the first GPU saves checkpoint
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "arch": args.arch,
-                    "state_dict": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "scaler": scaler.state_dict(),
-                },
-                filename=os.path.join(checkpointdir, "checkpoint_%04d.pth.tar" % epoch),
-            )
-            if avg_loss < best_loss:
+            improved = avg_loss < best_loss
+            if improved:
                 best_loss = avg_loss
                 best_epoch = epoch
+            state = {
+                "epoch": epoch + 1,
+                "arch": args.arch,
+                "state_dict": model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scaler": scaler.state_dict(),
+            }
+            if limit_ckpt:
+                if improved:
+                    save_checkpoint(state, filename=best_ckpt)
+            else:
+                save_checkpoint(state, filename=os.path.join(checkpointdir, "checkpoint_%04d.pth.tar" % epoch))
 
     if args.rank == 0:
         summary_writer.close()
 
-    # print("Don't forget to uncommand after time test.")
-    # Copy last checkpoints
-    shutil.copyfile(
-        os.path.join(checkpointdir, "checkpoint_%04d.pth.tar" % (best_epoch)),
-        os.path.join(save_dir, f"moco_model_best.pth.tar"),
-    )
+    # Copy the best checkpoint to the final model file.
+    best_src = best_ckpt if limit_ckpt else os.path.join(checkpointdir, "checkpoint_%04d.pth.tar" % (best_epoch))
+    shutil.copyfile(best_src, os.path.join(save_dir, "moco_model_best.pth.tar"))
 
 
 def timeit(func):

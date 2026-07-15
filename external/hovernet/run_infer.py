@@ -237,6 +237,10 @@ if __name__ == "__main__":
 
             ## Optional ST filtering step
             adata_path = args.get("adata_path")
+            # docopt fills the unset option with the literal default "''"; treat
+            # empty / quote-only values as "no ST filtering".
+            if adata_path in (None, "", "''", '""'):
+                adata_path = None
             if adata_path and mpp:
                 nuc_dict = filter_by_st_proximity(nuc_dict, adata_path, mpp)
             elif adata_path and not mpp:
