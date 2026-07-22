@@ -83,6 +83,16 @@ class PPSAdjustment:
         # Index maps --------------------------------------------------------
         self.cell_to_spot = revert_dict(spot_dict)
 
+        # Keep only spots that actually have proportions
+        has_prop = adata.obs_names.isin(spot_prop_df.index)
+        n_missing = int((~has_prop).sum())
+        if n_missing:
+            logger.warning(
+                f"{n_missing}/{adata.n_obs} adata spot(s) have no proportions in "
+                f"spot_prop_df and are ignored for the neighbour search."
+            )
+            adata = adata[has_prop]
+
         self.spot_coords = adata.obsm["spatial"].astype("float64")  # (n_spots, 2)
         self.spot_ids_order = adata.obs_names.to_numpy()
         self.spot_id_to_idx = {sid: i for i, sid in enumerate(self.spot_ids_order)}
