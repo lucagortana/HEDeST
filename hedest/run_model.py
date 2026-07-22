@@ -88,6 +88,12 @@ def run_hedest(
         os.makedirs(out_dir)
         logger.info(f"Created output directory: {out_dir}")
 
+    missing_spots = set(spot_dict.keys()) - set(spot_prop_df.index)
+    assert not missing_spots, (
+        f"{len(missing_spots)} spot(s) in spot_dict have no proportions in spot_prop_df "
+        f"(e.g. {sorted(missing_spots)[:5]}). Every spot with cells must have a proportion row."
+    )
+
     train_spot_dict, train_proportions, val_spot_dict, val_proportions, test_spot_dict, test_proportions = split_data(
         spot_dict, spot_prop_df, train_size=train_size, val_size=val_size, rs=rs
     )
