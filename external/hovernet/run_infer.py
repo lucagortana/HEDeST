@@ -57,14 +57,18 @@ wsi_cli = """
 Arguments for processing wsi
 
 usage:
-    wsi (--input_dir=<path>) (--output_dir=<path>) (--image_dict_path=<path>) \
+    wsi (--input_dir=<path>) (--output_dir=<path>) [--image_dict_path=<path>] \
+        [--skip_image_dict] \
         [--input_mask_dir=<path>] [--cache_path=<path>] [--proc_mag=<n>] [--ambiguous_size=<n>] \
         [--chunk_shape=<n>] [--tile_shape=<n>] [--save_thumb] [--save_mask] [--save_geojson]
 
 options:
     --input_dir=<path>       Path to input data directory. Assumes the files are not nested within directory.
     --output_dir=<path>      Path to output directory.
-    --image_dict_path=<path> Path to save extracted image dictionary.
+    --image_dict_path=<path> Path to save extracted image dictionary. Required unless the
+                             image dictionary step is skipped.
+    --skip_image_dict        Stop after writing the segmentation JSON, without extracting
+                             per-nucleus crops. [default: False]
     --input_mask_dir=<path>  Path to directory containing tissue masks.
                              Should have the same name as corresponding WSIs. [default: '']
     --cache_path=<path>      Path for cache. Should be placed on SSD with at least 100GB. [default: cache]
@@ -79,6 +83,7 @@ options:
 """
 
 import torch
+import sys
 import logging
 import os
 import copy
@@ -189,6 +194,7 @@ if __name__ == "__main__":
                 "input_dir": sub_args["input_dir"],
                 "output_dir": sub_args["output_dir"],
                 "image_dict_path": sub_args["image_dict_path"],
+                "skip_image_dict": sub_args["skip_image_dict"],
                 "input_mask_dir": sub_args["input_mask_dir"],
                 "cache_path": sub_args["cache_path"],
                 "proc_mag": int(sub_args["proc_mag"]),
@@ -270,8 +276,17 @@ if __name__ == "__main__":
             logging.info("Existing JSON file(s) found. Skipping segmentation step.")
 
         ## Extract cell images
+        if run_args.get("skip_image_dict"):
+            logging.info("-> --skip_image_dict set, stopping after segmentation JSON.")
+            sys.exit(0)
+
+        if not run_args.get("image_dict_path"):
+            raise ValueError(
+                "--image_dict_path is required unless --skip_image_dict is given."
+            )
+
         from external.hovernet.seg_postprocessing import extract_images_hn
-        
+
         input_path = Path(run_args["input_dir"])
         image_files = list(input_path.iterdir())
 
