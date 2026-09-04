@@ -1,0 +1,59 @@
+name: PanoSpace
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.10
+
+  # === Base dependencies ===
+  - numpy>=1.23,<2  # NumPy 2.x is incompatible with scvi-tools
+  - pandas>=1.5
+  - anndata>=0.10
+  - scanpy>=1.9
+  - python-igraph>=0.10  # Required for Leiden clustering in spatialDWLS
+  - leidenalg>=0.9  # Leiden clustering algorithm
+  - scipy>=1.9
+  - scikit-learn>=1.2
+  - scikit-image>=0.22
+  - matplotlib>=3.7
+  - pillow>=9.4
+  - opencv>=4.8
+  - tqdm>=4.65
+  - requests>=2.31
+
+  # === Cell detection (GPU-enabled PyTorch) ===
+  # NOTE: PyTorch will be installed via pip AFTER conda environment setup
+  # This ensures proper CUDA support from PyTorch official wheels
+  - shapely>=2.0  # Geometry operations for postprocessing
+
+  # === Annotation & optimization ===
+  - pot>=0.9
+  - scvi-tools>=1.0  # For cell2location backend
+
+  # === Deconvolution (RCTD, spatialDWLS) ===
+  - qpsolvers>=4.0
+  - osqp  # QP backend requested by RCTD / spatialDWLS
+
+  # === Pip-only packages (not available in conda) ===
+  # IMPORTANT: PyTorch is NOT included here - it will be installed separately
+  # via pip to ensure proper CUDA support from official PyTorch wheels
+  - pip
+  - pip:
+      # JAX for scvi-tools (version must be compatible)
+      - jax==0.4.27
+      - jaxlib==0.4.27
+
+      # Deep learning frameworks
+      - pyro-ppl>=1.8
+      - pytorch-lightning>=2.1
+      - lightning>=2.1
+      - transformers>=4.33
+
+      # Utilities (not in conda)
+      - ray>=2.7
+      - einops>=0.6  # Tensor operations for cell detection
+      # Assignment solvers
+      - ortools>=9.7  # min-cost flow (default; scales to whole slides)
+      - pyscipopt  # SCIP solver (open-source, MILP)
+      - gurobipy>=10  # Gurobi (commercial, free academic license)

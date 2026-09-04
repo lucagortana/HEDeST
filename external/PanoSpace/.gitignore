@@ -1,0 +1,25 @@
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 编译和打包文件
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook 检查点
+.ipynb_checkpoints/
+
+# VSCode 配置
+.vscode/
+
+.claude
+CLAUDE.md
+.pytest_cache/
+try/
+
+# PyPI 发布指南（不发布到 GitHub）
+PYPI_PUBLISHING_GUIDE.md
+*.tar.gz
+rctd_data_*

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "panospace"
+dynamic = ["version", "dependencies", "optional-dependencies"]
+description = "High-resolution spatial transcriptomics analysis toolkit"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Hui-Feng He", email = "huifeng@mails.ccnu.edu.cn"}
+]
+keywords = [
+    "spatial transcriptomics",
+    "single-cell",
+    "deep learning",
+    "bioinformatics",
+    "cell detection",
+    "spatial analysis"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Documentation = "https://github.com/hehuifeng/PanoSpace"
+Source = "https://github.com/hehuifeng/PanoSpace"
+Tracker = "https://github.com/hehuifeng/PanoSpace/issues"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
+
+# Development tools configuration (optional)
+# Uncomment if you add tests later
+# [tool.pytest.ini_options]
+# testpaths = ["tests"]
+# python_files = ["test_*.py"]
+
+# [tool.coverage.run]
+# source = ["panospace"]
+# omit = ["*/tests/*"]
