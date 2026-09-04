@@ -76,12 +76,10 @@ class TileBatchDataset(Dataset):
                     cell_df = pd.read_csv(cell_prop, sep="\t", index_col=0)
                     for cell_index, row in tqdm(cell_df.iterrows()):
                         cell_index = str(cell_index)
-                        barcode = cell_index.split("_")[0]
+                        x, y, barcode = cell_index.split("_")
                         cell_num = np.array(row)
                         cell_propotion = cell_num / np.sum(cell_num)
-                        abs_path = glob(
-                            os.path.join(tile_dir, sample_name, f"{barcode}.jpg")
-                        )  # ADAPTED TO MY NOMENCLATURE
+                        abs_path = glob(os.path.join(tile_dir, sample_name, f"*_{x}x{y}.jpg"))
                         if len(abs_path) <= 0:
                             continue
                         img_name = abs_path[0].split("/")[-1].split(".")[0]
@@ -512,3 +510,192 @@ class TileBatchStateDataset(Dataset):
             "cell_coords": torch.tensor(cell_pixels, dtype=torch.float32),
             "cell_types": torch.tensor(CellType, dtype=torch.float32),
         }
+
+
+class SlideTileDataset(Dataset):
+    """HistoCell tiles cut on the fly from a whole-slide image.
+
+    ``TileBatchDataset`` above expects a directory of pre-cut tile images plus
+    one HoVer-Net ``.json`` per tile.  The benchmark stores a single pyramidal
+    ``he.tiff`` and a single whole-slide ``hovernet.json``, so this class does
+    the cutting in memory instead.  Everything the model sees is produced by
+    the same steps and in the same order as ``TileBatchDataset.__getitem__``:
+
+      * the tile is resized to 256 x 256 and passed through the same transforms
+        (ColorJitter + RandomGrayscale when ``aug``, then ToTensor + ImageNet
+        Normalize);
+      * each nucleus is cropped from the *normalised* 256 x 256 tensor at its
+        bounding box and resized to 30 x 30;
+      * the cell size feature is the bounding-box side over 256;
+      * the adjacency matrix links nuclei closer than 40 px in tile space;
+      * everything is padded to ``max_cell_num`` and ``mask`` records how many
+        entries are real.
+
+    Because the tile is always stretched to 256 x 256, the 40 px graph radius
+    keeps the physical meaning it has upstream: with a tile cut at the spot
+    diameter (55 um for Visium, likewise here), 40 tile-px is ~8.6 um either way.
+
+    The one addition is ``cell_index``: the row number of each nucleus in the
+    slide-wide table, padded with -1.  Upstream recovers cells by matching the
+    coordinates it stored per tile; carrying the index makes the mapping back
+    to the benchmark's own cell ids exact rather than a nearest-neighbour match.
+    """
+
+    def __init__(
+        self,
+        reader,
+        tiles,
+        nuclei,
+        members,
+        tissue_compartment,
+        proportions=None,
+        tile_px=None,
+        channels=3,
+        aug=True,
+        max_cell_num=256,
+    ) -> None:
+        if aug is True:
+            self.transforms = transforms.Compose(
+                [
+                    transforms.ColorJitter(brightness=0.1, contrast=0.3, saturation=0.1, hue=0.2),
+                    transforms.RandomGrayscale(p=0.1),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ]
+            )
+        else:
+            self.transforms = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
+            )
+        self.channels = channels
+        self.reader = reader
+        self.tc = tissue_compartment
+        self.mcn = max_cell_num
+        self.size = int(round(tile_px))
+
+        self.tile_ids = list(tiles.index)
+        self.origins = tiles[["x0", "y0"]].to_numpy().astype(int)
+        self.members = [np.asarray(members[t], dtype=np.int64) for t in self.tile_ids]
+
+        self.boxes = nuclei[["r0", "c0", "r1", "c1"]].to_numpy().astype(np.float64)
+        self.centres = nuclei[["cx", "cy"]].to_numpy().astype(np.float64)
+        self.htypes = nuclei["htype"].to_numpy().astype(np.int64)
+
+        if proportions is not None:
+            values = proportions.loc[self.tile_ids].to_numpy().astype(np.float64)
+            totals = values.sum(axis=1, keepdims=True)
+            self.proportions = values / np.where(totals > 0, totals, 1.0)
+        else:
+            self.proportions = None
+
+        print(f"Tissue Compartment: {self.tc['list']}")
+
+    def __len__(self) -> int:
+        return len(self.tile_ids)
+
+    def __getitem__(self, index: int):
+        tile_id = self.tile_ids[index]
+        x0, y0 = self.origins[index]
+
+        crop = self.reader.crop(x0, y0, self.size)
+        if crop.shape[0] < 1 or crop.shape[1] < 1:  # tile entirely off-slide
+            crop = np.zeros((self.size, self.size, 3), dtype=np.uint8)
+        pic = Image.fromarray(crop).convert("RGB").resize((256, 256))
+        image = self.transforms(pic)
+
+        # A tile clipped by the slide border comes out smaller and is stretched
+        # to 256 all the same, so the two axes can scale differently.
+        scale_x = 256.0 / crop.shape[1]
+        scale_y = 256.0 / crop.shape[0]
+
+        mask_list, size_list, pos_list, type_list, index_list = [], [], [], [], []
+        for row in self.members[index]:
+            r0, c0, r1, c1 = self.boxes[row]
+            bbox_xa = int(min(max(round((r0 - y0) * scale_y), 0), 256))
+            bbox_xb = int(min(max(round((r1 - y0) * scale_y), 0), 256))
+            bbox_ya = int(min(max(round((c0 - x0) * scale_x), 0), 256))
+            bbox_yb = int(min(max(round((c1 - x0) * scale_x), 0), 256))
+
+            mask = image[:, bbox_xa:bbox_xb, bbox_ya:bbox_yb]
+            try:
+                mask = torch.tensor(cv2.resize(mask.permute(1, 2, 0).numpy(), (30, 30)))
+            except Exception:
+                continue
+
+            center_x = (self.centres[row, 0] - x0) * scale_x
+            center_y = (self.centres[row, 1] - y0) * scale_y
+
+            mask_list.append(mask.permute(2, 0, 1))
+            size_list.append(np.array([(bbox_xb - bbox_xa) / image.shape[-1], (bbox_yb - bbox_ya) / image.shape[-1]]))
+            pos_list.append(np.array([center_x, center_y]))
+            htype = int(self.htypes[row])
+            type_list.append(-1 if htype < 0 else int(self.tc["HoVerNet"][htype]))
+            index_list.append(int(row))
+
+        cell_types = np.array(type_list)
+        image = torch.tensor(cv2.resize(image.permute(1, 2, 0).numpy(), (128, 128))).permute(2, 0, 1)
+        cell_num = len(mask_list)
+        if cell_num == 1:
+            dist_mat = np.zeros([cell_num, cell_num])
+            cell_coords = np.array(pos_list)
+        elif cell_num == 0:
+            dist_mat = np.zeros([cell_num, cell_num])
+            cell_coords = np.zeros([0, 2])
+        else:
+            cell_coords = np.stack(pos_list, axis=0)
+            dist_mat = np.zeros([cell_num, cell_num])
+            for i in range(cell_num):
+                for j in range(i + 1, cell_num):
+                    dist = np.linalg.norm((cell_coords[i] - cell_coords[j]), ord=2)
+                    if dist < 40:
+                        dist_mat[i, j] = 1
+
+        dist_mat = dist_mat + dist_mat.T + np.identity(cell_num)
+
+        cell_pixels = np.zeros([self.mcn, 2])
+        CellType = -np.ones([self.mcn])
+        CellIndex = -np.ones([self.mcn], dtype=np.int64)
+        valid_mask = cell_num if cell_num < self.mcn else self.mcn
+        if valid_mask >= self.mcn:
+            mask_list = mask_list[: self.mcn]
+            size_list = size_list[: self.mcn]
+            adj_mat = dist_mat[: self.mcn, : self.mcn]
+            cell_pixels = cell_coords[: self.mcn]
+            CellType = cell_types[: self.mcn]
+            CellIndex = np.asarray(index_list[: self.mcn], dtype=np.int64)
+        else:
+            for _ in range(self.mcn - valid_mask):
+                mask_list.append(torch.zeros((3, 30, 30)))
+                size_list.append(torch.zeros((2)))
+
+            adj_mat = np.pad(dist_mat, ((0, self.mcn - valid_mask), (0, self.mcn - valid_mask)))
+            cell_pixels[:valid_mask] = cell_coords
+            CellType[:valid_mask] = cell_types
+            CellIndex[:valid_mask] = np.asarray(index_list, dtype=np.int64)
+
+        cell_images = np.stack(mask_list, axis=0)
+        cell_sizes = np.stack(size_list, axis=0)
+
+        item = {
+            "name": str(tile_id),
+            "tissue": image,
+            "image": torch.tensor(cell_images, dtype=torch.float32),
+            "mask": int(valid_mask),
+            "size": torch.tensor(cell_sizes, dtype=torch.float32),
+            "adj": torch.tensor(adj_mat, dtype=torch.long),
+            "cell_coords": torch.tensor(cell_pixels, dtype=torch.float32),
+            "cell_types": torch.tensor(CellType, dtype=torch.float32),
+            "cell_index": torch.tensor(CellIndex, dtype=torch.long),
+        }
+        if self.proportions is None:
+            return item
+
+        cell_prop = self.proportions[index]
+        if np.max(cell_prop) > 0.75:
+            tissue_cat = self.tc["list"].index(self.tc["dict"][str(np.argmax(cell_prop))])
+        else:
+            tissue_cat = len(self.tc["list"])
+
+        item["cells"] = torch.tensor(cell_prop, dtype=torch.float32)
+        item["tissue_cat"] = torch.tensor(tissue_cat, dtype=torch.long)
+        return item

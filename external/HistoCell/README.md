@@ -7,8 +7,7 @@ Our website: http://histocell.qhdyr.net/index/index/index.html
 
 ## Environments
 ```sh
-conda env create -f environment.yml
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
+pip install -r requirements.txt
 ```
 
 ## Data Format and Preprocessing
@@ -146,3 +145,361 @@ The histopathology image is coverted to **spatial cellular map** with HistoCell 
 <div align = center>
 <img src="image/README/biomarker.jpg" alt="Image" width="1000" style="display: block; margin: auto auto;">
 </div>
+
+
+
+
+
+---
+
+# Benchmark adaptation (STHELAR / HEDeST)
+
+This section documents a fork of HistoCell wired into the STHELAR benchmark. It
+adds an I/O layer and a driver script; **the method itself is untouched** — same
+architecture, same losses, same hyper-parameters. The list of what is and is not
+the same is spelled out under [What is unchanged](#what-is-unchanged) and
+[What was changed, and why](#what-was-changed-and-why).
+
+## What this fork is for
+
+HistoCell was published as a family of pre-trained models, one per cancer type,
+but **the weights were never released**. Upstream's `infer.py` therefore cannot
+run: it raises `FileNotFoundError("No trained model exits")` unless you have
+already trained something.
+
+So each run here trains a model from scratch **on the slide it is about to
+annotate**, using that slide's own spot proportions as the weak supervision
+label, and then predicts a cell type for every nucleus of the same slide:
+
+```
+     spot proportions  ─┐
+                        ├──▶  train (50 epochs, one tile per spot)
+     H&E + segmentation ┘                    │
+                                             ▼
+     H&E + segmentation ──────────▶  predict every nucleus of the slide
+```
+
+Training and inference happen in one command; there is no separate pre-training
+stage and no single-cell reference is needed, because the proportions are given.
+
+## Quick start
+
+```bash
+# once
+bash external/HistoCell/setup_env.sh          # creates the histocell-env conda env
+
+# one slide, one annotation level (a Slurm wrapper lives at HEDeST/run_histocell.sh)
+sbatch run_histocell.sh \
+    --he          .../bench_data/lung_s3/he.tiff \
+    --st          .../bench_data/lung_s3/pseudovisium.h5ad \
+    --seg-dict    .../bench_data/lung_s3/hovernet.json \
+    --proportions .../bench_data/lung_s3/sim/level2/proportions.csv \
+    --output      .../histocell/lung_s3/level2
+```
+
+`python external/HistoCell/run_histocell.py --help` lists every option. A
+run takes roughly 1–3 h on one GPU, almost all of it training; re-running only
+the inference is a matter of `--resume <output>/model/epoch_49.ckpt`.
+
+## Inputs
+
+The same four files PanoSpace takes, in the same formats:
+
+| flag | file | used for |
+|---|---|---|
+| `--he` | `he.tiff` | the pixels; tiles are cut from it |
+| `--st` | `pseudovisium.h5ad` | spot centres (`obsm['spatial']`) and the spot diameter |
+| `--seg-dict` | `hovernet.json` | nucleus centroids, contours and PanNuke classes |
+| `--proportions` | `sim/level{L}/proportions.csv` | the weak supervision label |
+
+No single-cell reference is required — HistoCell consumes proportions that have
+already been deconvolved, it does not deconvolve anything itself.
+
+Two optional inputs:
+
+* `--tissue-compartment` — an upstream-style `./tcs/*.json`. Generated
+  automatically when omitted (see [Tissue compartments](#tissue-compartments)).
+* `--spot-dict` — `spot_dict.json`, i.e. `spot_id -> [cell_id, ...]`. Restricts
+  each training tile to the spot's own member cells and defines spot membership
+  when clumping. **Off by default**, because upstream keeps every nucleus that
+  falls inside the square tile, including the corners that lie outside the round
+  spot; real Visium data has exactly the same mismatch.
+
+## Outputs
+
+Written to `--output`:
+
+| file | shape |
+|---|---|
+| `histocell_predictions.csv` | `cell_id` x cell type, softmax probabilities. Same shape as HEDeST's `pred_best_adjusted`, so `df.idxmax(axis=1)` is the call. Row ids are the ids of `hovernet.json`. |
+| `histocell_proportions.csv` | `spot_id` x cell type. Same shape as `sim/level{L}/proportions.csv`. |
+| `tissue_compartment.json` | the `tcs` file actually used |
+| `model/epoch_*.ckpt` | the trained weights |
+| `01_annotation_slide.png` | every predicted nucleus on the slide |
+| `02_spot_proportion_fit.png` | predicted vs deconvolved spot proportions, per cell type, with the PCC the paper uses as its metric |
+| `03_spot_pies_true_vs_pred.png` | the spots at their slide positions drawn as pie charts — ground truth on the left, HistoCell on the right |
+| `run_info.json`, `run.log` | provenance, counts, timings |
+
+### Colours
+
+The figures use the benchmark's hierarchically-consistent colour code: each
+level-0 category is a colour family (Epithelial blue, Immune green, Structural
+orange, Melanocyte purple) and finer types are shades within their family, so a
+cell type keeps its colour across levels.
+
+The scheme is **reproduced inside this package** (`bench.level_palette`) rather
+than imported, so nothing outside this repository is needed to run it. The
+family-to-leaf grouping it depends on is derived from the slide's own
+`sim/level*/proportions.csv` files: annotation levels are nested, so a coarse
+category's proportion is the sum of its children's spot by spot, which makes the
+tree recoverable from the proportions alone — and keeps it from drifting out of
+date. Checked against the benchmark's own palette on 39 (dataset, level) pairs:
+identical to the last bit. If the levels cannot be read, the plots fall back to
+`tab20` with a warning; the result files are unaffected either way.
+
+The prediction index is written as bare cell ids, so `pd.read_csv` will type a
+numeric id as `int64`. Cast to `str` before joining against `hovernet.json` keys.
+
+## How a slide becomes HistoCell tiles
+
+Upstream reads a directory of pre-cut tile images plus one HoVer-Net `.json`
+per tile. The benchmark stores one whole-slide image and one whole-slide
+segmentation, so the cutting happens in memory (`bench.py`, and
+`data.SlideTileDataset`). No intermediate tiles are written to disk.
+
+### Training tiles — one per spot
+
+The paper cuts tiles "according to the size of spots (e.g. 55 μm for 10x
+Visium)" and resizes them to 256 x 256. Here the tile side is
+`uns['spatial'][lib]['scalefactors']['spot_diameter_fullres']` — 200.9 px, i.e.
+the same 55 μm — and the tile is centred on the spot. Override with `--tile-px`.
+
+Keeping the tile at the spot diameter is what makes the rest of the method
+transferable unchanged. In particular the graph radius: nuclei are linked when
+they are closer than 40 px *in tile space*, and since the tile is always
+stretched to 256 px, 40 tile-px is 55/256 x 40 = **8.6 μm** here exactly as it
+is on Visium.
+
+### Inference tiles — a partition of the slide
+
+The spots cover under a third of the tissue, so predicting only inside them
+would leave most nuclei unannotated. Instead the slide is partitioned into a
+regular grid at the *same* tile size, and every tile holding at least one
+nucleus is predicted. This is the paper's own recipe for data without spots
+(equations 1–5, where the Xenium area is "uniformly partitioned into grids to
+simulate the Visium ST spots"), and it means each nucleus is seen exactly once,
+at exactly the magnification the model was trained on. Verified on `skin_s4`:
+98,678 nuclei, 98,678 assignments, 98,678 distinct — full coverage, no double
+counting. `--infer-tiling spots` restricts inference to the spot tiles instead.
+
+Spot-level proportions are then obtained the way the paper does it — "the
+predicted single-nucleus-level cells in each spot were clumped to mimic
+spot-level cell proportions" — by averaging the per-nucleus probabilities over
+the cells of each spot.
+
+### Mapping predictions back to cells
+
+Upstream stores each nucleus's tile-local coordinates and recovers cells
+afterwards by matching coordinates. Here the dataset carries the nucleus's row
+number in the slide-wide table through the batch (`cell_index`, padded with
+-1), so a prediction returns to its `hovernet.json` cell id exactly, with no
+nearest-neighbour step. Nothing the model sees changes.
+
+Two checks back this up.
+
+*The crops land on the right pixels.* Cropping a nucleus out of its resized tile
+and cropping it straight from the whole-slide image agree to a median 2.3/255
+per pixel, against 17.5/255 when the box is deliberately shifted by 3 px.
+
+*The model sees exactly what upstream would have fed it.*
+`scripts/test_dataset_equivalence.py` writes the same tiles to disk in the
+layout `TileBatchDataset` expects, runs both datasets over them and compares
+every field elementwise:
+
+```
+$ python scripts/test_dataset_equivalence.py --he ... --st ... --seg-dict ...
+compared 24 tiles from he.tiff
+  max |adapter - upstream|  tissue       0.000e+00
+  max |adapter - upstream|  image        0.000e+00
+  max |adapter - upstream|  mask         0.000e+00
+  max |adapter - upstream|  size         0.000e+00
+  max |adapter - upstream|  adj          0.000e+00
+  max |adapter - upstream|  cell_coords  0.000e+00
+  max |adapter - upstream|  cell_types   0.000e+00
+
+OK: every tensor the model receives is bit-identical.
+```
+
+## Tissue compartments
+
+The auxiliary cross-entropy head needs upstream's `tcs` file: `dict` maps each
+cell-type index to a compartment, `list` is the compartment vocabulary, and
+`HoVerNet` maps the six PanNuke classes to compartments.
+
+Upstream ships one hand-written file per tissue under `./tcs`. The benchmark's
+vocabulary changes with the annotation level, so the file is derived from the
+cell-type names instead, with the same meaning and the same three compartments
+`["Epi", "TME", "Stromal"]`. The PanNuke row is upstream's constant, copied
+verbatim: `[2, 0, 1, 2, 2, 0]`. On the benchmark's levels this gives, e.g.
+
+```
+level 0  Immune -> TME    Structural -> Stromal   Epithelial -> Epi   Melanocyte -> Epi
+level 2  B_Plasma -> TME  T_NK -> TME  Myeloid -> TME
+         Fibroblast_Myofibroblast -> Stromal   Blood_vessel -> Stromal   Epithelial -> Epi
+```
+
+A handful of labels at the deeper levels are too short to match on a substring
+without catching unrelated names (`B`, `T`, `DC`, `T_CD8`) and are resolved by
+exact name instead. Across all 218 cell-type names of every sample and every
+level of this benchmark, all 218 resolve. Names matched by no rule fall back to
+`Stromal` — upstream's own catch-all for the PanNuke "nolabel" class — and are
+logged loudly. The file used is always
+written to `tissue_compartment.json` next to the results, and
+`--tissue-compartment` overrides the whole thing.
+
+The 0.75 rule that turns proportions into a compartment label, and the extra
+"mixture" class, are upstream's and are untouched.
+
+## What is unchanged
+
+Everything that constitutes the method:
+
+* **Architecture** (`model/arch.py`, not modified): ImageNet ResNet-18 encoder
+  for both the tile and the nucleus crops, 16-d cell-size embedding fused by a
+  linear layer, one graph-attention layer, a 2-step unidirectional LSTM, a
+  linear + softmax cell-type head and the tile compartment head. On modern
+  torchvision, `resnet18(pretrained=True)` still resolves to the very same
+  `resnet18-f37072fd.pth` (IMAGENET1K_V1) checkpoint upstream used.
+* **Losses**: symmetric KL between the tile-mean of the per-cell softmax and the
+  deconvolved proportions, plus cross-entropy on the compartment — copied
+  literally from `train.py`, `torch.nn.KLDivLoss()` default reduction included.
+  The cell-state consistency term does not apply (see below).
+* **Nucleus crops**: taken from the *normalised* 256 x 256 tile at the bounding
+  box, resized to 30 x 30. Cell-size feature = bounding-box side / 256.
+* **Graph**: binary adjacency at 40 tile-px, symmetrised, plus the identity.
+* **`max_cell_num = 256`**. Note this is a *method* parameter, not just a batch
+  shape: padded slots keep a non-zero attention weight in the GAT
+  (`softmax(dim=1)` over a fully-masked column returns a uniform row), so their
+  features do reach the real cells. Left at 256.
+* **Augmentation**: ColorJitter + RandomGrayscale when training, ImageNet
+  normalisation always.
+* **Batch size 32** for training, 16 for inference, seed 47 — all as released.
+* **Inference module mode**: upstream's `infer.py` calls `model.train()` before
+  predicting, so batch-norm uses batch statistics and dropout stays on. That is
+  the default here — and it is measurably the better one, see below.
+  `--eval-mode eval` switches to `model.eval()`; note that two dropouts inside
+  `arch.py` are written `training=True` and stay active either way — untouched.
+
+### Why the odd inference mode is kept
+
+Predicting with the module in train mode looks like a bug: batch-norm
+normalises by whatever tiles share the batch rather than by the running
+statistics, and dropout stays on, so the answer for a cell is not a fixed
+function of that cell. Measured on the delivered 50-epoch checkpoints:
+
+| | argmax agreement | mean abs. prob. difference |
+|---|---|---|
+| skin_s4 L0, train vs eval mode | 50.0% | 0.211 |
+| skin_s4 L0, train vs train (re-run) | 83.4% | 0.054 |
+| lung_s3 L0, train vs eval mode | 61.1% | 0.182 |
+| lung_s3 L0, train vs train (re-run) | 78.0% | 0.088 |
+
+`eval` mode is nonetheless far *less* accurate. On skin_s4 level 0 the true
+composition is Immune 0.307 / Structural 0.172 / Melanocyte 0.487 / Epithelial
+0.035; train mode returns 0.314 / 0.168 / 0.502 / 0.015 and eval mode returns
+0.642 / 0.121 / 0.217 / 0.019. The running batch-norm statistics never catch up
+because training runs on colour-jittered tiles and the two hard-coded dropouts
+keep perturbing the activations. So upstream's default is kept, and the price
+is that re-running inference relabels roughly 20% of cells. Averaging several
+passes would stabilise it; HistoCell does not, so neither does this.
+
+## What was changed, and why
+
+Only I/O:
+
+1. **Tiles are cut in memory** from `he.tiff` instead of read from a directory
+   of `.jpg`/`.png` files, and nuclei come from one whole-slide `hovernet.json`
+   instead of one `.json` per tile. New class `SlideTileDataset` in `data.py`;
+   `TileBatchDataset` is left exactly as it was.
+2. **Bounding boxes are recomputed from the contour** — see the next section.
+   This is a fix for the input data, not a change to the method.
+3. **`cell_index` is carried through the batch** so predictions map back to the
+   benchmark's cell ids exactly.
+4. **The `tcs` file is generated** from the level's cell-type names when not
+   supplied, as described above.
+5. **Inference tiling is a grid** covering the whole slide, so every nucleus is
+   annotated.
+6. **Paths and parameters come from the command line** rather than from the
+   `./demo/data/...` layout hard-coded in `configs.py`. The new
+   `_get_bench_config` carries only method settings.
+7. **Environment**: python 3.10 / torch 2.5.1 instead of python 3.7 / torch
+   1.12.1, because the pinned stack cannot read `.h5ad` or pyramidal `.tiff`.
+   The encoder weights are identical, as noted above.
+
+Not adapted, because the benchmark has no cell states: `train_state.py`,
+`TileBatchStateDataset` and the `HistoState` model. They are left untouched and
+unused, along with `train_oneout_pannuke.py` (the PanNuke cross-validation).
+
+## Where the paper and the released code disagree
+
+Two hyper-parameters differ between the article and `configs.py`. The article
+wins by default, and both are one flag away:
+
+| | article | released `configs.py` | default here |
+|---|---|---|---|
+| epochs (cell-type stage) | 50 | 41 | **50** (`--epochs`) |
+| Adam learning rate | 1e-4 | 5e-4 | **1e-4** (`--lr`) |
+
+The article is explicit: "we trained the model for 50 epochs with the
+supervision of cell compartment loss and KL divergence loss" and "the model
+parameters were updated via the Adam optimizer with a learning rate of
+1 x 10⁻⁴". Use `--epochs 41 --lr 5e-4` for the released-code behaviour.
+
+## A data problem found on the way: the `bbox` field
+
+In the benchmark's `hovernet.json` files the `bbox` entry does not describe the
+nucleus it is attached to. It is the contour's box with the two per-tile offsets
+exchanged:
+
+```
+stored bbox = [[ymin - K, xmin + K], [ymax - K, xmax + K]],  K = (tile_row - tile_col) * tile_step
+```
+
+so it is only correct for the few percent of nuclei sitting on the tile
+diagonal, where `K = 0` — measured at 3.6 % (skin_s4) to 9.2 % (lung_s3) of
+nuclei. `centroid` and `contour` are consistent with each other and with the
+image; only `bbox` is affected.
+
+This matters here because HistoCell crops each nucleus at its bounding box:
+taken at face value, the model would be shown a patch of tissue hundreds to
+tens of thousands of pixels away from the cell it is meant to classify.
+`bench.load_seg_dict` therefore derives the box from the contour — which is what
+HoVer-Net's own `get_bounding_box` computes, and what PanoSpace's adapter
+already did — and logs the disagreement rate on every run. Any other consumer
+of these files that reads `bbox` directly is affected and should do the same.
+
+## Not implemented: the tutorial's Bayesian re-weighting
+
+`tutorial/tutorial.ipynb` re-weights the per-cell probabilities by a
+`conditional_prob_*.tsv` matrix before taking the argmax:
+
+```python
+new_prob[idx] = prob * normalized_conditional_mat[:, prior_type]
+```
+
+This step appears in no equation of the paper, the matrix is shipped as an
+opaque data file, and no code estimating it was released — so reproducing it
+would mean inventing it. The predictions here are the model's own softmax, which
+is what the paper's equations (18)–(19) define. The HoVer-Net class of every
+nucleus is still available (it is what the `tcs` `HoVerNet` row maps), so the
+step can be added later if the matrix is ever published.
+
+## Files added / modified
+
+| | |
+|---|---|
+| added | `bench.py`, `run_histocell.py`, `setup_env.sh`, `scripts/test_dataset_equivalence.py`, and `HEDeST/run_histocell.sh` |
+| modified | `data.py` (added `SlideTileDataset`), `configs.py` (added `_get_bench_config`), this `README.md` |
+| removed | `model/__pycache__/`, `utils/__pycache__/` (stale python-3.7 bytecode) |
+
+Nothing else in the repository was touched.
