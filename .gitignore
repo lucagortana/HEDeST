@@ -39,10 +39,14 @@ run_*
 !run_hovernet.sh
 !run_mask.sh
 !run_moco_ssl.sh
+!run_histocell.sh
+!run_panospace.sh
 
 !external/CellViT/cellvit/models
 !external/hovernet/models
 !external/mhast/run_semisim.sh
 !external/mhast/run_sim.sh
+!external/HistoCell-main/run_histocell.py
+!external/PanoSpace/run_panospace.py
 
 slurm*
