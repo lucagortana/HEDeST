@@ -9,6 +9,7 @@ external/CellViT/docs
 external/CellViT/examples
 external/HistoCell-v0
 external/LEMON
+external/PanoSpace/panospace/_core/annotation/_RCTD_backend/extdata/
 log
 models
 *.pdf
