@@ -7,6 +7,7 @@ benchmark/results
 case_study/figures
 external/CellViT/docs
 external/CellViT/examples
+external/HistoCell-v0
 external/LEMON
 log
 models
@@ -46,7 +47,7 @@ run_*
 !external/hovernet/models
 !external/mhast/run_semisim.sh
 !external/mhast/run_sim.sh
-!external/HistoCell-main/run_histocell.py
+!external/HistoCell/run_histocell.py
 !external/PanoSpace/run_panospace.py
 
 slurm*
